@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>还原工作流 — 多步骤脱敏系统</title>
+  <meta name="description" content="上传脱敏文件与映射表，校验用户归属后还原原始内容并下载。" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <!-- ============ 共享页头 ============ -->
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="../index.html" aria-label="脱敏系统首页">
+        <span class="brand__mark" aria-hidden="true"></span>
+        <span class="brand__name">脱敏系统<span> / DESENS</span></span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../index.html">概览</a>
+        <a href="desensitize.html">脱敏</a>
+        <a href="restore.html" aria-current="page">还原</a>
+      </nav>
+      <div class="header-spacer"></div>
+      <a class="user-pill" href="../login.html" title="" aria-label="登录 / 当前用户标识">
+        <span class="user-pill__dot" aria-hidden="true"></span>
+        <span class="user-pill__label">USER</span>
+        <span class="user-pill__id" data-user-id>——</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="container restore-main">
+    <div class="index-eyebrow">
+      <span class="index-eyebrow__line" aria-hidden="true"></span>
+      <span class="mono-label">RESTORE / v0.1 PROTOTYPE</span>
+    </div>
+
+    <section class="index-hero">
+      <h1>还原工作流</h1>
+      <p>
+        上传此前生成的脱敏文件与对应映射表 JSON。系统会校验映射表的用户归属，
+        并按记录将占位符或遮盖区域还原为原始内容。
+      </p>
+    </section>
+
+    <!-- 双上传卡片 -->
+    <div class="restore-grid" aria-label="文件上传区">
+      <section class="restore-card">
+        <div class="restore-card__head">
+          <span class="num">01</span>
+          <h3>上传脱敏文件</h3>
+        </div>
+        <label class="upload-zone" id="redactedUploadZone" for="redactedFileInput" tabindex="0" role="button" aria-label="选择或拖入脱敏文件">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span class="upload-zone__title">点击选择或拖入脱敏文件</span>
+          <span class="upload-zone__hint">支持 TXT / CSV / JSON / PNG / JPG</span>
+          <input type="file" id="redactedFileInput" accept=".txt,.csv,.json,.md,.markdown,.png,.jpg,.jpeg,text/*,image/*" />
+        </label>
+        <div class="file-meta hidden mt-4" id="redactedFileMeta" aria-live="polite">
+          <span class="file-meta__icon" id="redactedFileMetaIcon" aria-hidden="true"></span>
+          <div class="file-meta__info">
+            <div class="file-meta__name" id="redactedFileMetaName">—</div>
+            <div class="file-meta__detail" id="redactedFileMetaDetail">—</div>
+          </div>
+          <button class="icon-btn" id="clearRedactedFileBtn" type="button" aria-label="移除当前文件" title="移除文件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <section class="restore-card">
+        <div class="restore-card__head">
+          <span class="num">02</span>
+          <h3>上传映射表</h3>
+        </div>
+        <label class="upload-zone" id="mappingUploadZone" for="mappingFileInput" tabindex="0" role="button" aria-label="选择或拖入映射表 JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="upload-zone__title">点击选择映射表 JSON</span>
+          <span class="upload-zone__hint">仅支持由本系统生成的 .json 映射表</span>
+          <input type="file" id="mappingFileInput" accept=".json,application/json" />
+        </label>
+        <div class="file-meta hidden mt-4" id="mappingFileMeta" aria-live="polite">
+          <span class="file-meta__icon" id="mappingFileMetaIcon" aria-hidden="true"></span>
+          <div class="file-meta__info">
+            <div class="file-meta__name" id="mappingFileMetaName">—</div>
+            <div class="file-meta__detail" id="mappingFileMetaDetail">—</div>
+          </div>
+          <button class="icon-btn" id="clearMappingFileBtn" type="button" aria-label="移除当前文件" title="移除文件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- 校验结果 -->
+    <div class="validate-box hidden" id="validateBox" aria-live="polite">
+      <svg class="validate-box__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div class="validate-box__text" id="validateText">
+        <strong>等待文件</strong><br />
+        <span class="mono">请同时上传脱敏文件与映射表。</span>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar" style="margin-bottom: var(--space-6);">
+      <button class="btn btn--primary btn--lg btn--block" id="restoreBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        开始还原
+      </button>
+      <button class="btn btn--ghost btn--block" id="resetBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        重新开始
+      </button>
+    </div>
+
+    <!-- 还原结果 -->
+    <div class="restore-result hidden" id="restoreResult">
+      <div class="restore-result__head">
+        <h3>还原结果</h3>
+      </div>
+      <div class="restore-result__body" id="restoreResultBody">
+        <div class="empty-state" id="restoreEmptyState">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <p>点击「开始还原」后在此预览结果</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 下载栏 -->
+    <div class="download-bar hidden" id="downloadBar">
+      <span class="download-bar__label">还原完成</span>
+      <button class="btn btn--primary" id="downloadRestoredBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        下载原文件
+      </button>
+    </div>
+  </main>
+
+  <!-- 状态提示 -->
+  <div class="sr-only" id="liveRegion" aria-live="polite" role="status"></div>
+
+  <script src="../assets/js/restore.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录 / 注册 — 多步骤脱敏系统</title>
+  <meta name="description" content="企业内部投资人员与私募基金管理员的敏感数据脱敏系统登录与注册入口。" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body class="login-page">
+  <a href="#loginMain" class="skip-link">跳转到登录表单</a>
+
+  <!-- ============ 共享页头 ============ -->
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="index.html" aria-label="脱敏系统首页">
+        <span class="brand__mark" aria-hidden="true"></span>
+        <span class="brand__name">脱敏系统<span> / DESENS</span></span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="index.html">概览</a>
+        <a href="pages/desensitize.html">脱敏</a>
+        <a href="pages/restore.html">还原</a>
+      </nav>
+      <div class="header-spacer"></div>
+      <a class="user-pill" href="login.html" aria-label="登录" aria-current="page">
+        <span class="user-pill__dot" aria-hidden="true"></span>
+        <span class="user-pill__label">登录</span>
+        <span class="user-pill__id" data-user-id>——</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="login-main" id="loginMain" aria-label="登录与注册">
+    <div class="login-card">
+      <div class="login-card__head">
+        <div class="login-card__brand">
+          <span class="brand__mark" aria-hidden="true"></span>
+          <span class="brand__name">DESENS</span>
+        </div>
+        <span class="mono-label login-card__badge">安全访问</span>
+      </div>
+
+      <div class="login-mode-tabs" role="tablist" aria-label="登录或注册">
+        <button class="login-mode-tab is-active" type="button" role="tab" aria-selected="true" id="tabLogin" aria-controls="loginForm" data-mode="login" tabindex="0">登录</button>
+        <button class="login-mode-tab" type="button" role="tab" aria-selected="false" id="tabRegister" aria-controls="loginForm" data-mode="register" tabindex="-1">注册</button>
+      </div>
+
+      <h1 class="login-card__title" id="loginTitle">欢迎回来</h1>
+      <p class="login-card__lead" id="loginLead">请使用企业账号登录，每个账户的数据独立存储、互不交叉。</p>
+
+      <div class="login-card__alert" id="formAlert" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+      <form class="login-form" id="loginForm" novalidate>
+        <div class="field">
+          <label class="field__label" for="loginEmail">企业邮箱</label>
+          <input class="field__input" type="email" id="loginEmail" name="email" placeholder="name@company.com" autocomplete="email" required aria-required="true" aria-describedby="emailHint" />
+          <span class="field__hint" id="emailHint">示例：investor@fund.com</span>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="loginPassword">密码</label>
+          <div class="field__input-wrap">
+            <input class="field__input" type="password" id="loginPassword" name="password" placeholder="输入登录密码" autocomplete="current-password" required aria-required="true" aria-describedby="passwordHint" />
+            <button class="field__reveal" type="button" id="togglePassword" aria-label="显示密码" aria-pressed="false" tabindex="0">
+              <svg class="field__reveal-icon field__reveal-icon--show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="field__reveal-icon field__reveal-icon--hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+          <span class="field__hint" id="passwordHint">密码至少 6 位</span>
+        </div>
+
+        <div class="field is-register-only" id="confirmPasswordField" hidden>
+          <label class="field__label" for="loginPasswordConfirm">确认密码</label>
+          <input class="field__input" type="password" id="loginPasswordConfirm" name="passwordConfirm" placeholder="再次输入密码" autocomplete="new-password" aria-describedby="passwordConfirmHint" />
+          <span class="field__hint" id="passwordConfirmHint">请再次输入密码</span>
+        </div>
+
+        <div class="login-options is-login-only" id="loginOptions">
+          <label class="check-row">
+            <input type="checkbox" id="rememberMe" name="remember" />
+            <span class="check-row__box" aria-hidden="true"></span>
+            <span class="check-row__label">保持登录</span>
+          </label>
+          <button class="text-link" type="button" id="forgotPassword">忘记密码？</button>
+        </div>
+
+        <button class="btn btn--primary btn--lg btn--block" type="submit" id="loginSubmit">
+          <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          <span id="submitLabel">登录</span>
+        </button>
+
+        <p class="login-form__note" id="formNote">原型环境下输入任意邮箱与 6 位以上密码即可登录。</p>
+      </form>
+
+      <p class="login-switch">
+        <span id="loginSwitchText">还没有账号？</span>
+        <button class="text-link" type="button" id="loginSwitchAction" data-switch="register">立即注册</button>
+      </p>
+    </div>
+
+    <p class="login-footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>用户数据隔离：登录后所有映射表与文件操作均绑定当前会话标识。</span>
+    </p>
+  </main>
+
+  <script src="assets/js/login.js" defer></script>
+</body>
+</html>

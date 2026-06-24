@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "login.html",
+  "entry": "login.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-06-23T10:42:32.931Z",
+  "updatedAt": "2026-06-23T10:42:32.931Z",
+  "metadata": {
+    "inferred": true,
+    "reconciled": true
+  }
+}

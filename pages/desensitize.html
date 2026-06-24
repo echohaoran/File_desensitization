@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>脱敏工作流 — 多步骤脱敏系统</title>
+  <meta name="description" content="上传文件、自动检测敏感字段、人工复核框选、生成脱敏文件与映射表。" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <!-- ============ 共享页头 ============ -->
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="../index.html" aria-label="脱敏系统首页">
+        <span class="brand__mark" aria-hidden="true"></span>
+        <span class="brand__name">脱敏系统<span> / DESENS</span></span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../index.html">概览</a>
+        <a href="desensitize.html" aria-current="page">脱敏</a>
+        <a href="restore.html">还原</a>
+      </nav>
+      <div class="header-spacer"></div>
+      <a class="user-pill" href="../login.html" title="" aria-label="登录 / 当前用户标识">
+        <span class="user-pill__dot" aria-hidden="true"></span>
+        <span class="user-pill__label">USER</span>
+        <span class="user-pill__id" data-user-id>——</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="container workflow">
+    <!-- 步骤指示器 -->
+    <div class="steps" aria-label="脱敏流程步骤">
+      <div class="step is-active" id="step-1"><span class="step__num">1</span> 上传</div>
+      <span class="step__sep" aria-hidden="true"></span>
+      <div class="step" id="step-2"><span class="step__num">2</span> 检测</div>
+      <span class="step__sep" aria-hidden="true"></span>
+      <div class="step" id="step-3"><span class="step__num">3</span> 复核</div>
+      <span class="step__sep" aria-hidden="true"></span>
+      <div class="step" id="step-4"><span class="step__num">4</span> 下载</div>
+    </div>
+
+    <div class="split">
+      <!-- ============ 左侧控制栏 ============ -->
+      <aside class="aside" aria-label="脱敏控制面板">
+        <!-- 上传面板 -->
+        <section class="panel">
+          <div class="panel__head"><h3>上传文件</h3></div>
+          <div class="panel__body">
+            <label class="upload-zone" id="uploadZone" for="fileInput" tabindex="0" role="button" aria-label="选择或拖入文件">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span class="upload-zone__title">点击选择或拖入文件</span>
+              <span class="upload-zone__hint">支持 TXT / CSV / JSON / PNG / JPG</span>
+              <input type="file" id="fileInput" accept=".txt,.csv,.json,.md,.markdown,.png,.jpg,.jpeg,text/*,image/*" />
+            </label>
+            <div class="file-meta hidden mt-4" id="fileMeta" aria-live="polite">
+              <span class="file-meta__icon" id="fileMetaIcon" aria-hidden="true"></span>
+              <div class="file-meta__info">
+                <div class="file-meta__name" id="fileMetaName">—</div>
+                <div class="file-meta__detail" id="fileMetaDetail">—</div>
+              </div>
+              <button class="icon-btn" id="clearFileBtn" type="button" aria-label="移除当前文件" title="移除文件">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 检测结果面板 -->
+        <section class="panel">
+          <div class="panel__head">
+            <h3>检测结果</h3>
+            <span class="panel__count" id="detectCount">0 项</span>
+          </div>
+          <div class="panel__body">
+            <div class="detect-list" id="detectList" aria-label="敏感信息检测结果列表"></div>
+          </div>
+        </section>
+
+        <!-- 操作栏 -->
+        <section class="action-bar" id="actionBar">
+          <button class="btn btn--primary btn--lg btn--block" id="confirmBtn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            确认脱敏
+          </button>
+          <button class="btn btn--ghost btn--block" id="resetBtn" type="button" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            重新开始
+          </button>
+        </section>
+      </aside>
+
+      <!-- ============ 右侧预览 ============ -->
+      <section class="preview" aria-live="polite">
+        <div class="preview__head">
+          <h3 id="previewTitle">预览</h3>
+          <div class="preview__tools" id="previewTools"></div>
+        </div>
+        <div class="preview__body" id="previewBody">
+          <!-- 空状态 -->
+          <div class="empty-state" id="emptyState">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p>上传文件后在此预览检测结果</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 映射表预览（确认后显示） -->
+    <div class="mapping-pre hidden" id="mappingPre">
+      <div class="mapping-pre__head" id="mappingToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="mappingBody">
+        <h3>映射表 JSON</h3>
+        <svg class="chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="mapping-pre__body" id="mappingBody">
+        <pre id="mappingJson"></pre>
+      </div>
+    </div>
+
+    <!-- 下载栏（确认后显示） -->
+    <div class="download-bar hidden" id="downloadBar">
+      <span class="download-bar__label">脱敏完成</span>
+      <button class="btn btn--primary" id="downloadFileBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        下载脱敏文件
+      </button>
+      <button class="btn btn--secondary" id="downloadMappingBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        下载映射表
+      </button>
+    </div>
+  </main>
+
+  <!-- 状态提示（aria-live） -->
+  <div class="sr-only" id="liveRegion" aria-live="polite" role="status"></div>
+
+  <script src="../assets/js/desensitize.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "restore.html",
+  "entry": "pages/restore.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-06-23T09:20:44.699Z",
+  "updatedAt": "2026-06-23T09:20:44.699Z",
+  "metadata": {
+    "inferred": true,
+    "reconciled": true
+  }
+}

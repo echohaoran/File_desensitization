@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+backend/venv/
+
+# Build output
+dist/
+
+# Logs
+logs/
+
+# Uploads
+backend/uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
