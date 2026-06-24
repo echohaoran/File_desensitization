@@ -27,7 +27,7 @@ if [ ! -d "$PROJECT_DIR/backend/venv" ]; then
     echo -e "${YELLOW}检测到 Python 虚拟环境未创建，正在创建...${NC}"
     cd "$PROJECT_DIR/backend"
     python3 -m venv venv
-    source venv/bin/activate
+    source "$PROJECT_DIR/backend/venv/bin/activate"
     pip install -r requirements.txt
     echo -e "${GREEN}Python 依赖安装完成${NC}"
 fi
@@ -44,7 +44,7 @@ echo -e "${BLUE}API 文档: http://localhost:8000/docs${NC}"
 
 # 启动后端
 cd "$PROJECT_DIR/backend"
-source venv/bin/activate
+source "$PROJECT_DIR/backend/venv/bin/activate"
 
 # 检查是否使用 --detach 参数
 if [ "$1" = "--detach" ] || [ "$1" = "-d" ]; then

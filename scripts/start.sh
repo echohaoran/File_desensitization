@@ -45,7 +45,7 @@ echo -e "${BLUE}API 文档: http://localhost:8000/docs${NC}"
 
 # 启动后端（后台运行）
 cd "$PROJECT_DIR/backend"
-source venv/bin/activate
+source "$PROJECT_DIR/backend/venv/bin/activate"
 nohup "$PROJECT_DIR/backend/venv/bin/python" -m uvicorn main:app --reload --host 0.0.0.0 --port 8000 > "$PROJECT_DIR/logs/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > "$PROJECT_DIR/logs/backend.pid"

@@ -50,7 +50,8 @@ echo ""
 
 # 安装 Python 依赖
 echo -e "${YELLOW}步骤 3/3: 安装 Python 依赖${NC}"
-source venv/bin/activate
+source "$PROJECT_DIR/backend/venv/bin/activate"
+cd "$PROJECT_DIR/backend"
 if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt
     echo -e "${GREEN}✓ Python 依赖安装完成${NC}"
@@ -66,7 +67,7 @@ echo -e "${YELLOW}注意：模型较大（约 500MB），下载时间较长${NC}
 read -r response
 if [[ "$response" =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}下载 spacy 模型 (en_core_web_sm)...${NC}"
-    source venv/bin/activate
+    source "$PROJECT_DIR/backend/venv/bin/activate"
     python -m spacy download en_core_web_sm
     echo -e "${GREEN}✓ spacy 模型下载完成${NC}"
 else
