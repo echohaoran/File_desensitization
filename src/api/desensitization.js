@@ -132,6 +132,102 @@ class DesensitizationAPI {
     const response = await fetch(`${API_BASE_URL}/api/health`)
     return response.json()
   }
+
+  /**
+   * 将文本转换为 Word 文档
+   * @param {string} text - 文本内容
+   * @param {string} filename - 文件名
+   * @returns {Promise<Blob>} Word 文件
+   */
+  static async convertTextToWord(text, filename = 'document.docx') {
+    const formData = new FormData()
+    formData.append('text', text)
+    formData.append('filename', filename)
+
+    const response = await fetch(`${API_BASE_URL}/api/text-to-word`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || '转换失败')
+    }
+
+    return response.blob()
+  }
+
+  /**
+   * 将文本转换为 Excel 文件
+   * @param {string} text - 文本内容
+   * @param {string} filename - 文件名
+   * @returns {Promise<Blob>} Excel 文件
+   */
+  static async convertTextToExcel(text, filename = 'document.xlsx') {
+    const formData = new FormData()
+    formData.append('text', text)
+    formData.append('filename', filename)
+
+    const response = await fetch(`${API_BASE_URL}/api/text-to-excel`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || '转换失败')
+    }
+
+    return response.blob()
+  }
+
+  /**
+   * 将文本转换为 Markdown 文件
+   * @param {string} text - 文本内容
+   * @param {string} filename - 文件名
+   * @returns {Promise<Blob>} Markdown 文件
+   */
+  static async convertTextToMarkdown(text, filename = 'document.md') {
+    const formData = new FormData()
+    formData.append('text', text)
+    formData.append('filename', filename)
+
+    const response = await fetch(`${API_BASE_URL}/api/text-to-markdown`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || '转换失败')
+    }
+
+    return response.blob()
+  }
+
+  /**
+   * 将文本转换为 TXT 文件
+   * @param {string} text - 文本内容
+   * @param {string} filename - 文件名
+   * @returns {Promise<Blob>} TXT 文件
+   */
+  static async convertTextToTxt(text, filename = 'document.txt') {
+    const formData = new FormData()
+    formData.append('text', text)
+    formData.append('filename', filename)
+
+    const response = await fetch(`${API_BASE_URL}/api/text-to-txt`, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || '转换失败')
+    }
+
+    return response.blob()
+  }
 }
 
 export default DesensitizationAPI

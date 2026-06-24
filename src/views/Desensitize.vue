@@ -82,26 +82,49 @@
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel panel--grow">
           <div class="panel__head">
             <h3>检测结果</h3>
-            <span class="panel__count">{{ detections.filter(d => d.active).length }} 项</span>
+            <span class="panel__count">{{ detections.length }} 项</span>
+          </div>
+          <div class="panel__stats" v-if="detections.length > 0">
+            <div class="stat-item" v-for="(count, type) in detectionsByType" :key="type">
+              <span class="badge badge--sm" :class="'badge--' + type">{{ getTypeLabel(type) }}</span>
+              <span class="stat-count">{{ count }}</span>
+            </div>
           </div>
           <div class="panel__body">
             <div class="detect-list">
-              <div v-for="item in detections" :key="item.id" class="detect-item" :class="{ 'is-off': !item.active }">
-                <span class="badge" :class="'badge--' + (item.type || 'manual')">{{ item.label || '区域' }}</span>
-                <div class="detect-item__body">
-                  <div class="detect-item__value">{{ item.active ? item.placeholder : item.value }}</div>
-                  <div class="detect-item__sub">{{ item.manual ? '手动框选' : '自动检测' }}</div>
+              <div v-for="item in detections" :key="item.id" class="detect-item">
+                <div class="detect-item__main">
+                  <div class="detect-item__info">
+                    <div class="detect-item__header">
+                      <span class="badge" :class="'badge--' + (item.type || 'manual')">{{ item.label || '区域' }}</span>
+                      <span class="detect-item__sub">{{ item.manual ? '手动框选' : '自动检测' }}</span>
+                    </div>
+                    <div class="detect-item__value">{{ item.placeholder }}</div>
+                  </div>
+                  <button class="detect-item__delete" @click="toggleDetection(item)" title="取消脱敏" aria-label="取消脱敏">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
                 </div>
-                <label class="switch" :title="item.active ? '点击取消脱敏' : '点击加入脱敏'">
-                  <input type="checkbox" :checked="item.active" @change="toggleDetection(item)" />
-                  <span class="switch__track"></span>
-                  <span class="switch__knob"></span>
-                </label>
+                <div class="detect-item__original">
+                  <span class="detect-item__original-label">原文内容：</span>
+                  <span class="detect-item__original-text">{{ item.value }}</span>
+                </div>
               </div>
             </div>
+          </div>
+          <!-- PDF 转换 Word 下载按钮 -->
+          <div class="panel__footer" v-if="convertedFromPdf">
+            <button class="btn btn--secondary btn--sm btn--block" @click="downloadConvertedWord">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              下载 Word 文档
+            </button>
           </div>
         </section>
 
@@ -126,7 +149,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <p>上传文件后在此预览检测结果</p>
           </div>
-          <div v-else-if="fileType === 'text' || fileType === 'pdf'" class="text-preview" @mouseup="handleTextSelect">
+          <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="text-preview" @mouseup="handleTextSelect">
             <template v-for="(part, i) in textParts" :key="i">
               <span v-if="part.type === 'normal'">{{ part.text }}</span>
               <span v-else :class="part.active ? 'tok' : 'det'" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" 
@@ -200,6 +223,7 @@ export default {
       file: null,
       fileType: null,
       originalText: '',
+      rawOriginalText: '',  // 存储真正的原始文本（未脱敏）
       detections: [],
       nextId: 1,
       isDragging: false,
@@ -233,7 +257,7 @@ export default {
       return this.fileType === 'text' ? '文本预览' : '图片预览'
     },
     textParts() {
-      if ((this.fileType !== 'text' && this.fileType !== 'pdf' && this.fileType !== 'docx' && this.fileType !== 'excel') || !this.originalText) return []
+      if ((this.fileType !== 'text' && this.fileType !== 'pdf' && this.fileType !== 'docx' && this.fileType !== 'excel') || !this.rawOriginalText) return []
       
       const parts = []
       let cursor = 0
@@ -242,7 +266,7 @@ export default {
       
       for (const det of sorted) {
         if (det.start > cursor) {
-          parts.push({ type: 'normal', text: this.originalText.slice(cursor, det.start) })
+          parts.push({ type: 'normal', text: this.rawOriginalText.slice(cursor, det.start) })
         }
         parts.push({ 
           type: 'detection', 
@@ -255,8 +279,8 @@ export default {
         cursor = det.end
       }
       
-      if (cursor < this.originalText.length) {
-        parts.push({ type: 'normal', text: this.originalText.slice(cursor) })
+      if (cursor < this.rawOriginalText.length) {
+        parts.push({ type: 'normal', text: this.rawOriginalText.slice(cursor) })
       }
       
       return parts
@@ -266,6 +290,14 @@ export default {
     },
     imageHeight() {
       return this.image.height || 600
+    },
+    detectionsByType() {
+      const counts = {}
+      this.detections.forEach(d => {
+        const type = d.type || 'manual'
+        counts[type] = (counts[type] || 0) + 1
+      })
+      return counts
     }
   },
   methods: {
@@ -304,6 +336,7 @@ export default {
         }
         
         // 后端处理成功，使用后端结果
+        this.rawOriginalText = result.original_text  // 存储真正的原始文本
         this.originalText = result.redacted_text
         this.detections = result.mappings.map((m, i) => ({
           id: this.nextId++,
@@ -359,6 +392,7 @@ export default {
       } else if (this.fileType === 'text') {
         const reader = new FileReader()
         reader.onload = (e) => {
+          this.rawOriginalText = e.target.result
           this.originalText = e.target.result
           this.runTextDetection()
           this.step = 2
@@ -425,6 +459,7 @@ export default {
           fullText += pageText + '\n'
         }
         
+        this.rawOriginalText = fullText.trim()
         this.originalText = fullText.trim()
         this.runTextDetection()
         this.step = 2
@@ -610,69 +645,77 @@ export default {
       const sel = window.getSelection()
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
       
-      const range = sel.getRangeAt(0)
       const text = sel.toString().trim()
-      if (!text) return
+      if (!text || text.length < 2) return
       
-      const preview = this.$refs.previewBody
-      const preRange = document.createRange()
-      preRange.selectNodeContents(preview)
+      // 检查选中的文本是否包含占位符（如 [CHINESE_NAME_001]）
+      const placeholderPattern = /\[[A-Z_]+\d+\]/
+      if (placeholderPattern.test(text)) {
+        // 如果包含占位符，提示用户选择原始文本
+        sel.removeAllRanges()
+        return
+      }
       
-      const startOffset = this.getSelectionOffset(preview, range.startContainer, range.startOffset)
-      const endOffset = this.getSelectionOffset(preview, range.endContainer, range.endOffset)
+      // 在原始文本中查找选中文本的位置
+      let startPos = this.rawOriginalText.indexOf(text)
       
-      if (startOffset === null || endOffset === null || startOffset >= endOffset) return
+      // 如果找不到完全匹配，尝试去除首尾空格后查找
+      if (startPos === -1) {
+        const trimmedText = text.replace(/^\s+|\s+$/g, '')
+        startPos = this.rawOriginalText.indexOf(trimmedText)
+        if (startPos !== -1) {
+          // 找到了，更新为修剪后的文本
+          text = trimmedText
+        }
+      }
       
-      const existing = this.detections.find(d => d.start === startOffset && d.end === endOffset)
+      if (startPos === -1) return
+      
+      const endPos = startPos + text.length
+      
+      // 检查是否已存在相同位置的检测项
+      const existing = this.detections.find(d => d.start === startPos && d.end === endPos)
       if (existing) return
       
-      this.detections = this.detections.filter(d => !(startOffset <= d.start && endOffset >= d.end))
+      // 过滤掉与新选区重叠的旧检测项
+      this.detections = this.detections.filter(d => !(d.start < endPos && d.end > startPos))
       
+      // 计算下一个编号（使用所有检测项的最大编号 + 1）
+      const maxNum = this.detections.reduce((max, d) => {
+        const match = d.placeholder.match(/\{[A-Z]+_(\d{3})\}/)
+        return match ? Math.max(max, parseInt(match[1])) : max
+      }, 0)
+      
+      // 直接添加到检测列表
       const newItem = {
         id: this.nextId++,
         type: 'manual',
         label: '区域',
         value: text,
-        start: startOffset,
-        end: endOffset,
-        placeholder: '掩码-区域-' + String(this.detections.filter(d => d.type === 'manual').length + 1).padStart(3, '0'),
+        start: startPos,
+        end: endPos,
+        placeholder: '{MANUAL_' + String(maxNum + 1).padStart(3, '0') + '}',
         active: true,
         manual: true
       }
       
-      this.detections = this.detections.filter(d => !(d.start < endOffset && d.end > startOffset))
       this.detections.push(newItem)
       this.detections.sort((a, b) => a.start - b.start)
       
+      // 清除选择
       sel.removeAllRanges()
     },
-    getSelectionOffset(container, node, offset) {
-      let el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node
-      while (el && el !== container) {
-        if (el.dataset && el.dataset.detectionId) {
-          const det = this.detections.find(d => String(d.id) === el.dataset.detectionId)
-          if (det) return det.start + offset
-        }
-        el = el.parentElement
-      }
-      
-      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
-      let len = 0
-      while (walker.nextNode()) {
-        const n = walker.currentNode
-        if (n === node) return len + Math.min(offset, n.textContent.length)
-        len += n.textContent.length
-      }
-      return null
-    },
     toggleDetection(item) {
-      item.active = !item.active
+      // 从检测列表中移除该项
+      this.detections = this.detections.filter(d => d.id !== item.id)
+      
+      // 如果是图片类型，重新绘制画布
       if (this.fileType === 'image') {
         this.drawImageCanvas()
       }
     },
     confirmRedaction() {
-      if (this.fileType === 'text' || this.fileType === 'pdf') {
+      if (this.fileType === 'text' || this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
         this.buildTextMapping()
       } else {
         this.buildImageMapping()
@@ -684,7 +727,9 @@ export default {
     buildTextMapping() {
       const mappings = []
       const activeDetections = [...this.detections].filter(d => d.active).sort((a, b) => b.start - a.start)
-      let redacted = this.originalText
+      
+      // 使用原始文本（未脱敏）作为基础
+      let redacted = this.rawOriginalText
       
       activeDetections.forEach(d => {
         mappings.push({ id: d.id, placeholder: d.placeholder, type: d.type, original: d.value })
@@ -696,7 +741,7 @@ export default {
         user_id: this.getUserId(),
         created_at: new Date().toISOString(),
         file_name: this.file.name,
-        file_type: 'text',
+        file_type: this.fileType,
         mappings: mappings.reverse()
       }
       this.redactedText = redacted
@@ -758,9 +803,9 @@ export default {
       if (!this.confirmed) return
       
       let blob, filename
-      if (this.fileType === 'text' || this.fileType === 'pdf') {
+      if (this.fileType === 'text' || this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
         blob = new Blob([this.redactedText], { type: 'text/plain;charset=utf-8' })
-        filename = 'redacted_' + this.file.name.replace(/\.pdf$/i, '.txt')
+        filename = 'redacted_' + this.file.name.replace(/\.(pdf|docx|xlsx|xls)$/i, '.txt')
       } else {
         const canvas = this.$refs.canvas
         const dataUrl = canvas.toDataURL('image/png')
@@ -774,6 +819,18 @@ export default {
       if (!this.mapping) return
       const blob = new Blob([JSON.stringify(this.mapping, null, 2)], { type: 'application/json' })
       this.triggerDownload(blob, 'mapping_' + this.file.name.replace(/\.[^.]+$/, '') + '.json')
+    },
+    async downloadConvertedWord() {
+      if (!this.file || !this.convertedFromPdf) return
+      
+      try {
+        const blob = await DesensitizationAPI.convertPdfToWord(this.file)
+        const filename = this.file.name.replace(/\.pdf$/i, '.docx')
+        this.triggerDownload(blob, filename)
+      } catch (error) {
+        console.error('下载 Word 文档失败：', error)
+        alert('下载失败：' + error.message)
+      }
     },
     dataURLToBlob(dataUrl) {
       const arr = dataUrl.split(',')
@@ -802,6 +859,7 @@ export default {
       this.file = null
       this.fileType = null
       this.originalText = ''
+      this.rawOriginalText = ''
       this.detections = []
       this.nextId = 1
       this.confirmed = false
@@ -825,5 +883,142 @@ export default {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.panel__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.badge--sm {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.panel__footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.detect-item {
+  position: relative;
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.detect-item:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.detect-item__main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detect-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.detect-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.detect-item__value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detect-item__sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.detect-item__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.detect-item__delete:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.detect-item__delete svg {
+  width: 16px;
+  height: 16px;
+}
+
+.detect-item__original {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, margin-top 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+  background: #ffffff;
+  border-radius: 6px;
+  margin-top: 0;
+  padding: 0 12px;
+  opacity: 0;
+  border: 1px solid transparent;
+}
+
+.detect-item:hover .detect-item__original {
+  max-height: 80px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  opacity: 1;
+  border-color: #e2e8f0;
+}
+
+.detect-item__original-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.detect-item__original-text {
+  font-size: 12px;
+  color: #1e293b;
+  word-break: break-all;
+  line-height: 1.5;
 }
 </style>

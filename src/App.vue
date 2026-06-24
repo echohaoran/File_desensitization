@@ -13,11 +13,10 @@
           <router-link to="/restore">还原</router-link>
         </nav>
         <div class="header-spacer"></div>
-        <router-link class="user-pill" to="/login" title="" aria-label="登录 / 当前用户标识">
-          <span class="user-pill__dot" aria-hidden="true"></span>
-          <span class="user-pill__label">USER</span>
-          <span class="user-pill__id">{{ userId }}</span>
-        </router-link>
+        <div class="user-info">
+          <span class="user-info__dot" aria-hidden="true"></span>
+          <span class="user-info__label">访客模式</span>
+        </div>
       </div>
     </header>
 
@@ -35,31 +34,10 @@ export default {
   name: 'App',
   data() {
     return {
-      userId: '——',
       statusMessage: ''
     }
   },
-  mounted() {
-    this.userId = this.getOrCreateUserId().slice(0, 8).toUpperCase()
-  },
   methods: {
-    getOrCreateUserId() {
-      try {
-        const key = 'desens_user_id'
-        let id = localStorage.getItem(key)
-        if (!id) {
-          if (window.crypto && typeof window.crypto.randomUUID === 'function') {
-            id = window.crypto.randomUUID()
-          } else {
-            id = 'u-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10)
-          }
-          localStorage.setItem(key, id)
-        }
-        return id
-      } catch (e) {
-        return 'u-fallback-' + Date.now()
-      }
-    },
     announce(message) {
       this.statusMessage = ''
       setTimeout(() => { this.statusMessage = message }, 100)

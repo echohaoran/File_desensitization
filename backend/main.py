@@ -456,6 +456,117 @@ async def restore_file(
         raise HTTPException(status_code=500, detail=f"还原文件时出错：{str(e)}")
 
 
+@app.post("/api/text-to-word")
+async def convert_text_to_word(
+    text: str = Form(...),
+    filename: str = Form("document.docx")
+):
+    """
+    将文本转换为 Word 文档
+    """
+    try:
+        from docx import Document
+        
+        doc = Document()
+        paragraphs = text.split('\n')
+        
+        for para_text in paragraphs:
+            if para_text.strip():
+                doc.add_paragraph(para_text)
+            else:
+                doc.add_paragraph('')
+        
+        temp_path = f"/tmp/{filename}"
+        doc.save(temp_path)
+        
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"转换失败：{str(e)}")
+
+
+@app.post("/api/text-to-excel")
+async def convert_text_to_excel(
+    text: str = Form(...),
+    filename: str = Form("document.xlsx")
+):
+    """
+    将文本转换为 Excel 文件（每行一个单元格）
+    """
+    try:
+        import pandas as pd
+        
+        # 按行分割文本
+        lines = text.split('\n')
+        
+        # 创建 DataFrame
+        df = pd.DataFrame({'内容': lines})
+        
+        # 保存到临时文件
+        temp_path = f"/tmp/{filename}"
+        df.to_excel(temp_path, index=False, engine='openpyxl')
+        
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"转换失败：{str(e)}")
+
+
+@app.post("/api/text-to-markdown")
+async def convert_text_to_markdown(
+    text: str = Form(...),
+    filename: str = Form("document.md")
+):
+    """
+    将文本转换为 Markdown 文件
+    """
+    try:
+        # 直接将文本保存为 Markdown
+        temp_path = f"/tmp/{filename}"
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type='text/markdown'
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"转换失败：{str(e)}")
+
+
+@app.post("/api/text-to-txt")
+async def convert_text_to_txt(
+    text: str = Form(...),
+    filename: str = Form("document.txt")
+):
+    """
+    将文本转换为 TXT 文件
+    """
+    try:
+        temp_path = f"/tmp/{filename}"
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        
+        return FileResponse(
+            path=temp_path,
+            filename=filename,
+            media_type='text/plain'
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"转换失败：{str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

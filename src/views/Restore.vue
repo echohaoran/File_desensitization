@@ -113,10 +113,24 @@
 
     <div class="download-bar" v-if="restored">
       <span class="download-bar__label">还原完成</span>
-      <button class="btn btn--primary" @click="downloadRestoredFile">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        下载原文件
-      </button>
+      <div class="download-bar__formats">
+        <button class="btn btn--primary" @click="downloadAsWord">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          文档 Word
+        </button>
+        <button class="btn btn--secondary" @click="downloadAsExcel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          表格 Excel
+        </button>
+        <button class="btn btn--secondary" @click="downloadAsTxt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          文本文档 TXT
+        </button>
+        <button class="btn btn--secondary" @click="downloadAsMarkdown">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Markdown
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -124,6 +138,7 @@
 <script>
 import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
+import DesensitizationAPI from '@/api/desensitization'
 
 // Worker is configured via the import above
 
@@ -281,8 +296,14 @@ export default {
             return
           }
           
-          if (json.file_type && json.file_type !== this.redactedFileType && 
-              !(json.file_type === 'text' && this.redactedFileType === 'pdf')) {
+          // 允许映射表中的 file_type 与上传文件类型不完全匹配
+          // 因为脱敏后的文件可能被转换为 .txt 格式
+          const allowedOriginalTypes = ['text', 'pdf', 'docx', 'xlsx', 'xls', 'txt', 'csv', 'json', 'md']
+          const isAllowedCombination = 
+            (allowedOriginalTypes.includes(json.file_type) && allowedOriginalTypes.includes(this.redactedFileType)) ||
+            (json.file_type === 'image' && ['png', 'jpg', 'jpeg'].includes(this.redactedFileType))
+          
+          if (json.file_type && !isAllowedCombination) {
             this.validation = { 
               type: 'err', 
               title: '文件类型不匹配', 
@@ -342,12 +363,7 @@ export default {
           }
           
           let text = fullText.trim()
-          const mappings = [...(this.mapping.mappings || [])].sort((a, b) => b.placeholder.length - a.placeholder.length)
-          
-          mappings.forEach(m => {
-            if (!m.placeholder || m.original === undefined) return
-            text = text.split(m.placeholder).join(m.original)
-          })
+          text = this.performRestore(text)
           
           this.restoredText = text
           this.restored = true
@@ -356,24 +372,59 @@ export default {
           alert('PDF 解析失败，请确保文件未加密或尝试其他格式。')
         }
       } else if (this.redactedFileType === 'docx' || this.redactedFileType === 'excel') {
-        // Word 和 Excel 文件需要通过后端处理
         alert('Word 和 Excel 文件需要后端服务支持进行还原。请确保后端服务已启动。')
       } else {
         const reader = new FileReader()
         reader.onload = (e) => {
           let text = e.target.result
-          const mappings = [...(this.mapping.mappings || [])].sort((a, b) => b.placeholder.length - a.placeholder.length)
-          
-          mappings.forEach(m => {
-            if (!m.placeholder || m.original === undefined) return
-            text = text.split(m.placeholder).join(m.original)
-          })
+          text = this.performRestore(text)
           
           this.restoredText = text
           this.restored = true
         }
         reader.readAsText(this.redactedFile)
       }
+    },
+    performRestore(text) {
+      const mappings = [...(this.mapping.mappings || [])]
+        .filter(m => m.placeholder && m.original !== undefined)
+        .sort((a, b) => b.placeholder.length - a.placeholder.length)
+      
+      let restored = text
+      let replacements = 0
+      
+      // 使用正则表达式进行精确匹配
+      mappings.forEach(m => {
+        // 转义占位符中的特殊字符（花括号需要转义）
+        const escaped = m.placeholder.replace(/[{}]/g, '\\$&')
+        const regex = new RegExp(escaped, 'g')
+        
+        if (regex.test(restored)) {
+          restored = restored.replace(regex, m.original)
+          replacements++
+        }
+      })
+      
+      // 清理可能残留的占位符格式 {TYPE_数字}
+      restored = restored.replace(/\{[A-Z]+_\d{3}\}/g, '')
+      
+      // 清理可能残留的单个大括号
+      restored = restored.replace(/\}(\s*)\{/g, '$1')
+      restored = restored.replace(/^\}/, '')
+      restored = restored.replace(/\{$/, '')
+      
+      // 清理连续的大括号
+      restored = restored.replace(/\{\s*\}/g, '')
+      
+      // 清理可能残留的不完整占位符（如 {TYPE_ 没有闭合）
+      restored = restored.replace(/\{[A-Z_]+(?=_\d{3}\})/g, '')
+      
+      // 清理可能残留的数字片段（如 _018}）
+      restored = restored.replace(/_\d{3}\}/g, '')
+      
+      console.log(`还原完成: ${replacements}/${mappings.length} 个占位符已替换`)
+      
+      return restored
     },
     restoreImage() {
       const reader = new FileReader()
@@ -414,20 +465,57 @@ export default {
       }
       reader.readAsDataURL(this.redactedFile)
     },
-    downloadRestoredFile() {
+    async downloadAsWord() {
       if (!this.restored) return
       
-      let blob, filename
-      if (this.redactedFileType === 'text' || this.redactedFileType === 'pdf' || 
-          this.redactedFileType === 'docx' || this.redactedFileType === 'excel') {
-        blob = new Blob([this.restoredText], { type: 'text/plain;charset=utf-8' })
-        filename = 'restored_' + this.redactedFile.name.replace(/\.(pdf|docx|xlsx|xls)$/i, '.txt')
-      } else {
-        blob = this.dataURLToBlob(this.restoredImageDataUrl)
-        filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.png'
+      try {
+        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.docx'
+        const blob = await DesensitizationAPI.convertTextToWord(this.restoredText, filename)
+        this.triggerDownload(blob, filename)
+      } catch (error) {
+        console.error('生成 Word 文件失败:', error)
+        alert('生成 Word 文件失败: ' + error.message)
       }
+    },
+    async downloadAsExcel() {
+      if (!this.restored) return
       
-      this.triggerDownload(blob, filename)
+      try {
+        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.xlsx'
+        const blob = await DesensitizationAPI.convertTextToExcel(this.restoredText, filename)
+        this.triggerDownload(blob, filename)
+      } catch (error) {
+        console.error('生成 Excel 文件失败:', error)
+        alert('生成 Excel 文件失败: ' + error.message)
+      }
+    },
+    async downloadAsTxt() {
+      if (!this.restored) return
+      
+      try {
+        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.txt'
+        const blob = await DesensitizationAPI.convertTextToTxt(this.restoredText, filename)
+        this.triggerDownload(blob, filename)
+      } catch (error) {
+        console.error('生成 TXT 文件失败:', error)
+        alert('生成 TXT 文件失败: ' + error.message)
+      }
+    },
+    async downloadAsMarkdown() {
+      if (!this.restored) return
+      
+      try {
+        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.md'
+        const blob = await DesensitizationAPI.convertTextToMarkdown(this.restoredText, filename)
+        this.triggerDownload(blob, filename)
+      } catch (error) {
+        console.error('生成 Markdown 文件失败:', error)
+        alert('生成 Markdown 文件失败: ' + error.message)
+      }
+    },
+    downloadRestoredFile() {
+      // 保留旧方法作为备用
+      this.downloadAsWord()
     },
     dataURLToBlob(dataUrl) {
       const arr = dataUrl.split(',')
