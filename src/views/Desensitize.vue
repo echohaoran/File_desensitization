@@ -63,7 +63,7 @@
             <!-- 后端错误提示 -->
             <div v-if="backendError" class="backend-error" style="margin-top: 16px; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
               <p style="font-size: 12px; color: #dc2626; margin: 0;">
-                后端服务不可用，已切换到前端处理模式。错误：{{ backendError }}
+                后端服务不可用，已切换到前端处理模式。错误：{{ backendError || '后端服务连接失败（请检查后端是否启动）' }}
               </p>
             </div>
             <!-- PDF 转换成功提示 -->
@@ -373,8 +373,9 @@ export default {
         console.log('后端脱敏完成，检测到', result.detection_count, '处敏感信息')
         
       } catch (error) {
-        console.warn('后端 API 调用失败，使用前端处理：', error.message)
-        this.backendError = error.message
+        const reason = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error))
+        console.warn('后端 API 调用失败，使用前端处理：', reason)
+        this.backendError = reason
         this.isLoadingBackend = false
         
         // 降级到前端处理
@@ -781,9 +782,14 @@ export default {
     },
     getUserId() {
       try {
-        return localStorage.getItem('desens_user_id') || ''
+        let uid = localStorage.getItem('desens_user_id')
+        if (!uid) {
+          uid = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+          localStorage.setItem('desens_user_id', uid)
+        }
+        return uid
       } catch (e) {
-        return ''
+        return 'anonymous_' + Date.now().toString(36)
       }
     },
     storeMapping() {

@@ -329,9 +329,14 @@ export default {
     },
     getUserId() {
       try {
-        return localStorage.getItem('desens_user_id') || ''
+        let uid = localStorage.getItem('desens_user_id')
+        if (!uid) {
+          uid = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+          localStorage.setItem('desens_user_id', uid)
+        }
+        return uid
       } catch (e) {
-        return ''
+        return 'anonymous_' + Date.now().toString(36)
       }
     },
     runRestore() {

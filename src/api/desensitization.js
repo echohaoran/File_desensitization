@@ -22,7 +22,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || 'PDF 转换失败')
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || 'PDF 转换失败')
     }
 
     return response.blob()
@@ -44,7 +45,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '检测失败')
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '检测失败')
     }
 
     return response.json()
@@ -68,7 +70,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '脱敏失败')
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '脱敏失败')
     }
 
     return response.json()
@@ -92,7 +95,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '脱敏失败')
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '脱敏失败')
     }
 
     return response.json()
@@ -118,7 +122,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '还原失败')
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '还原失败')
     }
 
     return response.json()
@@ -151,7 +156,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '转换失败')
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '转换失败')
     }
 
     return response.blob()
@@ -175,7 +181,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '转换失败')
+      const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '转换失败')
     }
 
     return response.blob()
@@ -199,7 +206,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '转换失败')
+      const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '转换失败')
     }
 
     return response.blob()
@@ -223,7 +231,8 @@ class DesensitizationAPI {
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.detail || '转换失败')
+      const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '转换失败')
     }
 
     return response.blob()
