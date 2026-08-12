@@ -36,7 +36,7 @@ app.add_middleware(
 desensitization_service = DesensitizationService()
 
 # 用户上传文件存储目录
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 

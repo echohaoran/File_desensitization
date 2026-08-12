@@ -3,7 +3,10 @@
  * 用于与 Python 后端通信
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL
+const API_BASE_URL = configuredApiBaseUrl !== undefined
+  ? configuredApiBaseUrl
+  : (import.meta.env.DEV ? 'http://localhost:8000' : '')
 
 class DesensitizationAPI {
   /**

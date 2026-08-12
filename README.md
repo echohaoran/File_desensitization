@@ -31,6 +31,48 @@ bash scripts/start.sh      # 启动所有服务
 bash scripts/stop.sh       # 停止所有服务
 bash scripts/restart.sh    # 重启所有服务
 bash scripts/status.sh     # 查看服务状态
+bash scripts/deploy-dev.sh # 同步到开发环境并用 compose 部署
+```
+
+### Docker Compose 部署（开发环境服务器）
+
+项目现已支持通过 `compose.yaml` 进行容器化部署。
+
+```bash
+# 本地构建并验证
+docker compose build
+docker compose up -d
+
+# 访问
+# 前端: http://localhost:8080
+# 后端: http://localhost:8000
+```
+
+说明：基础镜像默认使用 `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io` 镜像源，以降低开发环境服务器在拉取 Docker Hub 官方镜像时超时的概率。开发环境服务器上的前端不再现场构建镜像，而是由本地先执行 `npm run build`，再把 `dist/` 同步到远端，由 Nginx 容器直接挂载提供静态服务。后端的 `spaCy` 英文模型会在镜像构建时尽量下载，若外网不稳定导致下载失败，服务仍可启动，只是英文 PII 识别会退化为正则/本地规则能力。
+
+### 同步到 192.168.1.223 并部署
+
+默认开发环境服务器地址为 `root@192.168.1.223`。脚本首次执行时会先在远端目录 `/opt/File_desensitization` 执行 `git clone`，后续再通过 `rsync` 增量同步本地改动，然后执行 `docker compose up -d --build`。
+
+```bash
+# 如远端用户名不是 root，请先指定
+export DEV_SERVER_USER=<你的远端用户名>
+
+# 可选：覆盖端口或远端目录
+export DEV_SERVER_PORT=22
+export DEV_SERVER_PATH=/opt/File_desensitization
+
+# 同步代码
+bash scripts/sync-dev.sh
+
+# 同步后直接部署
+bash scripts/deploy-dev.sh
+```
+
+以后每次你让我改代码，我会同时修改本地工作区；要把修改推到开发环境服务器，只需要再次执行：
+
+```bash
+bash scripts/deploy-dev.sh
 ```
 
 ---
