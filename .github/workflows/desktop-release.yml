@@ -102,8 +102,8 @@ jobs:
           TAG: ${{ github.ref_name }}
         shell: bash
         run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-assets/* --clobber
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" release-assets/* --generate-notes --title "文件脱敏与还原工具 $TAG"
+            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --generate-notes --title "文件脱敏与还原工具 $TAG"
           fi

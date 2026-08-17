@@ -121,3 +121,8 @@
 
 - 操作：读取修复后的 GitHub Actions 运行 `31998768430` 失败日志，检查 electron-builder 配置与图标资源。
 - 结果：Windows 已通过桌面前端构建；MSI 的 WiX 链接因默认 Electron 图标不存在而报 `LGHT0094`。从项目盾牌 PNG 生成包含 16–256px 尺寸的 `desktop/resources/icon.ico`，并显式配置 `win.icon`；下一次 Windows Runner 将验证 MSI 产物上传。
+
+## 2026-08-17：标签发布工作流故障定位
+
+- 操作：推送 `v0.1.0` 标签，读取发布 job 的失败日志。
+- 结果：DMG 与 MSI 均构建完成；`gh release view` 因发布 job 无 `.git` 且未指定远程仓库而失败。工作流已改为对 `view`、`upload`、`create` 全部显式传入 `$GITHUB_REPOSITORY`，修复后将重新运行该标签工作流验证 Release 资产。
