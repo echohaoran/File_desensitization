@@ -17,3 +17,9 @@
 - 测试资产只使用虚构数据；真实上传文件可能存在于 `backend/uploads/`，不得纳入版本控制或清理。
 - 扩展测试样本为 `output/test-documents/敏感信息全面回归测试样本_仅虚构数据.docx`，涵盖表格、正文、重复和边界场景；2026-08-17 已在开发服务器完成 3 页中文渲染校验。
 - 每次代码更新完成后必须更新 `docs/*`；浏览器冒烟优先使用 ego-browser。
+# 2026-08-17：桌面发布与包体优化增量
+
+- GitHub Actions 已成功构建并发布 `v0.1.0` 的 DMG 与 MSI；发布 job 需显式传入 `--repo "$GITHUB_REPOSITORY"`，因为 release job 默认没有 `.git`。
+- Release 安装包命名统一为 `desensitization_版本号.格式`，并已修正 `v0.1.0` Release 的资产名称和校验和。
+- 保留现有文档处理能力的前提下，排除了因可选 Presidio/spaCy 导入被 PyInstaller 收集的无用依赖；macOS ARM64 后端从约 115 MB 降至约 93 MB。
+- `v0.1.1` 已提交至 `main`，带独立更新说明文件；尚未推送版本标签，等待发布动作。

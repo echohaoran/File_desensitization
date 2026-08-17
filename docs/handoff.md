@@ -80,3 +80,29 @@ curl http://localhost:8000/api/health
 - 已在 macOS Apple Silicon 本机构建并运行 PyInstaller 后端健康检查；Windows MSI 由 GitHub Windows Runner 首次执行时验证。
 - GitHub 推送地址为 `git@github.com:echohaoran/File_desensitization.git`。由于 `origin` 配置了多个 push URL，发布时必须使用该完整地址，避免同时推送到其他镜像。
 - 本次提交不包含 `tmp/` 下的真实上传文件、渲染缓存或本地构建缓存；测试样本仅保留虚构数据。
+
+# 2026-08-17：v0.1.1 精简发行包交接
+
+## Git 状态
+
+- 当前 `main`：`77bdcf5 release: 准备 v0.1.1 精简桌面包`。
+- `v0.1.0` 已发布：Release 资产已更正为 `desensitization_0.1.0.dmg`、`desensitization_0.1.0.msi` 与 `SHA256SUMS.txt`。
+- `tmp/` 为未跟踪的真实上传/渲染临时文件，严禁提交、同步或删除。
+
+## v0.1.1 已完成内容
+
+- `package.json` / `package-lock.json` 已升级到 `0.1.1`；桌面安装包命名模板为 `desensitization_${version}.${ext}`。
+- electron-builder 使用 `compression: maximum`；PyInstaller 使用 `--optimize 2`，并排除未在生产功能中启用的 Presidio/spaCy、测试、交互式和数据分析依赖。
+- 保留 `jieba`、`pdf2docx`、OpenCV、DOCX、XLSX 等实际功能依赖；DOCX→PDF 仍需用户自行安装 LibreOffice。
+- 本机 macOS ARM64 后端从约 115 MB 降至约 93 MB；二进制启动后 `/api/health` 烟测通过。前端 `npm run build` 通过（PDF.js worker 大 chunk 警告未阻塞）。
+- 新增 `docs/releases/v0.1.1.md`。工作流在标签发布时要求对应更新说明文件，并将其写入 GitHub Release 页面。
+
+## 待完成发布步骤
+
+```bash
+git tag -a v0.1.1 -m "文件脱敏与还原工具 v0.1.1"
+git push git@github.com:echohaoran/File_desensitization.git v0.1.1
+```
+
+- 标签工作流会构建 `desensitization_0.1.1.dmg`、`desensitization_0.1.1.msi` 并创建带版本更新说明的 GitHub Release。
+- 发布后应下载两份安装包，在 macOS Apple Silicon 与 Windows x64 真机完成安装、启动、脱敏和还原回归；代码签名与 macOS Notarization 尚未配置。
