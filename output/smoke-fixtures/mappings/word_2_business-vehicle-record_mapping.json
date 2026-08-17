@@ -1,0 +1,85 @@
+{
+  "success": true,
+  "original_text": "脱敏烟测样本 - business-vehicle-record\n以下内容仅用于本地脱敏与还原功能验证，均为虚构测试数据。\nSynthetic sensitive-data smoke-test fixture.\nCredit code: 91350211M000100Y43; plate: B123456; VIN: 1HGCM82633A004352.\nJDBC: jdbc:mysql://db.example.com:3306/customer?user=root; phone: 010-12345678.\nEmail: support@example.com; date: 2026-08-14.",
+  "redacted_text": "脱敏烟测样本 - business-vehicle-record\n以下内容仅用于本地脱敏与还原功能验证，均为虚构测试数据。\nSynthetic sensitive-data smoke-test fixture.\nCredit code: {LANDLINE_006}M000100Y43; plate: B123456; VIN: {VEHICLE_IDENTIFICATION_NUMBER_005}.\nJDBC: {JDBC_CONNECTION_004} phone: {LANDLINE_003}.\nEmail: {EMAIL_002}; date: {DATE_001}.",
+  "original_length": 305,
+  "redacted_length": 292,
+  "detection_count": 6,
+  "mappings": [
+    {
+      "id": 6,
+      "placeholder": "{LANDLINE_006}",
+      "type": "landline",
+      "original": "91350211",
+      "start": 120,
+      "end": 128,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 5,
+      "placeholder": "{VEHICLE_IDENTIFICATION_NUMBER_005}",
+      "type": "vehicle_identification_number",
+      "original": "1HGCM82633A004352",
+      "start": 161,
+      "end": 178,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 4,
+      "placeholder": "{JDBC_CONNECTION_004}",
+      "type": "jdbc_connection",
+      "original": "jdbc:mysql://db.example.com:3306/customer?user=root;",
+      "start": 186,
+      "end": 238,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 3,
+      "placeholder": "{LANDLINE_003}",
+      "type": "landline",
+      "original": "010-12345678",
+      "start": 246,
+      "end": 258,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 2,
+      "placeholder": "{EMAIL_002}",
+      "type": "email",
+      "original": "support@example.com",
+      "start": 267,
+      "end": 286,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 1,
+      "placeholder": "{DATE_001}",
+      "type": "date",
+      "original": "2026-08-14",
+      "start": 294,
+      "end": 304,
+      "confidence": 0.9,
+      "source": "regex"
+    }
+  ],
+  "created_at": "2026-08-14T14:52:38.166361",
+  "stats": {
+    "total_detections": 6,
+    "by_type": {
+      "landline": 2,
+      "vehicle_identification_number": 1,
+      "jdbc_connection": 1,
+      "email": 1,
+      "date": 1
+    }
+  },
+  "task_id": "6c8e92b1-d5f4-402f-8986-1077a105a89a",
+  "original_filename": "word_2_business-vehicle-record.docx",
+  "file_type": ".docx",
+  "converted_from_pdf": false
+}

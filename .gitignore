@@ -4,6 +4,10 @@ backend/venv/
 
 # Build output
 dist/
+release/
+backend/dist/
+tmp/pyinstaller/
+.build/
 
 # Logs
 logs/

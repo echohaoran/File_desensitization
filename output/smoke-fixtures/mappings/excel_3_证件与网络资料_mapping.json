@@ -1,0 +1,75 @@
+{
+  "success": true,
+  "original_text": "字段\n联系人\n护照号\n港澳通行证\nIPv6\nMAC\n日期\n虚构测试值\n李四\nE12345678\nC12345678\n2001:0db8:85a3:0000:0000:8a2e:0370:7334\n00:1A:2B:3C:4D:5E\n2025年12月31日",
+  "redacted_text": "字段\n联系人\n护照号\n港澳通行证\nIPv6\nMAC\n日期\n虚构测试值\n李四\n{PASSPORT_005}\n{HONG_KONG_MACAO_PERMIT_004}\n{IPV6_ADDRESS_003}\n{MAC_ADDRESS_002}\n{DATE_001}",
+  "original_length": 127,
+  "redacted_length": 129,
+  "detection_count": 5,
+  "mappings": [
+    {
+      "id": 5,
+      "placeholder": "{PASSPORT_005}",
+      "type": "passport",
+      "original": "E12345678",
+      "start": 38,
+      "end": 47,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 4,
+      "placeholder": "{HONG_KONG_MACAO_PERMIT_004}",
+      "type": "hong_kong_macao_permit",
+      "original": "C12345678",
+      "start": 48,
+      "end": 57,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 3,
+      "placeholder": "{IPV6_ADDRESS_003}",
+      "type": "ipv6_address",
+      "original": "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+      "start": 58,
+      "end": 97,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 2,
+      "placeholder": "{MAC_ADDRESS_002}",
+      "type": "mac_address",
+      "original": "00:1A:2B:3C:4D:5E",
+      "start": 98,
+      "end": 115,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 1,
+      "placeholder": "{DATE_001}",
+      "type": "date",
+      "original": "2025年12月31日",
+      "start": 116,
+      "end": 127,
+      "confidence": 0.9,
+      "source": "regex"
+    }
+  ],
+  "created_at": "2026-08-14T14:52:37.966446",
+  "stats": {
+    "total_detections": 5,
+    "by_type": {
+      "passport": 1,
+      "hong_kong_macao_permit": 1,
+      "ipv6_address": 1,
+      "mac_address": 1,
+      "date": 1
+    }
+  },
+  "task_id": "908e20c0-6a29-47e7-a85e-bfd82f81aca1",
+  "original_filename": "excel_3_证件与网络资料.xlsx",
+  "file_type": ".xlsx",
+  "converted_from_pdf": false
+}

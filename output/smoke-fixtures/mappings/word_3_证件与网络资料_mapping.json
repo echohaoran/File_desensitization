@@ -1,0 +1,119 @@
+{
+  "success": true,
+  "original_text": "脱敏烟测样本 - 证件与网络资料\n以下内容仅用于本地脱敏与还原功能验证，均为虚构测试数据。\n联系人：李四；护照号：E12345678；港澳通行证：C12345678；军官证：军官证 123456789。\nIPv6：2001:0db8:85a3:0000:0000:8a2e:0370:7334；民族：汉族；省份：广东省。\n邮箱：lisi@example.org；日期：2025年12月31日；手机号：13912345678。",
+  "redacted_text": "脱敏烟测样本 - 证件与网络资料\n以下内容仅用于本地脱敏与还原功能验证，均为虚构测试数据。\n联系人：李四；护照号：{PASSPORT_009}；港澳通行证：{HONG_KONG_MACAO_PERMIT_008}；军官证：军官证 {MILITARY_ID_007}。\nIPv6：{IPV6_ADDRESS_006}；{ETHNICITY_005}；{PROVINCE_004}。\n邮箱：{EMAIL_003}；日期：{DATE_002}；手机号：{PHONE_001}。",
+  "original_length": 212,
+  "redacted_length": 235,
+  "detection_count": 9,
+  "mappings": [
+    {
+      "id": 9,
+      "placeholder": "{PASSPORT_009}",
+      "type": "passport",
+      "original": "E12345678",
+      "start": 57,
+      "end": 66,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 8,
+      "placeholder": "{HONG_KONG_MACAO_PERMIT_008}",
+      "type": "hong_kong_macao_permit",
+      "original": "C12345678",
+      "start": 73,
+      "end": 82,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 7,
+      "placeholder": "{MILITARY_ID_007}",
+      "type": "military_id",
+      "original": "123456789",
+      "start": 91,
+      "end": 100,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 6,
+      "placeholder": "{IPV6_ADDRESS_006}",
+      "type": "ipv6_address",
+      "original": "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+      "start": 107,
+      "end": 146,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 5,
+      "placeholder": "{ETHNICITY_005}",
+      "type": "ethnicity",
+      "original": "民族：汉族",
+      "start": 147,
+      "end": 152,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 4,
+      "placeholder": "{PROVINCE_004}",
+      "type": "province",
+      "original": "省份：广东省",
+      "start": 153,
+      "end": 159,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 3,
+      "placeholder": "{EMAIL_003}",
+      "type": "email",
+      "original": "lisi@example.org",
+      "start": 164,
+      "end": 180,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 2,
+      "placeholder": "{DATE_002}",
+      "type": "date",
+      "original": "2025年12月31日",
+      "start": 184,
+      "end": 195,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 1,
+      "placeholder": "{PHONE_001}",
+      "type": "phone",
+      "original": "13912345678",
+      "start": 200,
+      "end": 211,
+      "confidence": 0.9,
+      "source": "regex"
+    }
+  ],
+  "created_at": "2026-08-14T14:52:38.266536",
+  "stats": {
+    "total_detections": 9,
+    "by_type": {
+      "passport": 1,
+      "hong_kong_macao_permit": 1,
+      "military_id": 1,
+      "ipv6_address": 1,
+      "ethnicity": 1,
+      "province": 1,
+      "email": 1,
+      "date": 1,
+      "phone": 1
+    }
+  },
+  "task_id": "4c632960-f06f-4fe4-b7c2-be0d1da7e11e",
+  "original_filename": "word_3_证件与网络资料.docx",
+  "file_type": ".docx",
+  "converted_from_pdf": false
+}

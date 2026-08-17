@@ -8,10 +8,14 @@ import json
 from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime
 
-# Microsoft Presidio 相关导入
-from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
-from presidio_anonymizer import AnonymizerEngine
-from presidio_anonymizer.entities import OperatorConfig
+# Microsoft Presidio 为可选增强能力；缺失时保留规则与中文姓名识别。
+try:
+    from presidio_analyzer import AnalyzerEngine
+    from presidio_anonymizer import AnonymizerEngine
+    PRESIDIO_AVAILABLE = True
+except ImportError:
+    AnalyzerEngine = AnonymizerEngine = None
+    PRESIDIO_AVAILABLE = False
 
 # 中文分词
 import jieba
@@ -19,12 +23,13 @@ import jieba
 # PDF 处理
 import PyPDF2
 import io
+import ipaddress
 
 # Word 文档处理
 from docx import Document
 
 # Excel 处理
-import pandas as pd
+from openpyxl import load_workbook
 
 # 尝试导入 spacy，如果失败则使用备用方案
 try:
@@ -137,29 +142,43 @@ class DesensitizationService:
             # 身份证号（18位）
             "id_card": re.compile(r'\d{17}[\dXx]'),
             
-            # 银行卡号（16-19位）
-            "bank_card": re.compile(r'\d{16,19}'),
+            # 银行卡号（16-19 位，支持空格或连字符分组）
+            "bank_card": re.compile(r'(?<!\d)(?:\d[ -]?){15,18}\d(?!\d)'),
             
             # 邮箱地址
             "email": re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'),
             
             # 固定电话
-            "landline": re.compile(r'(?:0\d{2,3}[-\s]?)?\d{7,8}'),
+            # 避免将统一社会信用代码、组织机构代码中的数字片段误判为固定电话。
+            "landline": re.compile(r'(?<![A-Za-z0-9])(?:0\d{2,3}[-\s]?)?\d{7,8}(?![A-Za-z0-9])'),
             
             # IP 地址
             "ip_address": re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b'),
+            # 允许 IPv6 的压缩写法（::），具体合法性由 ipaddress 校验。
+            "ipv6_address": re.compile(r'(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f:]{0,4}(?![0-9A-Fa-f:])'),
+            "mac_address": re.compile(r'\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b'),
             
             # 车牌号
             "license_plate": re.compile(r'[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼宁][A-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]'),
             
             # 护照号
-            "passport": re.compile(r'[A-Z]\d{8}'),
+            "passport": re.compile(r'\b(?:[EGPDST]\d{8}|[A-Z]{2}\d{7})\b'),
+            "hong_kong_macao_permit": re.compile(r'\b(?:[CHM]\d{8,10}|[A-Z]{2}\d{6,8})\b'),
             
             # 军官证
-            "military_id": re.compile(r'[A-Za-z0-9]{6,10}'),
+            "military_id": re.compile(r'(?:军官证|军人证|军官身份号码)\s*[:：#]?\s*([A-Za-z0-9]{6,12})'),
             
             # 统一社会信用代码
             "unified_social_credit_code": re.compile(r'[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}'),
+            "organization_code": re.compile(r'\b[0-9A-Z]{8}-?[0-9X]\b'),
+            "business_license": re.compile(r'\b(?:\d{15}|[0-9A-HJ-NPQRTUWXY]{18})\b'),
+            "jdbc_connection": re.compile(r'jdbc:[a-zA-Z0-9]+(?::[^\s"\']+)+', re.IGNORECASE),
+            "date": re.compile(r'(?<!\d)(?:19|20)\d{2}[-/.年](?:0?[1-9]|1[0-2])[-/.月](?:0?[1-9]|[12]\d|3[01])(?:日)?(?!\d)'),
+            "vehicle_identification_number": re.compile(r'\b[A-HJ-NPR-Z0-9]{17}\b'),
+            "gender": re.compile(r'(?:性别|gender)\s*[:：]?\s*(?:男|女|未知)', re.IGNORECASE),
+            "ethnicity": re.compile(r'(?:民族|族别)\s*[:：]?\s*[\u4e00-\u9fa5]{1,8}族?'),
+            "province": re.compile(r'(?:省份|籍贯|所在省)\s*[:：]?\s*(?:北京市|天津市|上海市|重庆市|河北省|山西省|辽宁省|吉林省|黑龙江省|江苏省|浙江省|安徽省|福建省|江西省|山东省|河南省|湖北省|湖南省|广东省|海南省|四川省|贵州省|云南省|陕西省|甘肃省|青海省|台湾省|内蒙古自治区|广西壮族自治区|西藏自治区|宁夏回族自治区|新疆维吾尔自治区)'),
+            "address": re.compile(r'(?:地址|住址|开户地址|收货地址)\s*[:：]?\s*[\u4e00-\u9fa5A-Za-z0-9#\-]{6,80}|(?<=为)[\u4e00-\u9fa5]{2,8}省[\u4e00-\u9fa5]{2,8}市[\u4e00-\u9fa5]{2,8}(?:区|县|镇|街道)[\u4e00-\u9fa5A-Za-z0-9#\-]{1,20}(?:路|街|巷|道)\d{1,5}号'),
             
             # 中文姓名（2-4个字，常见姓氏开头）
             "chinese_name": None,  # 需要特殊处理
@@ -216,13 +235,23 @@ class DesensitizationService:
             return ""
     
     def _extract_text_from_docx(self, content: bytes) -> str:
-        """从 Word 文档提取文本"""
+        """从 Word 文档按原文档顺序提取段落与表格文本。"""
         try:
             doc = Document(io.BytesIO(content))
-            text = ""
-            for paragraph in doc.paragraphs:
-                text += paragraph.text + "\n"
-            return text.strip()
+            blocks = []
+            body = doc.element.body
+            paragraph_by_element = {paragraph._p: paragraph for paragraph in doc.paragraphs}
+            table_by_element = {table._tbl: table for table in doc.tables}
+
+            for child in body.iterchildren():
+                if child in paragraph_by_element:
+                    blocks.append(paragraph_by_element[child].text)
+                elif child in table_by_element:
+                    table = table_by_element[child]
+                    for row in table.rows:
+                        blocks.append("\t".join(cell.text.replace("\n", " ") for cell in row.cells))
+
+            return "\n".join(blocks).strip()
         except Exception as e:
             print(f"Word 文档解析错误：{str(e)}")
             return ""
@@ -230,23 +259,19 @@ class DesensitizationService:
     def _extract_text_from_excel(self, content: bytes, file_ext: str) -> str:
         """从 Excel 提取文本"""
         try:
-            if file_ext == '.xlsx':
-                df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
-            else:
-                df = pd.read_excel(io.BytesIO(content))
-            
-            # 将所有单元格内容转换为文本
-            text = ""
-            for col in df.columns:
-                for cell in df[col]:
-                    if pd.notna(cell):
-                        text += str(cell) + "\n"
-            return text.strip()
+            if file_ext != '.xlsx':
+                raise ValueError('当前仅支持 XLSX 格式')
+            workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+            values = []
+            for worksheet in workbook.worksheets:
+                for row in worksheet.iter_rows(values_only=True):
+                    values.extend(str(cell) for cell in row if cell is not None)
+            return "\n".join(values).strip()
         except Exception as e:
             print(f"Excel 解析错误：{str(e)}")
             return ""
     
-    def detect_sensitive_info(self, text: str) -> List[Dict[str, Any]]:
+    def detect_sensitive_info(self, text: str, custom_rules: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
         """
         检测文本中的敏感信息
         
@@ -269,6 +294,9 @@ class DesensitizationService:
         # 3. 使用百家姓库检测中文姓名
         name_detections = self._detect_chinese_names(text)
         detections.extend(name_detections)
+
+        # 4. 应用桌面客户端传入的本地规则（姓名、关键词或正则）
+        detections.extend(self._detect_with_custom_rules(text, custom_rules or []))
         
         # 去重和合并
         detections = self._merge_detections(detections)
@@ -281,6 +309,33 @@ class DesensitizationService:
             self.stats["by_type"][det_type] = self.stats["by_type"].get(det_type, 0) + 1
         
         return detections
+
+    def _detect_with_custom_rules(self, text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """检测用户在本机规则面板中维护的敏感字段。"""
+        detections = []
+        for rule in rules[:100]:
+            if not isinstance(rule, dict) or not rule.get("enabled", True):
+                continue
+            value = str(rule.get("value", "")).strip()
+            if not value or len(value) > 500:
+                continue
+            rule_id = re.sub(r'[^A-Za-z0-9_]', '_', str(rule.get("id", "custom")))[:40] or "custom"
+            try:
+                pattern = re.compile(value if rule.get("kind") == "regex" else re.escape(value))
+            except re.error:
+                continue
+            for match in pattern.finditer(text):
+                if not match.group():
+                    continue
+                detections.append({
+                    "type": rule_id,
+                    "value": match.group(),
+                    "start": match.start(),
+                    "end": match.end(),
+                    "confidence": 1.0,
+                    "source": "local_rule",
+                })
+        return detections
     
     def _detect_with_regex(self, text: str) -> List[Dict[str, Any]]:
         """使用正则表达式检测敏感信息"""
@@ -292,16 +347,131 @@ class DesensitizationService:
             
             matches = pattern.finditer(text)
             for match in matches:
+                value = match.group(1) if pattern_name == "military_id" and match.lastindex else match.group()
+                is_valid = self._is_valid_sensitive_value(pattern_name, value)
+                # 企业证照测试数据有时使用虚构校验位；仍标记候选值，交由人工复核，
+                # 避免用户框选后才得到“普通区域”而失去字段类型。
+                if not is_valid and pattern_name not in {
+                    "organization_code", "unified_social_credit_code", "business_license", "vehicle_identification_number"
+                }:
+                    continue
                 detections.append({
                     "type": pattern_name,
-                    "value": match.group(),
-                    "start": match.start(),
-                    "end": match.end(),
-                    "confidence": 0.9,
+                    "value": value,
+                    "start": match.start(1) if pattern_name == "military_id" and match.lastindex else match.start(),
+                    "end": match.end(1) if pattern_name == "military_id" and match.lastindex else match.end(),
+                    "confidence": 0.9 if is_valid else 0.6,
                     "source": "regex"
                 })
         
         return detections
+
+    def _is_valid_sensitive_value(self, pattern_name: str, value: str) -> bool:
+        """对需要校验的敏感标识执行算法校验，减少纯正则误报。"""
+        validators = {
+            "ip_address": self._is_valid_ipv4,
+            "ipv6_address": self._is_valid_ipv6,
+            "bank_card": self._is_valid_luhn,
+            "id_card": self._is_valid_chinese_id,
+            "organization_code": self._is_valid_organization_code,
+            "unified_social_credit_code": self._is_valid_unified_credit_code,
+            "business_license": self._is_valid_business_license,
+            "vehicle_identification_number": self._is_valid_vin,
+        }
+        validator = validators.get(pattern_name)
+        return validator(value) if validator else True
+
+    @staticmethod
+    def _is_valid_ipv4(value: str) -> bool:
+        return all(0 <= int(part) <= 255 for part in value.split("."))
+
+    @staticmethod
+    def _is_valid_ipv6(value: str) -> bool:
+        # 六组两位十六进制数是 MAC 地址，不作为 IPv6 处理。
+        if re.fullmatch(r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}", value):
+            return False
+        try:
+            ipaddress.IPv6Address(value)
+            return True
+        except ipaddress.AddressValueError:
+            return False
+
+    @staticmethod
+    def _is_valid_luhn(value: str) -> bool:
+        digits = re.sub(r"[ -]", "", value)
+        if not digits.isdigit() or not 16 <= len(digits) <= 19:
+            return False
+        total = 0
+        for index, char in enumerate(reversed(digits)):
+            number = int(char)
+            if index % 2:
+                number *= 2
+                if number > 9:
+                    number -= 9
+            total += number
+        return total % 10 == 0
+
+    @staticmethod
+    def _is_valid_chinese_id(value: str) -> bool:
+        value = value.upper()
+        if not re.fullmatch(r"\d{17}[\dX]", value) or value[:2] == "00":
+            return False
+        try:
+            datetime.strptime(value[6:14], "%Y%m%d")
+        except ValueError:
+            return False
+        weights = (7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2)
+        check_codes = "10X98765432"
+        return check_codes[sum(int(char) * weight for char, weight in zip(value[:17], weights)) % 11] == value[-1]
+
+    @staticmethod
+    def _is_valid_organization_code(value: str) -> bool:
+        value = value.replace("-", "")
+        charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        if len(value) != 9 or any(char not in charset for char in value):
+            return False
+        weights = (3, 7, 9, 10, 5, 8, 4, 2)
+        remainder = sum(charset.index(char) * weight for char, weight in zip(value[:8], weights)) % 11
+        expected = "X" if remainder == 10 else str(remainder)
+        return expected == value[-1]
+
+    @staticmethod
+    def _is_valid_unified_credit_code(value: str) -> bool:
+        charset = "0123456789ABCDEFGHJKLMNPQRTUWXY"
+        value = value.upper()
+        if len(value) != 18 or any(char not in charset for char in value):
+            return False
+        weights = (1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28)
+        total = sum(charset.index(char) * weight for char, weight in zip(value[:17], weights))
+        return charset[(31 - total % 31) % 31] == value[-1]
+
+    def _is_valid_business_license(self, value: str) -> bool:
+        return self._is_valid_unified_credit_code(value) if len(value) == 18 else self._is_valid_legacy_business_license(value)
+
+    @staticmethod
+    def _is_valid_legacy_business_license(value: str) -> bool:
+        if not re.fullmatch(r"\d{15}", value):
+            return False
+        checksum = 10
+        for char in value[:14]:
+            checksum = (checksum + int(char)) % 10
+            checksum = 10 if checksum == 0 else checksum
+            checksum = (checksum * 2) % 11
+        return (11 - checksum) % 10 == int(value[-1])
+
+    @staticmethod
+    def _is_valid_vin(value: str) -> bool:
+        if len(value) != 17 or any(char in "IOQ" for char in value):
+            return False
+        values = {str(number): number for number in range(10)}
+        values.update({
+            "A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7, "H": 8,
+            "J": 1, "K": 2, "L": 3, "M": 4, "N": 5, "P": 7, "R": 9,
+            "S": 2, "T": 3, "U": 4, "V": 5, "W": 6, "X": 7, "Y": 8, "Z": 9,
+        })
+        weights = (8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2)
+        check = "0123456789X"
+        return check[sum(values[char] * weight for char, weight in zip(value, weights)) % 11] == value[8]
     
     def _detect_with_presidio(self, text: str) -> List[Dict[str, Any]]:
         """使用 Microsoft Presidio 检测 PII"""
@@ -523,7 +693,8 @@ class DesensitizationService:
         }
         
         # 上下文关键词（姓名前后出现的词）
-        context_before = ["姓名", "名称", "叫", "是", "为", "由", "经", "被", "让", "把", "给", "向", "对", "跟", "和", "与", "同"]
+        # 仅保留明确的人名语境；泛化连接词和括号说明会把“支付”“验证”等普通词误判为姓名。
+        context_before = ["姓名", "联系人", "项目联系人", "负责人", "申请人", "经办人", "收件人"]
         context_after = ["先生", "女士", "小姐", "同志", "同学", "老师", "教授", "医生", "律师", "工程师", "经理", "总监", "总裁", "董事长", "主任", "处长", "局长", "部长", "省长", "市长", "县长", "镇长", "村长", "书记", "主席", "总理", "首相", "总统", "国王", "女王", "皇帝", "皇后", "王子", "公主", "贵族", "爵士", "骑士", "将军", "元帅", "上将", "中将", "少将", "大校", "上校", "中校", "少校", "上尉", "中尉", "少尉", "军士长", "上士", "中士", "下士", "列兵", "新兵", "学员", "士兵", "军人", "军官", "将领", "统帅", "指挥官", "司令官", "参谋长", "政委", "指导员", "教导员", "连长", "排长", "班长", "组长", "队长", "大队长", "中队长", "小队长", "支队长", "总队长", "师长", "旅长", "团长", "营长", "连长", "排长", "班长", "组长", "队长", "大队长", "中队长", "小队长", "支队长", "总队长", "师长", "旅长", "团长", "营长"]
         
         # 使用 jieba 分词
@@ -557,11 +728,6 @@ class DesensitizationService:
                     if next_word in context_after:
                         is_name = True
                 
-                # 检查是否在引号或括号内
-                before_text = text[:start]
-                if any(before_text.endswith(c) for c in ['"', "'", '（', '(', '「', '『', '【', '〖', '〔', '〈', '《', '﹝', '｢', '❴']):
-                    is_name = True
-                
                 # 如果有上下文支持，则认为是姓名
                 if is_name:
                     detections.append({
@@ -582,8 +748,18 @@ class DesensitizationService:
         if not detections:
             return []
         
-        # 按位置排序
-        detections.sort(key=lambda x: (x["start"], -x["end"]))
+        # 结构化标识优先于启发式姓名、固定电话等宽泛规则。
+        priority = {
+            "ipv6_address": 100, "ip_address": 100, "mac_address": 100,
+            "bank_card": 98, "id_card": 98, "unified_social_credit_code": 97,
+            "organization_code": 97, "business_license": 97,
+            "vehicle_identification_number": 96, "passport": 99,
+            "hong_kong_macao_permit": 99, "military_id": 99,
+            "email": 94, "jdbc_connection": 94, "address": 90,
+            "phone": 88, "landline": 50, "chinese_name": 20,
+        }
+        # 按位置排序；同一起点先处理优先级高、范围完整的候选。
+        detections.sort(key=lambda x: (x["start"], -priority.get(x["type"], 60), -x["end"]))
         
         merged = []
         current = detections[0]
@@ -591,8 +767,10 @@ class DesensitizationService:
         for next_det in detections[1:]:
             # 检查是否重叠
             if next_det["start"] < current["end"]:
-                # 保留置信度更高的
-                if next_det["confidence"] > current["confidence"]:
+                # 优先保留结构化规则；同优先级再比较置信度与覆盖范围。
+                current_priority = priority.get(current["type"], 60)
+                next_priority = priority.get(next_det["type"], 60)
+                if (next_priority, next_det["confidence"], next_det["end"] - next_det["start"]) > (current_priority, current["confidence"], current["end"] - current["start"]):
                     current = next_det
             else:
                 merged.append(current)
@@ -602,19 +780,19 @@ class DesensitizationService:
         
         return merged
     
-    def redact_text(self, text: str, user_id: str) -> Dict[str, Any]:
+    def redact_text(self, text: str, custom_rules: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """
         执行文本脱敏
         
         Args:
             text: 要脱敏的文本
-            user_id: 用户标识
+            custom_rules: 本机敏感字段规则
             
         Returns:
             脱敏结果，包含脱敏文本和映射表
         """
         # 检测敏感信息
-        detections = self.detect_sensitive_info(text)
+        detections = self.detect_sensitive_info(text, custom_rules)
         
         # 创建映射表
         mappings = []
@@ -656,7 +834,6 @@ class DesensitizationService:
             "redacted_length": len(redacted_text),
             "detection_count": len(detections),
             "mappings": mappings,
-            "user_id": user_id,
             "created_at": datetime.now().isoformat(),
             "stats": self.stats
         }
@@ -730,6 +907,5 @@ class DesensitizationService:
             "restored_length": len(restored_text),
             "mappings_applied": replacements,
             "mappings_failed": failed,
-            "user_id": mapping_data.get("user_id"),
             "created_at": datetime.now().isoformat()
         }

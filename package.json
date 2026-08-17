@@ -1,12 +1,20 @@
 {
   "name": "desens-vue",
   "version": "0.1.0",
+  "description": "本地优先的文件脱敏与还原工具",
+  "author": "DESENS",
   "private": true,
   "type": "module",
+  "main": "desktop/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:desktop:frontend": "node scripts/build-desktop-frontend.mjs",
+    "build:desktop:backend": "node scripts/build-desktop-backend.mjs",
+    "desktop:dev": "npm run build:desktop:frontend && electron .",
+    "desktop:pack": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder --dir",
+    "desktop:dist": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder"
   },
   "dependencies": {
     "pdfjs-dist": "^3.11.174",
@@ -15,6 +23,37 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
     "vite": "^5.4.0"
+  },
+  "build": {
+    "appId": "com.desens.filetool",
+    "productName": "文件脱敏与还原工具",
+    "npmRebuild": false,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "desktop/resources"
+    },
+    "files": [
+      "dist/**",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist",
+        "to": "backend"
+      }
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": ["msi"]
+    }
   }
 }

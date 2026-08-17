@@ -1,0 +1,119 @@
+{
+  "success": true,
+  "original_text": "脱敏烟测样本 - 客户资料\n \n以下内容仅用于本地脱敏与还原功能验证，均为虚构测试数据。\n客户姓名：张三；性别：男；身份证：11010519491231002X；手机号：13800138000。\n邮箱：zhangsan@example.com；地址：北京市朝阳区建国路88号；银行卡：4532015112830366。\nIPv4：192.168.10.203；MAC：00:1A:2B:3C:4D:5E；日期：2026-08-14。",
+  "redacted_text": "脱敏烟测样本 - 客户资料\n \n以下内容仅用于本地脱敏与还原功能验证，均为虚构测试数据。\n客户姓名：张三；{GENDER_009}；身份证：{ID_CARD_008}；手机号：{PHONE_007}。\n邮箱：{EMAIL_006}；{ADDRESS_005}；银行卡：{BANK_CARD_004}。\nIPv4：{IP_ADDRESS_003}；MAC：{MAC_ADDRESS_002}；日期：{DATE_001}。",
+  "original_length": 216,
+  "redacted_length": 209,
+  "detection_count": 9,
+  "mappings": [
+    {
+      "id": 9,
+      "placeholder": "{GENDER_009}",
+      "type": "gender",
+      "original": "性别：男",
+      "start": 53,
+      "end": 57,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 8,
+      "placeholder": "{ID_CARD_008}",
+      "type": "id_card",
+      "original": "11010519491231002X",
+      "start": 62,
+      "end": 80,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 7,
+      "placeholder": "{PHONE_007}",
+      "type": "phone",
+      "original": "13800138000",
+      "start": 85,
+      "end": 96,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 6,
+      "placeholder": "{EMAIL_006}",
+      "type": "email",
+      "original": "zhangsan@example.com",
+      "start": 101,
+      "end": 121,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 5,
+      "placeholder": "{ADDRESS_005}",
+      "type": "address",
+      "original": "地址：北京市朝阳区建国路88号",
+      "start": 122,
+      "end": 137,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 4,
+      "placeholder": "{BANK_CARD_004}",
+      "type": "bank_card",
+      "original": "4532015112830366",
+      "start": 142,
+      "end": 158,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 3,
+      "placeholder": "{IP_ADDRESS_003}",
+      "type": "ip_address",
+      "original": "192.168.10.203",
+      "start": 165,
+      "end": 179,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 2,
+      "placeholder": "{MAC_ADDRESS_002}",
+      "type": "mac_address",
+      "original": "00:1A:2B:3C:4D:5E",
+      "start": 184,
+      "end": 201,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 1,
+      "placeholder": "{DATE_001}",
+      "type": "date",
+      "original": "2026-08-14",
+      "start": 205,
+      "end": 215,
+      "confidence": 0.9,
+      "source": "regex"
+    }
+  ],
+  "created_at": "2026-08-14T14:52:37.992182",
+  "stats": {
+    "total_detections": 9,
+    "by_type": {
+      "gender": 1,
+      "id_card": 1,
+      "phone": 1,
+      "email": 1,
+      "address": 1,
+      "bank_card": 1,
+      "ip_address": 1,
+      "mac_address": 1,
+      "date": 1
+    }
+  },
+  "task_id": "9aa2314c-03d4-4787-b06c-7885e2de0341",
+  "original_filename": "pdf_1_客户资料.pdf",
+  "file_type": ".pdf",
+  "converted_from_pdf": false
+}

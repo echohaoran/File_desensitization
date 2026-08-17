@@ -151,9 +151,10 @@ ul, ol { list-style: none; }
   gap: var(--space-3);
   flex-shrink: 0;
 }
+.brand__content { display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
 .brand__mark {
-  width: 14px; height: 14px;
-  background: var(--fg);
+  width: 26px; height: 26px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 .brand__name {
@@ -164,6 +165,54 @@ ul, ol { list-style: none; }
   line-height: 1;
 }
 .brand__name span { color: var(--muted); font-weight: 400; }
+.brand__version { position:relative; padding:0; border:0; background:transparent; color:var(--muted); font:10px var(--font-mono); line-height:1; cursor:pointer; }
+.brand__version:hover { color:var(--fg); }
+.brand__version i { position:absolute; top:-3px; right:-7px; width:5px; height:5px; border-radius:50%; background:#e5484d; content:""; }
+
+/* ---------- CNB version update dialog ---------- */
+.version-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.48);
+}
+.version-modal__card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: var(--space-6);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-raised);
+}
+.version-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.version-modal__head h2 { margin: var(--space-2) 0 0; font-family: var(--font-display); font-size: var(--text-xl); }
+.version-modal__status { margin: var(--space-5) 0 var(--space-3); color: var(--muted); line-height: 1.6; }
+.version-modal__status.is-update { color: #b42318; font-weight: 600; }
+.version-modal__meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; border: 1px solid var(--border); background: var(--border); }
+.version-modal__meta > div { padding: var(--space-3); background: var(--surface); }
+.version-modal__meta dt { color: var(--meta); font: var(--text-xs) var(--font-mono); }
+.version-modal__meta dd { margin: var(--space-1) 0 0; color: var(--fg); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
+.version-modal__commits { margin-top: var(--space-5); }
+.version-modal__commits h3 { margin: 0 0 var(--space-2); font-size: var(--text-base); }
+.version-modal__commits > p { margin: 0; color: var(--muted); line-height: 1.6; }
+.version-modal__commits ol { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); background: var(--border); }
+.version-modal__commits li { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: var(--space-2); align-items: baseline; padding: var(--space-2) var(--space-3); background: var(--surface); font-size: var(--text-xs); }
+.version-modal__commits code { font-family: var(--font-mono); color: var(--fg); }
+.version-modal__commits span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.version-modal__commits time { color: var(--meta); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
+.version-modal__hint { margin: var(--space-4) 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.6; }
+.version-modal__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+@media (max-width: 540px) {
+  .version-modal__card { padding: var(--space-4); }
+  .version-modal__meta { grid-template-columns: 1fr; }
+  .version-modal__commits li { grid-template-columns: 52px minmax(0, 1fr); }
+  .version-modal__commits time { grid-column: 2; }
+  .version-modal__actions > * { flex: 1 1 auto; text-align: center; justify-content: center; }
+}
 
 .site-nav {
   display: flex;
@@ -762,6 +811,7 @@ ul, ol { list-style: none; }
   overflow-y: auto;
   padding: var(--space-6);
   background: var(--surface);
+  position: relative;
 }
 
 /* Empty state */
@@ -795,6 +845,33 @@ ul, ol { list-style: none; }
   user-select: text;
   cursor: text;
 }
+
+/* ---------- Word document preview ---------- */
+.document-preview {
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  user-select: text;
+  cursor: text;
+}
+.document-preview__paragraph { margin: 0 0 0.85em; white-space: pre-wrap; }
+.document-preview__blank { min-height: 1em; }
+.document-preview__heading { margin: 1.35em 0 0.55em; font-weight: 700; line-height: 1.35; }
+.document-preview__list { padding-left: 1.5em; text-indent: -1.25em; }
+.document-preview__list::before { content: '•'; display: inline-block; width: 1.25em; }
+.document-preview h1.document-preview__heading { font-size: 1.55em; }
+.document-preview h2.document-preview__heading { font-size: 1.3em; }
+.document-preview h3.document-preview__heading { font-size: 1.12em; }
+.document-preview h4.document-preview__heading { font-size: 1em; }
+.document-preview__table { width: 100%; margin: 0 0 1.1em; border-collapse: collapse; table-layout: fixed; }
+.document-preview__table td { padding: 0.55em 0.65em; vertical-align: top; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-word; }
+.completion-modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: var(--space-4); }
+.completion-modal__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.48); }
+.completion-modal__card { position: relative; width: min(520px, 100%); padding: 32px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--elev-raised); }
+.completion-modal__card h2 { margin: var(--space-3) 0; font-size: var(--text-xl); }
+.completion-modal__card p:not(.mono-label) { color: var(--muted); line-height: 1.7; }
+.completion-modal__actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
 /* redacted (active) token span */
 .tok {
   display: inline;
@@ -1360,7 +1437,7 @@ ul, ol { list-style: none; }
   font-weight: 500;
   letter-spacing: 0.02em;
   transform: translate(-50%, -100%);
-  margin-top: -8px;
+  margin-top: 0;
   pointer-events: auto;
   opacity: 0;
   transition: opacity var(--motion-fast) var(--ease-standard);

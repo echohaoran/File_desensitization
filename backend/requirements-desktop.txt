@@ -1,0 +1,3 @@
+# 在对应目标平台上构建本机后端。
+-r requirements.txt
+pyinstaller==6.10.0

@@ -6,11 +6,10 @@
     </div>
 
     <section class="index-hero">
-      <h1>多步骤脱敏系统</h1>
+      <h1>文件脱敏与还原工具</h1>
       <p>
-        面向企业内部投资人员与私募基金管理员的本地优先型敏感数据脱敏工具。上传文件后系统自动识别敏感信息，
-        人工复核后生成<strong>脱敏文件</strong>与<strong>字段映射表</strong>；凭借映射表可完整还原原始文件。
-        每个浏览器持有独立用户标识，数据互不交叉。
+        用于识别、复核和替换文件中的敏感信息。上传文件后，系统会给出检测结果；可手动添加或取消脱敏项，确认后生成<strong>脱敏结果</strong>与<strong>映射表</strong>。
+        还原页面支持选择本机历史记录或映射表执行还原。<strong>该应用纯本地运行</strong>。
       </p>
     </section>
 
@@ -21,11 +20,11 @@
           <span class="nav-card__tag">DESENSITIZE</span>
         </div>
         <h2>脱敏工作流</h2>
-        <p>上传文本或图片文件，系统自动检测敏感字段并在右侧预览，人工增删脱敏区域后生成脱敏文件与映射表。</p>
+        <p>上传受支持的文件，查看检测结果；人工确认后生成脱敏结果与映射表。</p>
         <ul class="nav-card__features">
-          <li>文本 / CSV / JSON 正则检测</li>
-          <li>图片 Canvas 框选遮盖</li>
-          <li>映射表本地持久化</li>
+          <li>常用敏感字段检测</li>
+          <li>人工添加或取消脱敏项</li>
+          <li>本机保存脱敏历史</li>
         </ul>
         <span class="btn btn--primary btn--block">
           进入工作流
@@ -39,11 +38,11 @@
           <span class="nav-card__tag">RESTORE</span>
         </div>
         <h2>还原工作流</h2>
-        <p>上传此前生成的脱敏文件与对应映射表 JSON，校验用户归属后按映射关系还原原始文件并下载。</p>
+        <p>选择本机脱敏历史，或上传脱敏文件与对应映射表，按映射关系还原内容。</p>
         <ul class="nav-card__features">
-          <li>映射表用户归属校验</li>
+          <li>本机映射表直接还原</li>
           <li>占位符逆向替换</li>
-          <li>图片原图重建</li>
+          <li>映射记录管理</li>
         </ul>
         <span class="btn btn--secondary btn--block">
           进入工作流
@@ -55,8 +54,7 @@
     <div class="index-strip">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       <p>
-        <strong>用户数据隔离：</strong>当前浏览器已分配独立用户标识（见页头 USER 标签）。
-        所有映射表均以该标识为键存入 localStorage，不同浏览器 / 用户之间互不可见。生产环境将改由后端按 <code>uploads/{user_id}/</code> 目录树与数据库 <code>user_id</code> 外键强制隔离。
+        <strong>使用说明：</strong>无需登录。使用“敏感字段”维护规则；规则与脱敏历史保存在当前浏览器。处理前请确认服务部署位置符合你的数据安全要求。
       </p>
     </div>
   </div>

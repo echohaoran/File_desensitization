@@ -1,0 +1,85 @@
+{
+  "success": true,
+  "original_text": "字段\n统一社会信用代码\n组织机构代码\n车牌号\nVIN\nJDBC\nIPv4\n虚构测试值\n91350211M000100Y43\nA1234567-8\n京A12345\n1HGCM82633A004352\njdbc:mysql://db.example.com:3306/customer?user=root\n192.168.10.203",
+  "redacted_text": "字段\n统一社会信用代码\n组织机构代码\n车牌号\nVIN\nJDBC\nIPv4\n虚构测试值\n{LANDLINE_006}M000100Y43\nA{LANDLINE_005}-8\n{LICENSE_PLATE_004}\n{VEHICLE_IDENTIFICATION_NUMBER_003}\n{JDBC_CONNECTION_002}\n{IP_ADDRESS_001}",
+  "original_length": 165,
+  "redacted_length": 180,
+  "detection_count": 6,
+  "mappings": [
+    {
+      "id": 6,
+      "placeholder": "{LANDLINE_006}",
+      "type": "landline",
+      "original": "91350211",
+      "start": 43,
+      "end": 51,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 5,
+      "placeholder": "{LANDLINE_005}",
+      "type": "landline",
+      "original": "1234567",
+      "start": 63,
+      "end": 70,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 4,
+      "placeholder": "{LICENSE_PLATE_004}",
+      "type": "license_plate",
+      "original": "京A12345",
+      "start": 73,
+      "end": 80,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 3,
+      "placeholder": "{VEHICLE_IDENTIFICATION_NUMBER_003}",
+      "type": "vehicle_identification_number",
+      "original": "1HGCM82633A004352",
+      "start": 81,
+      "end": 98,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 2,
+      "placeholder": "{JDBC_CONNECTION_002}",
+      "type": "jdbc_connection",
+      "original": "jdbc:mysql://db.example.com:3306/customer?user=root",
+      "start": 99,
+      "end": 150,
+      "confidence": 0.9,
+      "source": "regex"
+    },
+    {
+      "id": 1,
+      "placeholder": "{IP_ADDRESS_001}",
+      "type": "ip_address",
+      "original": "192.168.10.203",
+      "start": 151,
+      "end": 165,
+      "confidence": 0.9,
+      "source": "regex"
+    }
+  ],
+  "created_at": "2026-08-14T14:52:37.946509",
+  "stats": {
+    "total_detections": 6,
+    "by_type": {
+      "landline": 2,
+      "license_plate": 1,
+      "vehicle_identification_number": 1,
+      "jdbc_connection": 1,
+      "ip_address": 1
+    }
+  },
+  "task_id": "cf316490-7d45-4941-b3b9-370081e18187",
+  "original_filename": "excel_2_企业与车辆资料.xlsx",
+  "file_type": ".xlsx",
+  "converted_from_pdf": false
+}

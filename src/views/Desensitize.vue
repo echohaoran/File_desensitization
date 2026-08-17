@@ -57,7 +57,7 @@
                 <span style="font-size: 14px; color: #0369a1;">正在调用后端进行初步脱敏...</span>
               </div>
               <p style="font-size: 12px; color: #64748b; margin-top: 8px; margin-bottom: 0;">
-                使用 Microsoft Presidio 和中国百家姓库进行智能检测
+                正在使用当前服务可用的规则与识别能力进行检测
               </p>
             </div>
             <!-- 后端错误提示 -->
@@ -76,7 +76,7 @@
                 <span style="font-size: 14px; color: #16a34a;">PDF 已自动转换为 Word 格式</span>
               </div>
               <p style="font-size: 12px; color: #64748b; margin-top: 8px; margin-bottom: 0;">
-                原始 PDF 已保留格式转换为 Word 文档，便于后续编辑和处理
+                已生成 Word 文档；复杂 PDF 的版式可能需要人工检查
               </p>
             </div>
           </div>
@@ -149,6 +149,28 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <p>上传文件后在此预览检测结果</p>
           </div>
+          <div v-else-if="fileType === 'docx' && documentPreview.length" class="document-preview" @mouseup="handleTextSelect">
+            <template v-for="(block, blockIndex) in documentPreview" :key="blockIndex">
+              <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
+                <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
+                  <span v-if="part.type === 'normal'">{{ part.text }}</span>
+                  <span v-else :class="part.active ? 'tok' : 'det'" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                </template>
+              </component>
+              <table v-else class="document-preview__table">
+                <tbody>
+                  <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex">
+                    <td v-for="(cell, cellIndex) in row" :key="cellIndex">
+                      <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
+                        <span v-if="part.type === 'normal'">{{ part.text }}</span>
+                        <span v-else :class="part.active ? 'tok' : 'det'" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                      </template>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </template>
+          </div>
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="text-preview" @mouseup="handleTextSelect">
             <template v-for="(part, i) in textParts" :key="i">
               <span v-if="part.type === 'normal'">{{ part.text }}</span>
@@ -165,11 +187,15 @@
               <span><i class="off"></i>已跳过区域</span>
             </div>
           </div>
+          <div v-if="selectionPopup" class="selection-popup is-visible" :style="{ left: selectionPopup.left + 'px', top: selectionPopup.top + 'px' }" @mousedown.prevent.stop>
+            <button class="btn btn--primary btn--sm" @click="applySelection('mask')">脱敏</button>
+            <button class="btn btn--secondary btn--sm" @click="applySelection('rule')">添加到敏感字段</button>
+          </div>
         </div>
       </section>
     </div>
 
-    <div class="mapping-pre" v-if="mapping" :class="{ 'is-open': showMapping }">
+    <div class="mapping-pre" v-if="false && mapping" :class="{ 'is-open': showMapping }">
       <div class="mapping-pre__head" @click="showMapping = !showMapping" role="button" tabindex="0" 
         :aria-expanded="showMapping" @keydown.enter.space="showMapping = !showMapping">
         <h3>映射表 JSON</h3>
@@ -180,7 +206,7 @@
       </div>
     </div>
 
-    <div class="download-bar" v-if="confirmed">
+    <div class="download-bar" v-if="false && confirmed">
       <span class="download-bar__label">脱敏完成</span>
       <button class="btn btn--primary" @click="downloadRedactedFile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -191,6 +217,18 @@
         下载映射表
       </button>
     </div>
+    <div v-if="showCompletionModal" class="completion-modal" role="dialog" aria-modal="true" aria-labelledby="completion-title">
+      <div class="completion-modal__backdrop" @click="showCompletionModal = false"></div>
+      <section class="completion-modal__card">
+        <p class="mono-label">DESENSITIZATION COMPLETE</p>
+        <h2 id="completion-title">脱敏已完成</h2>
+        <p>脱敏记录已保存在本机历史中。需要还原时，请选择该记录并上传经 AI 或其他流程处理后的脱敏文件。</p>
+        <div class="completion-modal__actions">
+          <button class="btn btn--secondary" @click="showCompletionModal = false">暂不下载</button>
+          <button class="btn btn--primary" @click="downloadFromCompletion">下载文件</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -198,6 +236,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
 import DesensitizationAPI from '@/api/desensitization'
+import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
 
 // Worker is configured via the import above
 
@@ -212,7 +251,8 @@ const PATTERNS = [
 
 const TYPE_NAMES = {
   phone: '手机号', idcard: '身份证', email: '邮箱', bankcard: '银行卡',
-  amount: '金额', name: '姓名', manual: '区域'
+  amount: '金额', name: '姓名', ip_address: 'IP地址', ipv6_address: 'IPv6地址', mac_address: 'MAC地址',
+  landline: '固定电话', license_plate: '车牌号', jdbc_connection: 'JDBC连接串', date: '日期', manual: '区域'
 }
 
 export default {
@@ -230,10 +270,13 @@ export default {
       confirmed: false,
       mapping: null,
       showMapping: false,
+      showCompletionModal: false,
+      selectionPopup: null,
       redactedText: '',
       isLoadingBackend: false,
       backendError: null,
       convertedFromPdf: false,
+      documentPreview: [],
       image: {
         img: null,
         canvas: null,
@@ -325,19 +368,20 @@ export default {
     },
     async callBackendRedaction(file) {
       try {
-        const userId = this.getUserId()
+        const rules = loadSensitiveRules()
         
         // 如果是 PDF 文件，使用支持转换的接口
         let result
         if (this.fileType === 'pdf') {
-          result = await DesensitizationAPI.redactFileWithConversion(file, userId)
+          result = await DesensitizationAPI.redactFileWithConversion(file, rules)
         } else {
-          result = await DesensitizationAPI.redactFile(file, userId)
+          result = await DesensitizationAPI.redactFile(file, rules)
         }
         
         // 后端处理成功，使用后端结果
         this.rawOriginalText = result.original_text  // 存储真正的原始文本
         this.originalText = result.redacted_text
+        this.documentPreview = result.document_preview || []
         this.detections = result.mappings.map((m, i) => ({
           id: this.nextId++,
           type: m.type,
@@ -354,7 +398,6 @@ export default {
         
         this.mapping = {
           version: '1.0',
-          user_id: userId,
           created_at: result.created_at,
           file_name: file.name,
           file_type: this.fileType,
@@ -427,9 +470,53 @@ export default {
         credit_card: '信用卡',
         address: '地址',
         date: '日期时间',
+        ipv6_address: 'IPv6地址',
+        mac_address: 'MAC地址',
+        gender: '性别',
+        ethnicity: '民族',
+        province: '省份',
+        hong_kong_macao_permit: '港澳通行证',
+        jdbc_connection: 'JDBC连接串',
+        vehicle_identification_number: '车辆识别代码',
+        organization_code: '组织机构代码',
+        business_license: '营业执照号码',
         manual: '区域'
       }
       return labels[type] || '敏感项'
+    },
+    partsForRange(start, end) {
+      const parts = []
+      let cursor = start
+      const detections = [...this.detections]
+        .filter(det => det.start < end && det.end > start)
+        .sort((a, b) => a.start - b.start)
+
+      detections.forEach(det => {
+        const detectionStart = Math.max(det.start, start)
+        const detectionEnd = Math.min(det.end, end)
+        if (detectionStart > cursor) {
+          parts.push({ type: 'normal', text: this.rawOriginalText.slice(cursor, detectionStart) })
+        }
+        parts.push({
+          type: 'detection',
+          text: this.rawOriginalText.slice(detectionStart, detectionEnd),
+          placeholder: det.placeholder,
+          active: det.active,
+          label: det.label,
+          id: det.id
+        })
+        cursor = detectionEnd
+      })
+      if (cursor < end) parts.push({ type: 'normal', text: this.rawOriginalText.slice(cursor, end) })
+      return parts
+    },
+    previewBlockStyle(block) {
+      const format = block.format || {}
+      const style = {}
+      if (format.font_size) style.fontSize = `${Math.min(format.font_size, 28)}pt`
+      if (format.bold) style.fontWeight = 700
+      if (format.alignment) style.textAlign = format.alignment
+      return style
     },
     inferFileType(file) {
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -481,6 +568,7 @@ export default {
           raw.push({ type: p.id, label: p.label, value: m[0], start: m.index, end: m.index + m[0].length })
         }
       })
+      raw.push(...detectWithRules(text, loadSensitiveRules()))
       
       raw.sort((a, b) => a.start - b.start || b.end - a.end)
       const merged = []
@@ -646,8 +734,53 @@ export default {
       const sel = window.getSelection()
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
       
-      const text = sel.toString().trim()
+      const text = sel.toString().replace(/\s+/g, ' ').trim()
       if (!text || text.length < 2) return
+      // 选区可能包含已经脱敏的占位符；先还原为对应原值，再计算原文偏移。
+      const sourceText = text.replace(/\{[A-Z][A-Z0-9_]*_\d+\}/g, (placeholder) => {
+        const detection = this.detections.find(d => d.placeholder === placeholder)
+        return detection?.value || placeholder
+      })
+      let selectionStart = this.rawOriginalText.indexOf(sourceText)
+      let selectionEnd = selectionStart === -1 ? -1 : selectionStart + sourceText.length
+      if (selectionStart === -1) {
+        const compact = sourceText.replace(/\s/g, '')
+        const rawCompact = this.rawOriginalText.replace(/\s/g, '')
+        const compactStart = rawCompact.indexOf(compact)
+        if (compactStart === -1) return
+        // 将去除换行/空白后的索引映射回原文，避免跨段落框选时误定位到 0。
+        const rawIndexForCompact = (compactIndex) => {
+          let index = 0
+          for (let i = 0; i < this.rawOriginalText.length; i += 1) {
+            if (/\s/.test(this.rawOriginalText[i])) continue
+            if (index === compactIndex) return i
+            index += 1
+          }
+          return this.rawOriginalText.length
+        }
+        selectionStart = rawIndexForCompact(compactStart)
+        selectionEnd = rawIndexForCompact(compactStart + compact.length)
+      }
+      const range = sel.getRangeAt(0)
+      const bodyRect = this.$refs.previewBody?.getBoundingClientRect()
+      const rangeRect = range.getBoundingClientRect()
+      const bodyLeft = bodyRect?.left || 0
+      const bodyTop = bodyRect?.top || 0
+      const bodyWidth = bodyRect?.width || window.innerWidth
+      const bodyScrollLeft = this.$refs.previewBody?.scrollLeft || 0
+      const bodyScrollTop = this.$refs.previewBody?.scrollTop || 0
+      const rangeCenter = rangeRect.left + (rangeRect.width / 2)
+      const popupHalfWidth = 112
+      this.selectionPopup = {
+        text,
+        sourceText,
+        start: selectionStart,
+        end: selectionEnd,
+        // Anchor the menu to the selection midpoint and place it above the selected text.
+        left: Math.min(Math.max(8 + popupHalfWidth, rangeCenter - bodyLeft + bodyScrollLeft), Math.max(8 + popupHalfWidth, bodyWidth - popupHalfWidth - 8 + bodyScrollLeft)),
+        top: Math.max(8, rangeRect.top - bodyTop + bodyScrollTop - 4)
+      }
+      return
       
       // 检查选中的文本是否包含占位符（如 [CHINESE_NAME_001]）
       const placeholderPattern = /\[[A-Z_]+\d+\]/
@@ -706,6 +839,24 @@ export default {
       // 清除选择
       sel.removeAllRanges()
     },
+    applySelection(action) {
+      const selected = this.selectionPopup
+      this.selectionPopup = null
+      if (!selected) return
+      window.getSelection()?.removeAllRanges()
+      const sourceText = selected.sourceText || selected.text
+      if (action === 'rule') {
+        const rules = loadSensitiveRules()
+        const id = 'custom_' + Date.now().toString(36)
+        rules.push({ id, name: sourceText.slice(0, 24), kind: 'keyword', value: sourceText, method: '关键词', enabled: true, builtIn: false })
+        localStorage.setItem('desens_sensitive_rules', JSON.stringify(rules))
+      }
+      const existing = this.detections.find(d => d.start === selected.start && d.end === selected.end)
+      if (existing) { existing.active = true; return }
+      this.detections = this.detections.filter(d => !(d.start < selected.end && d.end > selected.start))
+      this.detections.push({ id: this.nextId++, type: action === 'rule' ? 'custom' : 'manual', label: action === 'rule' ? '敏感字段' : '区域', value: sourceText, start: selected.start, end: selected.end, placeholder: '{MANUAL_' + String(this.nextId).padStart(3, '0') + '}', active: true, manual: action !== 'rule' })
+      this.detections.sort((a, b) => a.start - b.start)
+    },
     toggleDetection(item) {
       // 从检测列表中移除该项
       this.detections = this.detections.filter(d => d.id !== item.id)
@@ -724,6 +875,7 @@ export default {
       this.confirmed = true
       this.step = 4
       this.storeMapping()
+      this.showCompletionModal = true
     },
     buildTextMapping() {
       const mappings = []
@@ -733,13 +885,12 @@ export default {
       let redacted = this.rawOriginalText
       
       activeDetections.forEach(d => {
-        mappings.push({ id: d.id, placeholder: d.placeholder, type: d.type, original: d.value })
+        mappings.push({ id: d.id, placeholder: d.placeholder, type: d.type, original: d.value, start: d.start, end: d.end })
         redacted = redacted.slice(0, d.start) + d.placeholder + redacted.slice(d.end)
       })
       
       this.mapping = {
         version: '1.0',
-        user_id: this.getUserId(),
         created_at: new Date().toISOString(),
         file_name: this.file.name,
         file_type: this.fileType,
@@ -773,45 +924,54 @@ export default {
       
       this.mapping = {
         version: '1.0',
-        user_id: this.getUserId(),
         created_at: new Date().toISOString(),
         file_name: this.file.name,
         file_type: 'image',
         mappings
       }
     },
-    getUserId() {
-      try {
-        let uid = localStorage.getItem('desens_user_id')
-        if (!uid) {
-          uid = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-          localStorage.setItem('desens_user_id', uid)
-        }
-        return uid
-      } catch (e) {
-        return 'anonymous_' + Date.now().toString(36)
-      }
-    },
     storeMapping() {
       try {
-        const key = 'desens_mappings'
+        const key = 'desens_history'
         const list = JSON.parse(localStorage.getItem(key) || '[]')
         list.push({
-          user_id: this.mapping.user_id,
+          id: 'history_' + Date.now().toString(36),
           file_name: this.file.name,
+          file_type: this.fileType,
           created_at: this.mapping.created_at,
-          mapping_preview: this.mapping.mappings.slice(0, 3)
+          mapping: this.mapping,
+          redacted_text: this.redactedText,
+          redacted_image: this.fileType === 'image' ? this.$refs.canvas?.toDataURL('image/png') : null
         })
         localStorage.setItem(key, JSON.stringify(list.slice(-20)))
-      } catch (e) {}
+      } catch (e) { console.warn('保存脱敏历史失败：本机存储空间不足。', e) }
     },
-    downloadRedactedFile() {
+    goToRestore() {
+      this.showCompletionModal = false
+      this.$router.push({ name: 'Restore' })
+    },
+    async downloadFromCompletion() {
+      await this.downloadRedactedFile()
+      this.showCompletionModal = false
+    },
+    async downloadRedactedFile() {
       if (!this.confirmed) return
       
       let blob, filename
-      if (this.fileType === 'text' || this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
-        blob = new Blob([this.redactedText], { type: 'text/plain;charset=utf-8' })
-        filename = 'redacted_' + this.file.name.replace(/\.(pdf|docx|xlsx|xls)$/i, '.txt')
+      if (this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
+        try {
+          const result = await DesensitizationAPI.redactPreservingFormat(this.file, this.mapping)
+          blob = result.blob
+          const matched = result.filename?.match(/filename=\"?([^\";]+)\"?/i)
+          filename = matched?.[1] || `redacted_${this.file.name.replace(/\.(pdf|docx|xlsx|xls)$/i, this.fileType === 'excel' ? '.xlsx' : '.docx')}`
+        } catch (error) {
+          alert(`下载失败：${error.message}`)
+          return
+        }
+      } else if (this.fileType === 'text') {
+        const notice = '【处理与还原规则】本文件包含脱敏占位符（例如 {PHONE_001}）。请用户及任何 AI/Agent 在计算、分析、编辑、改写或排版时完整保留占位符的花括号、字段名与编号，不得删除、拆分、改写或替换；否则可能无法还原原始内容。'
+        blob = new Blob([`${notice}\n\n${this.redactedText}`], { type: 'text/plain;charset=utf-8' })
+        filename = 'redacted_' + this.file.name
       } else {
         const canvas = this.$refs.canvas
         const dataUrl = canvas.toDataURL('image/png')
@@ -871,8 +1031,10 @@ export default {
       this.confirmed = false
       this.mapping = null
       this.showMapping = false
+      this.showCompletionModal = false
       this.redactedText = ''
       this.convertedFromPdf = false
+      this.documentPreview = []
       this.image = { img: null, canvas: null, ctx: null, width: 0, height: 0, rects: [] }
       this.canvasDraw = { start: null, current: null }
       this.step = 0
@@ -881,6 +1043,13 @@ export default {
         this.$refs.fileInput.value = ''
       }
     }
+  },
+  mounted() {
+    this.selectionListener = () => this.handleTextSelect()
+    document.addEventListener('mouseup', this.selectionListener)
+  },
+  beforeUnmount() {
+    document.removeEventListener('mouseup', this.selectionListener)
   }
 }
 </script>

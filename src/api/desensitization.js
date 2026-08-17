@@ -4,11 +4,20 @@
  */
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL
+const desktopApiBaseUrl = typeof window !== 'undefined' ? window.desensDesktop?.apiBaseUrl : undefined
 const API_BASE_URL = configuredApiBaseUrl !== undefined
   ? configuredApiBaseUrl
-  : (import.meta.env.DEV ? 'http://localhost:8000' : '')
+  : (desktopApiBaseUrl || '')
+
+export const apiUrl = (path) => `${API_BASE_URL}${path}`
 
 class DesensitizationAPI {
+  static async getRuntimeCapabilities() {
+    const response = await fetch(apiUrl('/api/runtime/capabilities'))
+    if (!response.ok) throw new Error('无法读取本机运行环境能力')
+    return response.json()
+  }
+
   /**
    * 将 PDF 转换为 Word 文档
    * @param {File} file - PDF 文件
@@ -29,6 +38,19 @@ class DesensitizationAPI {
       throw new Error(detail || 'PDF 转换失败')
     }
 
+    return response.blob()
+  }
+
+  /** 将 Word 文档转换为 PDF。 */
+  static async convertWordToPdf(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await fetch(`${API_BASE_URL}/api/word-to-pdf`, { method: 'POST', body: formData })
+    if (!response.ok) {
+      const error = await response.json()
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || 'Word 转 PDF 失败')
+    }
     return response.blob()
   }
 
@@ -58,13 +80,13 @@ class DesensitizationAPI {
   /**
    * 执行文件脱敏
    * @param {File} file - 要脱敏的文件
-   * @param {string} userId - 用户标识
+   * @param {Array} rules - 本机敏感字段规则
    * @returns {Promise<Object>} 脱敏结果
    */
-  static async redactFile(file, userId) {
+  static async redactFile(file, rules = []) {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('user_id', userId)
+    formData.append('custom_rules', JSON.stringify(rules))
 
     const response = await fetch(`${API_BASE_URL}/api/redact`, {
       method: 'POST',
@@ -83,13 +105,13 @@ class DesensitizationAPI {
   /**
    * 执行文件脱敏（支持 PDF 自动转换为 Word）
    * @param {File} file - 要脱敏的文件
-   * @param {string} userId - 用户标识
+   * @param {Array} rules - 本机敏感字段规则
    * @returns {Promise<Object>} 脱敏结果
    */
-  static async redactFileWithConversion(file, userId) {
+  static async redactFileWithConversion(file, rules = []) {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('user_id', userId)
+    formData.append('custom_rules', JSON.stringify(rules))
 
     const response = await fetch(`${API_BASE_URL}/api/redact-with-conversion`, {
       method: 'POST',
@@ -105,18 +127,32 @@ class DesensitizationAPI {
     return response.json()
   }
 
+  /** 根据人工复核后的映射表输出保留原始结构的脱敏文件。 */
+  static async redactPreservingFormat(file, mapping) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('mappings', JSON.stringify(mapping))
+    const response = await fetch(`${API_BASE_URL}/api/redact-preserving-format`, {
+      method: 'POST', body: formData,
+    })
+    if (!response.ok) {
+      const error = await response.json()
+      const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
+      throw new Error(detail || '保留格式脱敏失败')
+    }
+    return { blob: await response.blob(), filename: response.headers.get('content-disposition') }
+  }
+
   /**
    * 还原脱敏文件
    * @param {File} redactedFile - 脱敏后的文件
    * @param {File} mappingFile - 映射表文件
-   * @param {string} userId - 用户标识
    * @returns {Promise<Object>} 还原结果
    */
-  static async restoreFile(redactedFile, mappingFile, userId) {
+  static async restoreFile(redactedFile, mappingFile) {
     const formData = new FormData()
     formData.append('redacted_file', redactedFile)
     formData.append('mapping_file', mappingFile)
-    formData.append('user_id', userId)
 
     const response = await fetch(`${API_BASE_URL}/api/restore`, {
       method: 'POST',
@@ -147,10 +183,11 @@ class DesensitizationAPI {
    * @param {string} filename - 文件名
    * @returns {Promise<Blob>} Word 文件
    */
-  static async convertTextToWord(text, filename = 'document.docx') {
+  static async convertTextToWord(text, filename = 'document.docx', includeRedactionNotice = false) {
     const formData = new FormData()
     formData.append('text', text)
     formData.append('filename', filename)
+    formData.append('redaction_notice', String(includeRedactionNotice))
 
     const response = await fetch(`${API_BASE_URL}/api/text-to-word`, {
       method: 'POST',
@@ -172,10 +209,11 @@ class DesensitizationAPI {
    * @param {string} filename - 文件名
    * @returns {Promise<Blob>} Excel 文件
    */
-  static async convertTextToExcel(text, filename = 'document.xlsx') {
+  static async convertTextToExcel(text, filename = 'document.xlsx', includeRedactionNotice = false) {
     const formData = new FormData()
     formData.append('text', text)
     formData.append('filename', filename)
+    formData.append('redaction_notice', String(includeRedactionNotice))
 
     const response = await fetch(`${API_BASE_URL}/api/text-to-excel`, {
       method: 'POST',

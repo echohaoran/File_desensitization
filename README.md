@@ -1,6 +1,6 @@
 # 多步骤脱敏系统 / Multi-Step Desensitization System
 
-面向企业内部投资人员与私募基金管理员的本地优先型敏感数据脱敏工具原型。提供「脱敏」与「还原」两个核心页面，支持自动识别 + 人工框选复核，并保证每个用户的数据完全隔离。
+面向企业内部投资人员与私募基金管理员的开箱即用、本机优先型敏感数据脱敏工具。无需登录，提供「脱敏」「还原」和「敏感字段管理」页面，支持自动识别、人工复核及本地自定义规则。
 
 ---
 
@@ -31,48 +31,6 @@ bash scripts/start.sh      # 启动所有服务
 bash scripts/stop.sh       # 停止所有服务
 bash scripts/restart.sh    # 重启所有服务
 bash scripts/status.sh     # 查看服务状态
-bash scripts/deploy-dev.sh # 同步到开发环境并用 compose 部署
-```
-
-### Docker Compose 部署（开发环境服务器）
-
-项目现已支持通过 `compose.yaml` 进行容器化部署。
-
-```bash
-# 本地构建并验证
-docker compose build
-docker compose up -d
-
-# 访问
-# 前端: http://localhost:8080
-# 后端: http://localhost:8000
-```
-
-说明：基础镜像默认使用 `swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io` 镜像源，以降低开发环境服务器在拉取 Docker Hub 官方镜像时超时的概率。开发环境服务器上的前端不再现场构建镜像，而是由本地先执行 `npm run build`，再把 `dist/` 同步到远端，由 Nginx 容器直接挂载提供静态服务。后端的 `spaCy` 英文模型会在镜像构建时尽量下载，若外网不稳定导致下载失败，服务仍可启动，只是英文 PII 识别会退化为正则/本地规则能力。
-
-### 同步到 192.168.1.223 并部署
-
-默认开发环境服务器地址为 `root@192.168.1.223`。脚本首次执行时会先在远端目录 `/opt/File_desensitization` 执行 `git clone`，后续再通过 `rsync` 增量同步本地改动，然后执行 `docker compose up -d --build`。
-
-```bash
-# 如远端用户名不是 root，请先指定
-export DEV_SERVER_USER=<你的远端用户名>
-
-# 可选：覆盖端口或远端目录
-export DEV_SERVER_PORT=22
-export DEV_SERVER_PATH=/opt/File_desensitization
-
-# 同步代码
-bash scripts/sync-dev.sh
-
-# 同步后直接部署
-bash scripts/deploy-dev.sh
-```
-
-以后每次你让我改代码，我会同时修改本地工作区；要把修改推到开发环境服务器，只需要再次执行：
-
-```bash
-bash scripts/deploy-dev.sh
 ```
 
 ---
@@ -102,9 +60,9 @@ File_desensitization/
 │   │   └── index.js           # 路由配置
 │   └── views/
 │       ├── Home.vue           # 首页
-│       ├── Login.vue          # 登录页
 │       ├── Desensitize.vue    # 脱敏工作流
 │       └── Restore.vue        # 还原工作流
+│       └── SensitiveRules.vue # 本机敏感字段规则管理
 │
 ├── backend/                    # Python 后端
 │   ├── main.py                # FastAPI 主应用
@@ -114,7 +72,6 @@ File_desensitization/
 │
 ├── assets/                     # 原始静态资源（备份）
 ├── pages/                      # 原始 HTML 页面（备份）
-├── tests/                      # 测试脚本
 ├── logs/                       # 日志文件（自动生成）
 │   ├── frontend.log
 │   ├── backend.log
@@ -153,7 +110,7 @@ File_desensitization/
 ┌─────────────────────────────────────────────────────────────────┐
 │                          前端 (Vue.js)                           │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
-│  │  首页    │  │  登录    │  │  脱敏    │  │  还原    │        │
+│  │  首页    │  │ 敏感字段 │  │  脱敏    │  │  还原    │        │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘        │
 │       └─────────────┼─────────────┼─────────────┘               │
 │                     ▼                                           │
@@ -181,7 +138,7 @@ File_desensitization/
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        数据层 (Storage)                          │
-│  uploads/{user_id}/                                             │
+│  uploads/                                                        │
 │  ├── {task_id}_original.{ext}   原始文件                        │
 │  └── {task_id}_result.json      脱敏结果                        │
 └─────────────────────────────────────────────────────────────────┘
@@ -198,7 +155,7 @@ File_desensitization/
 | 自动检测 | 使用 Microsoft Presidio 和百家姓库自动识别 PII |
 | 多格式支持 | TXT、CSV、JSON、MD、PDF、DOCX、XLSX、XLS |
 | 人工复核 | 支持手动框选脱敏区域、取消误识别区域 |
-| 实时预览 | 文本预览高亮显示敏感信息 |
+| 实时预览 | 文本预览高亮敏感信息；Word 保留段落、标题、列表和表格结构 |
 | 映射表生成 | 自动生成脱敏映射表 JSON |
 
 ### 检测的敏感信息类型
@@ -430,13 +387,11 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-## 用户数据隔离设计
+## 本机使用模式
 
-| 层级 | 隔离机制 |
-|------|----------|
-| 身份 | 登录后下发 `user_id`，所有 API 请求携带该标识 |
-| 存储 | 文件按 `uploads/{user_id}/...` 目录树存放 |
-| 会话 | 临时任务 ID 与 `user_id` 绑定 |
+- 不提供访客、登录或账号模式；应用启动后即可使用。
+- “敏感字段”面板可新增、启用或删除姓名、关键词和正则规则。
+- 规则与最近映射记录保存在当前设备的浏览器本地存储；规则会在提交文件时一并传给本机后端。
 
 ---
 

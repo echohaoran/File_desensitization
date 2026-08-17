@@ -8,11 +8,33 @@
     <section class="index-hero">
       <h1>还原工作流</h1>
       <p>
-        上传此前生成的脱敏文件与对应映射表 JSON。系统会校验映射表的用户归属，
-        并按记录将占位符或遮盖区域还原为原始内容。
+        选择本机的脱敏历史后，上传经 AI 或其他流程处理过的脱敏文件，再执行还原。
       </p>
     </section>
 
+    <section class="history-panel" aria-label="脱敏历史">
+      <div class="history-panel__head"><h2>脱敏历史</h2><div class="history-panel__tools"><span>{{ history.length }} 条记录</span><button v-if="history.length" class="btn btn--ghost btn--xs" @click="clearHistory">全部清空</button></div></div>
+      <p v-if="!history.length" class="history-panel__empty">暂无本机历史记录。完成一次脱敏后，记录会自动显示在这里。</p>
+      <div v-else class="history-list">
+        <article v-for="item in history" :key="item.id" class="history-item" :class="{ 'is-selected': selectedHistory?.id === item.id }">
+          <button class="history-item__select" @click="selectHistory(item)">
+            <strong>{{ item.file_name }}</strong><span>{{ formatDate(item.created_at) }} · {{ item.mapping?.mappings?.length || 0 }} 项脱敏</span>
+          </button>
+          <button class="icon-btn" @click="removeHistory(item.id)" :aria-label="`删除 ${item.file_name} 历史记录`">×</button>
+        </article>
+      </div>
+    </section>
+
+    <div v-if="selectedHistory" class="history-actions" aria-label="已选历史记录操作">
+      <span>已选择：{{ selectedHistory.file_name }}</span>
+      <div>
+        <button class="btn btn--secondary" @click="downloadHistoryMapping">下载对照表</button>
+        <button class="btn btn--primary" @click="downloadHistoryRedacted">下载脱敏后文件</button>
+      </div>
+    </div>
+
+    <details v-if="false" class="restore-upload" aria-label="从文件还原">
+      <summary>从文件与映射表还原（兼容旧记录）</summary>
     <div class="restore-grid" aria-label="文件上传区">
       <section class="restore-card">
         <div class="restore-card__head">
@@ -72,6 +94,18 @@
         </div>
       </section>
     </div>
+    </details>
+
+    <section v-if="selectedHistory" class="restore-card restore-current-upload" aria-label="上传待还原文件">
+      <div class="restore-card__head"><span class="num">02</span><h3>上传待还原的脱敏文件</h3></div>
+      <p class="restore-current-upload__hint">请上传基于“{{ selectedHistory.file_name }}”处理后的文件；系统会按该历史记录中的本机映射进行还原。</p>
+      <label class="upload-zone" :class="{ 'is-dragover': isDraggingRedacted }" tabindex="0" role="button" aria-label="选择或拖入待还原文件" @dragover.prevent="isDraggingRedacted = true" @dragleave="isDraggingRedacted = false" @drop.prevent="handleRedactedDrop" @keydown.enter="$refs.historyRedactedInput.click()" @keydown.space.prevent="$refs.historyRedactedInput.click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span class="upload-zone__title">点击选择或拖入待还原文件</span><span class="upload-zone__hint">支持 TXT / PDF / DOCX / XLSX / PNG / JPG</span>
+        <input type="file" ref="historyRedactedInput" accept=".txt,.csv,.json,.md,.markdown,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,text/*,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" @change="handleRedactedSelect" style="display: none" />
+      </label>
+      <div class="file-meta" v-if="redactedFile" style="margin-top: 16px"><div class="file-meta__info"><div class="file-meta__name">{{ redactedFile.name }}</div><div class="file-meta__detail">{{ formatSize(redactedFile.size) }}</div></div><button class="icon-btn" @click="clearRedactedFile" aria-label="移除当前文件">×</button></div>
+    </section>
 
     <div class="validate-box" v-if="validation" :class="{ 'is-ok': validation.type === 'ok', 'is-err': validation.type === 'err' }">
       <svg v-if="validation.type === 'ok'" class="validate-box__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -88,7 +122,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         开始还原
       </button>
-      <button class="btn btn--ghost btn--block" @click="reset" :disabled="!redactedFile && !mappingFile">
+      <button class="btn btn--ghost btn--block" @click="reset" :disabled="!redactedFile && !selectedHistory">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         重新开始
       </button>
@@ -155,12 +189,14 @@ export default {
       validation: null,
       restored: false,
       restoredText: '',
-      restoredImageDataUrl: null
+      restoredImageDataUrl: null,
+      history: [],
+      selectedHistory: null
     }
   },
   computed: {
     canRestore() {
-      return this.redactedFile && this.mapping && this.validation?.type === 'ok'
+      return Boolean(this.selectedHistory && this.redactedFile && this.mapping && this.validation?.type === 'ok')
     },
     restoredTextParts() {
       if (!this.restoredText || !this.mapping) return []
@@ -193,6 +229,48 @@ export default {
     }
   },
   methods: {
+    loadHistory() {
+      try { this.history = JSON.parse(localStorage.getItem('desens_history') || '[]') } catch (_) { this.history = [] }
+    },
+    selectHistory(item) {
+      this.selectedHistory = item
+      this.mapping = item.mapping
+      this.redactedFile = null
+      this.redactedFileType = null
+      this.validation = { type: 'wait', title: '历史记录已选择', message: `已加载 ${item.file_name}。请上传当前需要还原的脱敏文件。` }
+      this.restored = false; this.restoredText = ''; this.restoredImageDataUrl = null
+    },
+    removeHistory(id) {
+      this.history = this.history.filter(item => item.id !== id)
+      localStorage.setItem('desens_history', JSON.stringify(this.history))
+      if (this.selectedHistory?.id === id) this.reset()
+    },
+    clearHistory() {
+      this.history = []
+      localStorage.removeItem('desens_history')
+      this.reset()
+    },
+    formatDate(value) { return value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '未知时间' },
+    downloadHistoryMapping() {
+      if (!this.selectedHistory?.mapping) return
+      const blob = new Blob([JSON.stringify(this.selectedHistory.mapping, null, 2)], { type: 'application/json' })
+      this.triggerDownload(blob, `mapping_${this.selectedHistory.file_name.replace(/\.[^.]+$/, '')}.json`)
+    },
+    async downloadHistoryRedacted() {
+      if (!this.selectedHistory) return
+      const text = this.selectedHistory.redacted_text || ''
+      const stem = this.selectedHistory.file_name.replace(/\.[^.]+$/, '')
+      try {
+        if (this.selectedHistory.file_type === 'excel') {
+          this.triggerDownload(await DesensitizationAPI.convertTextToExcel(text, `redacted_${stem}.xlsx`, true), `redacted_${stem}.xlsx`)
+        } else if (['docx', 'pdf'].includes(this.selectedHistory.file_type)) {
+          this.triggerDownload(await DesensitizationAPI.convertTextToWord(text, `redacted_${stem}.docx`, true), `redacted_${stem}.docx`)
+        } else {
+          const notice = '【处理与还原规则】本文件包含脱敏占位符（例如 {PHONE_001}）。请用户及任何 AI/Agent 在计算、分析、编辑、改写或排版时完整保留占位符的花括号、字段名与编号，不得删除、拆分、改写或替换；否则可能无法还原原始内容。'
+          this.triggerDownload(new Blob([`${notice}\n\n${text}`], { type: 'text/plain;charset=utf-8' }), `redacted_${stem}.txt`)
+        }
+      } catch (error) { alert(`下载失败：${error.message}`) }
+    },
     handleRedactedSelect(e) {
       if (e.target.files && e.target.files[0]) {
         this.setRedactedFile(e.target.files[0])
@@ -266,6 +344,14 @@ export default {
       this.validateFiles()
     },
     validateFiles() {
+      if (this.selectedHistory) {
+        if (!this.redactedFile) {
+          this.validation = { type: 'wait', title: '等待文件', message: '请选择当前需要还原的脱敏文件。' }
+        } else {
+          this.validation = { type: 'ok', title: '文件已就绪', message: `将使用 ${this.selectedHistory.file_name} 的 ${this.mapping?.mappings?.length || 0} 条映射进行还原。` }
+        }
+        return
+      }
       if (!this.redactedFile && !this.mappingFile) {
         this.validation = null
         return
@@ -281,20 +367,6 @@ export default {
         try {
           const json = JSON.parse(e.target.result)
           this.mapping = json
-          
-          if (!json.user_id) {
-            throw new Error('映射表缺少用户标识')
-          }
-          
-          const userId = this.getUserId()
-          if (json.user_id !== userId) {
-            this.validation = { 
-              type: 'err', 
-              title: '用户归属不一致', 
-              message: '当前浏览器用户标识与映射表中的 user_id 不匹配，无法还原。请使用生成该映射表的同一浏览器或同一账户。' 
-            }
-            return
-          }
           
           // 允许映射表中的 file_type 与上传文件类型不完全匹配
           // 因为脱敏后的文件可能被转换为 .txt 格式
@@ -315,7 +387,7 @@ export default {
           this.validation = { 
             type: 'ok', 
             title: '校验通过', 
-            message: '映射表归属一致，共 ' + (json.mappings ? json.mappings.length : 0) + ' 条记录，可执行还原。' 
+            message: '映射表已加载，共 ' + (json.mappings ? json.mappings.length : 0) + ' 条记录，可执行还原。'
           }
         } catch (e) {
           this.validation = { 
@@ -327,18 +399,6 @@ export default {
       }
       reader.readAsText(this.mappingFile)
     },
-    getUserId() {
-      try {
-        let uid = localStorage.getItem('desens_user_id')
-        if (!uid) {
-          uid = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-          localStorage.setItem('desens_user_id', uid)
-        }
-        return uid
-      } catch (e) {
-        return 'anonymous_' + Date.now().toString(36)
-      }
-    },
     runRestore() {
       if (!this.canRestore) return
       
@@ -346,12 +406,24 @@ export default {
       this.restoredText = ''
       this.restoredImageDataUrl = null
       
-      if (this.redactedFileType === 'text' || this.redactedFileType === 'pdf' || 
+      if (this.redactedFileType === 'text' || this.redactedFileType === 'pdf' ||
           this.redactedFileType === 'docx' || this.redactedFileType === 'excel') {
         this.restoreText()
       } else {
         this.restoreImage()
       }
+    },
+    restoreHistoryImage() {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0)
+        const mappings = this.mapping.mappings || []; const patchMappings = mappings.filter(item => item.rect && item.patch)
+        if (!patchMappings.length) { this.restoredImageDataUrl = canvas.toDataURL('image/png'); this.restored = true; return }
+        let loaded = 0
+        patchMappings.forEach(item => { const patch = new Image(); patch.onload = () => { ctx.drawImage(patch, item.rect.x, item.rect.y); loaded++; if (loaded === patchMappings.length) { this.restoredImageDataUrl = canvas.toDataURL('image/png'); this.restored = true } }; patch.src = item.patch })
+      }
+      img.src = this.selectedHistory.redacted_image
     },
     async restoreText() {
       if (this.redactedFileType === 'pdf') {
@@ -377,7 +449,12 @@ export default {
           alert('PDF 解析失败，请确保文件未加密或尝试其他格式。')
         }
       } else if (this.redactedFileType === 'docx' || this.redactedFileType === 'excel') {
-        alert('Word 和 Excel 文件需要后端服务支持进行还原。请确保后端服务已启动。')
+        try {
+          const mappingFile = new File([JSON.stringify(this.mapping)], 'history-mapping.json', { type: 'application/json' })
+          const result = await DesensitizationAPI.restoreFile(this.redactedFile, mappingFile)
+          this.restoredText = result.restored_text
+          this.restored = true
+        } catch (error) { alert(`还原失败：${error.message}`) }
       } else {
         const reader = new FileReader()
         reader.onload = (e) => {
@@ -474,7 +551,7 @@ export default {
       if (!this.restored) return
       
       try {
-        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.docx'
+        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.docx'
         const blob = await DesensitizationAPI.convertTextToWord(this.restoredText, filename)
         this.triggerDownload(blob, filename)
       } catch (error) {
@@ -486,7 +563,7 @@ export default {
       if (!this.restored) return
       
       try {
-        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.xlsx'
+        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.xlsx'
         const blob = await DesensitizationAPI.convertTextToExcel(this.restoredText, filename)
         this.triggerDownload(blob, filename)
       } catch (error) {
@@ -498,7 +575,7 @@ export default {
       if (!this.restored) return
       
       try {
-        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.txt'
+        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.txt'
         const blob = await DesensitizationAPI.convertTextToTxt(this.restoredText, filename)
         this.triggerDownload(blob, filename)
       } catch (error) {
@@ -510,7 +587,7 @@ export default {
       if (!this.restored) return
       
       try {
-        const filename = 'restored_' + this.redactedFile.name.replace(/\.[^.]+$/, '') + '.md'
+        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.md'
         const blob = await DesensitizationAPI.convertTextToMarkdown(this.restoredText, filename)
         this.triggerDownload(blob, filename)
       } catch (error) {
@@ -522,6 +599,7 @@ export default {
       // 保留旧方法作为备用
       this.downloadAsWord()
     },
+    activeFileName() { return this.selectedHistory?.file_name || this.redactedFile?.name || 'document.txt' },
     dataURLToBlob(dataUrl) {
       const arr = dataUrl.split(',')
       const mime = arr[0].match(/:(.*?);/)[1]
@@ -554,10 +632,20 @@ export default {
       this.restored = false
       this.restoredText = ''
       this.restoredImageDataUrl = null
+      this.selectedHistory = null
       
       if (this.$refs.redactedInput) this.$refs.redactedInput.value = ''
+      if (this.$refs.historyRedactedInput) this.$refs.historyRedactedInput.value = ''
       if (this.$refs.mappingInput) this.$refs.mappingInput.value = ''
     }
-  }
+  },
+  mounted() { this.loadHistory() }
 }
 </script>
+
+<style scoped>
+.history-panel { margin: 28px 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: #fff; overflow: hidden; }
+.history-panel__head { display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid var(--border-soft); }.history-panel__head h2{font-size:var(--text-lg);margin:0}.history-panel__tools{display:flex;align-items:center;gap:12px}.history-panel__tools>span{font:12px var(--font-mono);color:var(--muted)}.history-panel__tools .btn--xs{padding:5px 10px;font-size:12px}
+.history-panel__empty{padding:18px 22px;color:var(--muted);margin:0}.history-item{display:flex;align-items:center;border-bottom:1px solid var(--border-soft)}.history-item:last-child{border-bottom:0}.history-item.is-selected{background:#f8fafc}.history-item__select{flex:1;text-align:left;padding:14px 22px;border:0;background:transparent;cursor:pointer;display:grid;gap:5px}.history-item__select span{font-size:var(--text-sm);color:var(--muted)}.history-item .icon-btn{margin-right:14px;font-size:22px}.restore-upload{margin:24px 0}.restore-upload summary{cursor:pointer;font-weight:600;margin-bottom:16px}
+.history-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 24px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--radius-lg);background:#f8fafc}.history-actions>span{font-size:var(--text-sm);font-weight:600}.history-actions>div{display:flex;gap:8px}.restore-current-upload__hint{margin:8px 0 16px;color:var(--muted)}
+</style>

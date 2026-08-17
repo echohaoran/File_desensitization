@@ -53,29 +53,10 @@ python main.py
 
 ## API 接口
 
-### 1. 检测敏感信息
-
-```bash
-curl -X POST "http://localhost:8000/api/detect" \
-  -F "file=@test.txt"
-```
-
-### 2. 执行脱敏
-
-```bash
-curl -X POST "http://localhost:8000/api/redact" \
-  -F "file=@test.txt" \
-  -F "user_id=user123"
-```
-
-### 3. 还原文件
-
-```bash
-curl -X POST "http://localhost:8000/api/restore" \
-  -F "redacted_file=@redacted.txt" \
-  -F "mapping_file=@mapping.json" \
-  -F "user_id=user123"
-```
+- `POST /api/detect`：检测上传文件中的敏感信息。
+- `POST /api/redact`：执行脱敏，可选传入 `custom_rules` JSON 字段以应用本机敏感字段规则。
+- `POST /api/redact-with-conversion`：PDF 自动转换后执行脱敏。
+- `POST /api/restore`：基于映射表还原文件。
 
 ## 前端集成
 
