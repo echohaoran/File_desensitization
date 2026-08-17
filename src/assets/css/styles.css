@@ -196,6 +196,8 @@ ul, ol { list-style: none; }
 .version-modal__meta > div { padding: var(--space-3); background: var(--surface); }
 .version-modal__meta dt { color: var(--meta); font: var(--text-xs) var(--font-mono); }
 .version-modal__meta dd { margin: var(--space-1) 0 0; color: var(--fg); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
+.version-modal__source-select { width: 100%; padding: 0; border: 0; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+.version-modal__source-select:focus-visible { outline-offset: 3px; }
 .version-modal__commits { margin-top: var(--space-5); }
 .version-modal__commits h3 { margin: 0 0 var(--space-2); font-size: var(--text-base); }
 .version-modal__commits > p { margin: 0; color: var(--muted); line-height: 1.6; }

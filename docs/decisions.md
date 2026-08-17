@@ -11,6 +11,11 @@
 - 决定：`main` 的每次推送自动构建 macOS ARM64 DMG 与 Windows x64 MSI 并保留工作流产物；推送与 `package.json` 一致的 `vX.Y.Z` 标签时，自动创建 GitHub Release 并附加安装包和 SHA-256 校验和。
 - 原因：PyInstaller 需在目标平台构建，GitHub Actions 能为 macOS 与 Windows 分别提供独立 Runner，避免本机交叉编译和手工上传。
 
+## 2026-08-17：版本更新源可选
+
+- 决定：版本更新窗口允许用户选择 GitHub、Gitee 或 CNB 的 `main` 分支；选择仅保存在当前设备。
+- 安全约束：服务端使用固定来源映射，不接收任意 Git 仓库 URL，避免更新检查接口成为外部请求代理。
+
 ## 2026-08-14：取消登录与访客模式
 
 - 决定：当前版本无需登录，移除访客/本机模式状态文案。

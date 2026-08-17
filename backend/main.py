@@ -44,9 +44,20 @@ desensitization_service = DesensitizationService()
 APP_ROOT = Path(os.getenv("DESENS_APP_ROOT", Path(__file__).resolve().parent.parent))
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", str(APP_ROOT / "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-CNB_UPDATE_REPOSITORY = os.getenv(
-    "CNB_UPDATE_REPOSITORY", "https://cnb.cool/echohaoran/File_desensitization.git"
-)
+UPDATE_SOURCES = {
+    "github": {
+        "name": "GitHub",
+        "repository": os.getenv("GITHUB_UPDATE_REPOSITORY", "https://github.com/echohaoran/File_desensitization.git"),
+    },
+    "gitee": {
+        "name": "Gitee",
+        "repository": os.getenv("GITEE_UPDATE_REPOSITORY", "https://gitee.com/echohaoran/file_desensitization.git"),
+    },
+    "cnb": {
+        "name": "CNB",
+        "repository": os.getenv("CNB_UPDATE_REPOSITORY", "https://cnb.cool/echohaoran/File_desensitization.git"),
+    },
+}
 
 REDACTION_NOTICE = (
     "【处理与还原规则】本文件包含脱敏占位符（例如 {PHONE_001}）。"
@@ -330,9 +341,14 @@ async def runtime_capabilities():
 
 
 @app.get("/api/version/check")
-async def check_cnb_update():
-    """以 CNB main 分支为优先更新源；供前端版本号检查使用。"""
-    project_root = Path(__file__).resolve().parent.parent
+async def check_update(source: str = "github"):
+    """从预设 GitHub、Gitee 或 CNB main 分支检查更新。"""
+    source_key = source.lower().strip()
+    source_config = UPDATE_SOURCES.get(source_key)
+    if not source_config:
+        raise HTTPException(status_code=400, detail="不支持的更新来源")
+    project_root = APP_ROOT
+    repository = source_config["repository"]
     try:
         try:
             current = subprocess.run(
@@ -346,17 +362,17 @@ async def check_cnb_update():
         if not current:
             raise RuntimeError("当前部署缺少 revision 信息")
         remote = subprocess.run(
-            ["git", "ls-remote", CNB_UPDATE_REPOSITORY, "refs/heads/main"],
+            ["git", "ls-remote", repository, "refs/heads/main"],
             capture_output=True, text=True, timeout=12, check=True,
         ).stdout.strip().split()
         latest = remote[0] if remote else ""
         if not latest:
-            raise RuntimeError("CNB main 分支未返回提交记录")
+            raise RuntimeError(f"{source_config['name']} main 分支未返回提交记录")
         commits = []
         try:
-            with tempfile.TemporaryDirectory(prefix="cnb_update_") as temp_dir:
+            with tempfile.TemporaryDirectory(prefix=f"{source_key}_update_") as temp_dir:
                 subprocess.run(
-                    ["git", "clone", "--quiet", "--depth", "5", "--branch", "main", CNB_UPDATE_REPOSITORY, temp_dir],
+                    ["git", "clone", "--quiet", "--depth", "5", "--branch", "main", repository, temp_dir],
                     capture_output=True, text=True, timeout=25, check=True,
                 )
                 log = subprocess.run(
@@ -372,8 +388,10 @@ async def check_cnb_update():
             # 提交摘要不可用不影响更新状态判断。
             commits = []
         return {
-            "source": "CNB",
-            "repository": CNB_UPDATE_REPOSITORY.removesuffix(".git"),
+            "source": source_config["name"],
+            "source_key": source_key,
+            "repository": repository.removesuffix(".git"),
+            "branch": "main",
             "current_revision": current,
             "latest_revision": latest,
             "update_available": latest != current,

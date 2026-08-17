@@ -106,3 +106,8 @@
 
 - 操作：检查 `.github/workflows/desktop-release.yml` 的矩阵、标签版本校验、Actions artifacts、GitHub Release 和校验和步骤；执行 `npm run build` 与 `git diff --check`。
 - 结果：通过。`main` 推送将构建 macOS ARM64 DMG 和 Windows x64 MSI artifacts；`vX.Y.Z` 标签将校验版本并发布 GitHub Release。前端生产构建通过，差异无空白错误。实际 Runner 构建将在首次推送至 GitHub 后执行。
+
+## 2026-08-17：可选更新来源与切换竞态烟测
+
+- 操作：开发服务器分别请求 GitHub、Gitee、CNB 更新检查；打开版本窗口后，在 GitHub 初始请求未完成时立即切换到 Gitee。
+- 结果：通过。三个来源均能返回预设 `main` 提交；GitHub 显示新提交 `66ac112`，Gitee/CNB 显示已是最新。切换后仅接受 Gitee 响应，页面显示 `GITEE UPDATE`、正确仓库链接及“已从 Gitee 检查：当前已是最新版本”。

@@ -42,3 +42,5 @@
 - 已确定 Electron + PyInstaller 的 macOS/Windows 打包路线，新增桌面壳、PyInstaller 入口、平台构建命令与桌面发布说明；LibreOffice 在界面与后端均以“仅 DOCX→PDF 必需”的外部组件处理。
 - PyInstaller 已在 macOS Apple Silicon 本机生成并通过健康接口验证 `desens-backend`；构建脚本使用 `.build/desktop/` 专用缓存，避免清理项目既有临时文件。Electron 安装包仍待在具备可用 Electron 下载缓存的 macOS Runner 和 Windows Runner 分别生成。
 - 新增 GitHub Actions 桌面发布工作流：推送 `main` 生成 DMG/MSI Actions artifacts；推送 `vX.Y.Z` 标签时自动发布 GitHub Release 和 SHA-256 校验和。
+- 版本更新窗口的更新源改为可选且本机记忆：GitHub、Gitee、CNB。后端仅接受这三个预设仓库地址并返回所选来源的 `main` 提交，避免由前端传入任意 Git URL。
+- 修复快速切换更新来源时旧检查请求覆盖新来源结果的问题；前端使用递增请求序号，仅接受当前选择对应的响应。
