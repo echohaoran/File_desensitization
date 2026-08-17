@@ -48,3 +48,8 @@ fc-cache -f
 - 执行 `npm install` 后运行 `npm run build`。成功产物为 `dist/`。
 - PDF.js worker 会产生大于 500 KB 的构建警告，当前不阻塞打包。若需优化，改为按需加载或单独托管 worker。
 - 当前没有 Electron/Tauri 打包脚本。需要原生 `.dmg`、`.app`、`.exe`、`.msi` 或 `.deb` 时，先新增桌面运行时和打包配置；Vite `dist/` 不能直接视为安装包。
+
+## Windows GitHub Actions 提示 `spawnSync npm.cmd EINVAL`
+
+- 不要在 Node 的 `execFileSync` 中直接执行 `npm.cmd`。GitHub Windows PowerShell Runner 会拒绝该调用。
+- 桌面前端构建脚本应使用 `process.execPath` 执行 `process.env.npm_execpath`，以当前 npm 调用链启动 `npm run build`；修改后同时在本机运行 `npm run build:desktop:frontend` 和 GitHub Actions Windows 任务验证。

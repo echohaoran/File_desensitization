@@ -44,3 +44,8 @@
 - 新增 GitHub Actions 桌面发布工作流：推送 `main` 生成 DMG/MSI Actions artifacts；推送 `vX.Y.Z` 标签时自动发布 GitHub Release 和 SHA-256 校验和。
 - 版本更新窗口的更新源改为可选且本机记忆：GitHub、Gitee、CNB。后端仅接受这三个预设仓库地址并返回所选来源的 `main` 提交，避免由前端传入任意 Git URL。
 - 修复快速切换更新来源时旧检查请求覆盖新来源结果的问题；前端使用递增请求序号，仅接受当前选择对应的响应。
+
+## 2026-08-17：Windows GitHub Actions 桌面构建修复
+
+- 使用 ego-browser 尝试查看 Actions 页面时 GitHub 连接被浏览器环境以 `ERR_CONNECTION_CLOSED` 中断，改用只读 GitHub CLI 日志定位失败步骤。
+- Windows Runner 在“Build desktop frontend”执行 `spawnSync npm.cmd` 报 `EINVAL`；桌面前端构建脚本改为使用当前 Node 进程执行 `npm_execpath` 指向的 npm CLI，避免直接启动 `.cmd` 文件。

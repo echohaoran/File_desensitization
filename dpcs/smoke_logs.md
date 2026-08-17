@@ -111,3 +111,8 @@
 
 - 操作：开发服务器分别请求 GitHub、Gitee、CNB 更新检查；打开版本窗口后，在 GitHub 初始请求未完成时立即切换到 Gitee。
 - 结果：通过。三个来源均能返回预设 `main` 提交；GitHub 显示新提交 `66ac112`，Gitee/CNB 显示已是最新。切换后仅接受 Gitee 响应，页面显示 `GITEE UPDATE`、正确仓库链接及“已从 Gitee 检查：当前已是最新版本”。
+
+## 2026-08-17：Windows 桌面前端构建故障定位与回归
+
+- 操作：读取 GitHub Actions 失败运行 `31998112005` 的日志，随后执行 `npm run build:desktop:frontend`。
+- 结果：定位到 Windows PowerShell Runner 不能由 Node 直接启动 `npm.cmd`（`spawnSync npm.cmd EINVAL`）。脚本改为 `process.execPath + npm_execpath` 后，本地桌面前端构建通过；修复将由下一次 GitHub Actions Windows Runner 构建验证。
