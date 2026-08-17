@@ -116,3 +116,8 @@
 
 - 操作：读取 GitHub Actions 失败运行 `31998112005` 的日志，随后执行 `npm run build:desktop:frontend`。
 - 结果：定位到 Windows PowerShell Runner 不能由 Node 直接启动 `npm.cmd`（`spawnSync npm.cmd EINVAL`）。脚本改为 `process.execPath + npm_execpath` 后，本地桌面前端构建通过；修复将由下一次 GitHub Actions Windows Runner 构建验证。
+
+## 2026-08-17：Windows MSI 图标链接故障修复
+
+- 操作：读取修复后的 GitHub Actions 运行 `31998768430` 失败日志，检查 electron-builder 配置与图标资源。
+- 结果：Windows 已通过桌面前端构建；MSI 的 WiX 链接因默认 Electron 图标不存在而报 `LGHT0094`。从项目盾牌 PNG 生成包含 16–256px 尺寸的 `desktop/resources/icon.ico`，并显式配置 `win.icon`；下一次 Windows Runner 将验证 MSI 产物上传。

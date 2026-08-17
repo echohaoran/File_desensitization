@@ -49,3 +49,4 @@
 
 - 使用 ego-browser 尝试查看 Actions 页面时 GitHub 连接被浏览器环境以 `ERR_CONNECTION_CLOSED` 中断，改用只读 GitHub CLI 日志定位失败步骤。
 - Windows Runner 在“Build desktop frontend”执行 `spawnSync npm.cmd` 报 `EINVAL`；桌面前端构建脚本改为使用当前 Node 进程执行 `npm_execpath` 指向的 npm CLI，避免直接启动 `.cmd` 文件。
+- 修复后 Windows 已越过前端构建，但 WiX 在 MSI 链接阶段因 Electron 默认图标缺失报 `LGHT0094`；新增多尺寸 Windows `.ico`，并在 electron-builder 的 `win.icon` 中显式配置。

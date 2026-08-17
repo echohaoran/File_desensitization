@@ -53,6 +53,7 @@
       "category": "public.app-category.productivity"
     },
     "win": {
+      "icon": "desktop/resources/icon.ico",
       "target": ["msi"]
     }
   }
