@@ -31,7 +31,7 @@
     "appId": "com.desens.filetool",
     "productName": "文件脱敏与还原工具",
     "npmRebuild": false,
-    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "artifactName": "desensitization_${version}.${ext}",
     "directories": {
       "output": "release",
       "buildResources": "desktop/resources"

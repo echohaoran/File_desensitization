@@ -126,3 +126,8 @@
 
 - 操作：推送 `v0.1.0` 标签，读取发布 job 的失败日志。
 - 结果：DMG 与 MSI 均构建完成；`gh release view` 因发布 job 无 `.git` 且未指定远程仓库而失败。工作流已改为对 `view`、`upload`、`create` 全部显式传入 `$GITHUB_REPOSITORY`，修复后将重新运行该标签工作流验证 Release 资产。
+
+## 2026-08-17：Release 资产命名规范
+
+- 操作：调整 electron-builder 的安装包文件名模板，并核对现有 `v0.1.0` 的发布资产。
+- 结果：后续构建将生成 `desensitization_版本号.dmg` 与 `desensitization_版本号.msi`；当前 Release 将同步替换为同一命名规范并重写校验和文件。

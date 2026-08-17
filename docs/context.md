@@ -51,3 +51,4 @@
 - Windows Runner 在“Build desktop frontend”执行 `spawnSync npm.cmd` 报 `EINVAL`；桌面前端构建脚本改为使用当前 Node 进程执行 `npm_execpath` 指向的 npm CLI，避免直接启动 `.cmd` 文件。
 - 修复后 Windows 已越过前端构建，但 WiX 在 MSI 链接阶段因 Electron 默认图标缺失报 `LGHT0094`；新增多尺寸 Windows `.ico`，并在 electron-builder 的 `win.icon` 中显式配置。
 - `v0.1.0` 标签的 DMG/MSI 均构建成功，但发布 job 未 checkout 仓库且 `gh release` 未指定仓库，导致 `.git` 缺失；改为始终传入 `$GITHUB_REPOSITORY`，无需在发布 job 重复检出源码。
+- Release 安装包统一采用跨平台稳定命名 `desensitization_版本号.格式`；同一版本的 DMG 与 MSI 依靠不同扩展名区分，避免产品名称、平台与架构后缀造成下载链接不一致。
