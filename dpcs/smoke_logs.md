@@ -131,3 +131,8 @@
 
 - 操作：调整 electron-builder 的安装包文件名模板，并核对现有 `v0.1.0` 的发布资产。
 - 结果：后续构建将生成 `desensitization_版本号.dmg` 与 `desensitization_版本号.msi`；当前 Release 将同步替换为同一命名规范并重写校验和文件。
+
+## 2026-08-17：v0.1.1 桌面包压缩与发布说明准备
+
+- 操作：启用 electron-builder 最高压缩，调整 PyInstaller 优化与排除项，执行 `npm run build` 和差异空白检查。
+- 结果：前端生产构建通过；PDF.js 大 chunk 警告保持不阻塞。排除可选 Presidio/spaCy 依赖后，本机 macOS ARM64 后端由约 115 MB 降至约 93 MB；临时启动二进制并调用 `/api/health` 通过。已为 `v0.1.1` 准备 Release 更新说明，标签构建会校验该说明文件并写入 GitHub Release 页面。

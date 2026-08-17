@@ -54,3 +54,11 @@
 
 - 决定：版本检查优先使用 CNB 仓库 `https://cnb.cool/echohaoran/File_desensitization.git` 的 `main` 分支。
 - 实现：后端通过 `git ls-remote` 比较当前提交与 CNB 最新提交；前端仅在 CNB 不可用时回退读取部署站点的 `version.json`。
+# 架构与产品决策
+
+## 2026-08-17：桌面发行包压缩与版本说明
+
+- 保持 Electron + PyInstaller 双运行时架构，确保离线脱敏、PDF→DOCX 与 DOCX/XLSX 保格式处理能力不被裁剪。
+- 使用 electron-builder `maximum` 压缩、PyInstaller `--optimize 2` 和明确的非运行期模块排除项降低安装器体积；不移除 `pdf2docx` 及其所需依赖。
+- Presidio/spaCy 在当前生产依赖及模型配置下是不可用的可选增强，桌面包明确排除其依赖树；中文姓名与地址仍使用现有 jieba、规则和人工复核路径。
+- 安装包命名固定为 `desensitization_版本号.格式`，发布说明存放在 `docs/releases/vX.Y.Z.md` 并由发布工作流写入 GitHub Release 页面。

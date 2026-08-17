@@ -52,3 +52,5 @@
 - 修复后 Windows 已越过前端构建，但 WiX 在 MSI 链接阶段因 Electron 默认图标缺失报 `LGHT0094`；新增多尺寸 Windows `.ico`，并在 electron-builder 的 `win.icon` 中显式配置。
 - `v0.1.0` 标签的 DMG/MSI 均构建成功，但发布 job 未 checkout 仓库且 `gh release` 未指定仓库，导致 `.git` 缺失；改为始终传入 `$GITHUB_REPOSITORY`，无需在发布 job 重复检出源码。
 - Release 安装包统一采用跨平台稳定命名 `desensitization_版本号.格式`；同一版本的 DMG 与 MSI 依靠不同扩展名区分，避免产品名称、平台与架构后缀造成下载链接不一致。
+- 发布 `v0.1.1` 时，Electron 安装器启用最高压缩，PyInstaller 后端以优化字节码打包并排除测试、交互式与未使用科学计算模块；每个发布标签必须对应 `docs/releases/vX.Y.Z.md`，该文件作为 GitHub Release 的更新说明。
+- 首次本机构建显示可选 Presidio/spaCy 生态仍被自动收集；该能力因模型不在生产依赖中始终回退，因此显式排除其 NLP/数据分析依赖，以保留当前功能并进一步压缩桌面后端。

@@ -85,6 +85,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: release-assets
@@ -96,6 +98,12 @@ jobs:
           cd release-assets
           sha256sum *.dmg *.msi > SHA256SUMS.txt
 
+      - name: Verify release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: test -f "docs/releases/${TAG}.md"
+
       - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -105,5 +113,5 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --generate-notes --title "文件脱敏与还原工具 $TAG"
+            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --notes-file "docs/releases/${TAG}.md" --title "文件脱敏与还原工具 $TAG"
           fi

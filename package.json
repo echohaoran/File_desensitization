@@ -1,6 +1,6 @@
 {
   "name": "desens-vue",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "本地优先的文件脱敏与还原工具",
   "author": "DESENS",
   "private": true,
@@ -30,6 +30,7 @@
   "build": {
     "appId": "com.desens.filetool",
     "productName": "文件脱敏与还原工具",
+    "compression": "maximum",
     "npmRebuild": false,
     "artifactName": "desensitization_${version}.${ext}",
     "directories": {

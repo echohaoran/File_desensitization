@@ -51,7 +51,7 @@ export default {
   data() {
     return {
       statusMessage: '',
-      currentVersion: 'v0.1.0',
+      currentVersion: 'v0.1.1',
       updateAvailable: false,
       checkingUpdate: false,
       showVersionDialog: false,
