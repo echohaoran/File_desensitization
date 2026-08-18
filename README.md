@@ -6,23 +6,37 @@
 
 ## 快速开始
 
-### 一键启动（推荐）
+### 源码安装（推荐）
 
 ```bash
-# 1. 克隆或进入项目目录
-cd /Users/echowang/git/File_desensitization
-
-# 2. 首次使用：安装所有依赖
-bash scripts/install.sh
-
-# 3. 启动前后端服务
-bash scripts/start.sh
-
-# 4. 访问应用
-# 前端: http://localhost:5173
-# 后端: http://localhost:8000
-# API 文档: http://localhost:8000/docs
+# 需要 Node.js 20+、Python 3.10+、git 和 curl
+curl -fsSL https://raw.githubusercontent.com/echohaoran/File_desensitization/main/scripts/install-from-source.sh | bash
 ```
+
+安装脚本默认将源码放在 `~/file-desensitization`，完成后执行它输出的启动命令：
+
+```bash
+cd ~/file-desensitization
+npm run start:local
+```
+
+然后访问 `http://localhost:5173`。后端只监听本机 `127.0.0.1:8000`，不会对局域网开放。
+
+如需审查脚本内容后再执行，可先下载脚本再运行，不要直接管道执行。
+
+### 已有源码目录
+
+如果已经进入项目目录，可直接执行：
+
+```bash
+# 需要 Node.js 20+ 和 Python 3.10+
+npm install
+npm run setup:local
+npm run start:local
+```
+
+然后访问 `http://localhost:5173`。关闭终端或按 `Ctrl+C` 会同时停止前端和后端服务。
+Python 后端依赖会安装到项目内的 `backend/venv/`，不会修改系统 Python 环境。
 
 ### 常用命令
 
@@ -31,6 +45,7 @@ bash scripts/start.sh      # 启动所有服务
 bash scripts/stop.sh       # 停止所有服务
 bash scripts/restart.sh    # 重启所有服务
 bash scripts/status.sh     # 查看服务状态
+bash scripts/update.sh     # 拉取源码更新、安装依赖并重启
 ```
 
 ---
@@ -40,6 +55,9 @@ bash scripts/status.sh     # 查看服务状态
 ```
 File_desensitization/
 ├── scripts/                    # 管理脚本
+│   ├── install-from-source.sh  # curl 源码安装脚本
+│   ├── setup-local.mjs         # 安装本机 Python 依赖
+│   ├── start-local.mjs         # 启动 localhost 前后端
 │   ├── start.sh               # 一键启动前后端
 │   ├── stop.sh                # 停止所有服务
 │   ├── restart.sh             # 重启所有服务

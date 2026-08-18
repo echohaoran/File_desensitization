@@ -3,6 +3,8 @@
 ## 2026-08-17
 
 - [x] 选定 Electron + PyInstaller 桌面方案，并建立本地后端生命周期管理骨架。
+- [x] 改用源码安装脚本，通过 npm + Python 本机启动 localhost 浏览器版。
+- [x] 停止 GitHub Actions DMG/MSI 自动打包流程。
 - [x] 在 GitHub macOS Apple Silicon 与 Windows x64 Runner 构建并验证 DMG/MSI；`v0.1.0` 已发布。
 - [ ] 发布 `v0.1.1` 精简桌面包，并在两类真实目标机完成安装、启动、脱敏与还原回归。
 - [ ] 建立 CNB Release 产物、校验和与桌面应用更新清单。

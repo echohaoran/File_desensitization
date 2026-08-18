@@ -734,7 +734,7 @@ export default {
       const sel = window.getSelection()
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
       
-      const text = sel.toString().replace(/\s+/g, ' ').trim()
+      let text = sel.toString().replace(/\s+/g, ' ').trim()
       if (!text || text.length < 2) return
       // 选区可能包含已经脱敏的占位符；先还原为对应原值，再计算原文偏移。
       const sourceText = text.replace(/\{[A-Z][A-Z0-9_]*_\d+\}/g, (placeholder) => {

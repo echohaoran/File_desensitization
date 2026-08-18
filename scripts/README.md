@@ -2,6 +2,18 @@
 
 本目录包含用于管理多步骤脱敏系统的各种脚本。
 
+源码部署后的日常操作：
+
+```bash
+bash scripts/start.sh     # 后台启动 localhost 服务
+bash scripts/status.sh    # 查看状态和健康检查
+bash scripts/restart.sh   # 重启服务
+bash scripts/stop.sh      # 停止服务
+bash scripts/update.sh    # 拉取源码、更新依赖并重启
+```
+
+`start.sh` 使用统一的 `npm run start:local` 同时启动 Vite 和 FastAPI；PID 保存在 `logs/local.pid`，日志保存在 `logs/local.log`。
+
 ## 脚本列表
 
 ### 1. `start.sh` - 一键启动

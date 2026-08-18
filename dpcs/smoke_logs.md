@@ -136,3 +136,8 @@
 
 - 操作：启用 electron-builder 最高压缩，调整 PyInstaller 优化与排除项，执行 `npm run build` 和差异空白检查。
 - 结果：前端生产构建通过；PDF.js 大 chunk 警告保持不阻塞。排除可选 Presidio/spaCy 依赖后，本机 macOS ARM64 后端由约 115 MB 降至约 93 MB；临时启动二进制并调用 `/api/health` 通过。已为 `v0.1.1` 准备 Release 更新说明，标签构建会校验该说明文件并写入 GitHub Release 页面。
+# 2026-08-18：npm 本机浏览器运行方式烟测
+
+- 环境：macOS，本机 Node.js 与 Python 3.9；执行 `npm run setup:local` 后启动 `npm run start:local`。
+- 结果：Vite 在 `http://127.0.0.1:5173/` 返回 200；FastAPI `http://127.0.0.1:8000/api/health` 返回 `status: healthy`；Ctrl+C 可同时停止服务。
+- 备注：未安装 spaCy 时后端按设计回退到正则表达式和百家姓库检测；不影响基础启动。

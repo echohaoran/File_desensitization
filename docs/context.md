@@ -1,5 +1,25 @@
 # 会话上下文
 
+## 2026-08-18：增加 npm 本机浏览器运行方式
+
+- 新增 `npm run setup:local`，在项目内创建 `backend/venv/` 并安装 Python 后端依赖。
+- 新增 `npm run start:local`，跨平台同时启动 FastAPI 和 Vite，用户通过 `http://localhost:5173` 使用。
+- 保留 Electron + PyInstaller 桌面包配置，但未签名、公证的 macOS DMG 不再作为普通用户的推荐安装方式。
+- 修复 `Desensitize.vue` 框选逻辑中的 `const` 重赋值错误，确保 Vite 本地开发服务器可以编译。
+- 将 `pdf2docx` 固定版本调整为公开 PyPI 可安装的 `0.5.8`，修复新环境安装失败。
+
+## 2026-08-18：切换源码安装交付方式
+
+- 新增 `scripts/install-from-source.sh`，支持通过 curl 下载源码、安装依赖并输出 localhost 启动命令。
+- 删除 `.github/workflows/desktop-release.yml`，停止 GitHub Actions 的 DMG/MSI 自动打包。
+- Electron 桌面配置和历史发布文档保留为历史资料，不再作为普通用户安装入口。
+
+## 2026-08-18：增加源码部署生命周期脚本
+
+- `scripts/start.sh`、`scripts/restart.sh`、`scripts/stop.sh` 统一管理 `npm run start:local` 进程。
+- `scripts/update.sh` 在源码无未提交改动时执行 fast-forward 更新、重新安装依赖并重启服务。
+- 服务 PID 记录在 `logs/local.pid`，合并日志写入 `logs/local.log`。
+
 ## 2026-08-17：扩展敏感信息 DOCX 测试样本
 
 - 新建 `output/test-documents/敏感信息全面回归测试样本_仅虚构数据.docx`。

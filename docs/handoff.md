@@ -1,5 +1,12 @@
 # 开发交接记录
 
+## 2026-08-18：当前交付方式
+
+- 普通用户改用 `scripts/install-from-source.sh`，通过 curl 下载源码，再执行 npm 与 Python 本机安装。
+- 启动命令为 `npm run start:local`，浏览器入口为 `http://localhost:5173`，后端仅监听 `127.0.0.1:8000`。
+- `.github/workflows/desktop-release.yml` 已删除，停止 GitHub Actions 的 DMG/MSI 自动打包流程。
+- Electron + PyInstaller 文件和旧版 Release 记录保留为历史资料；未签名公证的 macOS DMG 不再作为推荐交付物。
+
 更新时间：2026-08-16
 
 ## 当前可运行状态
@@ -35,7 +42,7 @@
 
 ## 格式转换实现与依赖
 
-- PDF→DOCX：`/api/pdf-to-word`，依赖 `pdf2docx==0.5.13` 及其 PyMuPDF、OpenCV 等依赖；输出应包含可编辑文字、表格和图片。
+- PDF→DOCX：`/api/pdf-to-word`，依赖公开 PyPI 可安装的 `pdf2docx==0.5.8` 及其 PyMuPDF、OpenCV 等依赖；输出应包含可编辑文字、表格和图片。
 - DOCX→PDF：`/api/word-to-pdf`，依赖系统 `soffice`；`_run_soffice()` 使用临时 LibreOffice 用户配置，勿改回共享默认配置。
 - 远端已安装 `libreoffice-writer`、`fonts-noto-cjk`、`poppler-utils`；Python 依赖安装使用华为镜像可避免默认索引超时。
 - 2026-08-14 已用公司目录中的 1.2 MB 原始工作联系函 DOCX 验证 DOCX→PDF：输出 2 页 A4，中文、表格、图片正常。

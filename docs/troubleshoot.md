@@ -16,7 +16,7 @@
 
 ## PDF→DOCX 失败或不可编辑
 
-- 接口依赖 `pdf2docx==0.5.13`。在后端虚拟环境执行：
+- 接口依赖公开 PyPI 可安装的 `pdf2docx==0.5.8`。在后端虚拟环境执行：
 
 ```bash
 backend/venv/bin/pip install -r backend/requirements.txt -i https://repo.huaweicloud.com/repository/pypi/simple

@@ -1,8 +1,18 @@
-# Electron + PyInstaller 桌面打包
+# Electron + PyInstaller 桌面打包（历史方案）
 
 更新时间：2026-08-17
 
-## 目标产物
+## 当前交付方式
+
+项目当前不再通过 GitHub Actions 构建 DMG/MSI。普通用户使用源码安装脚本：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/echohaoran/File_desensitization/main/scripts/install-from-source.sh | bash
+```
+
+脚本下载源码、安装 npm 依赖、创建 Python 虚拟环境并安装后端依赖。启动后通过 `http://localhost:5173` 使用。
+
+## 历史目标产物
 
 - macOS Apple Silicon：DMG。
 - Windows x64：MSI 安装包。
@@ -47,9 +57,23 @@ npm run desktop:dist
 npm run desktop:dev
 ```
 
-## 发布流程
+## 浏览器版安装方式
 
-GitHub Actions 工作流位于 `.github/workflows/desktop-release.yml`：
+如果 macOS 未配置 Developer ID 签名与 Notarization，不应向普通用户分发 DMG。推荐改用本机浏览器版：
+
+```bash
+npm install
+npm run setup:local
+npm run start:local
+```
+
+用户通过 `http://localhost:5173` 使用，后端仅监听 `127.0.0.1:8000`。该方式仍需要 Node.js 20+ 和 Python 3.10+，但不需要安装 Electron、DMG 或 macOS 安全例外。
+
+桌面包仍可作为已完成签名、公证后的可选发行方式保留。
+
+## 历史桌面发布流程
+
+旧版 GitHub Actions 工作流已移除；以下内容仅作为历史记录，不再执行：
 
 1. 推送到 `main`：自动构建 macOS DMG 和 Windows MSI，并保留 14 天 Actions artifacts。
 2. 推送 `vX.Y.Z` 标签：先校验标签与 `package.json` 版本一致，再构建 DMG/MSI、生成 `SHA256SUMS.txt`，并创建或更新 GitHub Release。

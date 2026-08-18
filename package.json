@@ -10,6 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "setup:local": "node scripts/setup-local.mjs",
+    "start:local": "node scripts/start-local.mjs",
     "build:desktop:frontend": "node scripts/build-desktop-frontend.mjs",
     "build:desktop:backend": "node scripts/build-desktop-backend.mjs",
     "desktop:dev": "npm run build:desktop:frontend && electron .",
