@@ -56,10 +56,13 @@ export default {
       this.converting = true; this.error = ''; this.result = ''
       try {
         const blob = this.direction === 'pdf-to-word' ? await DesensitizationAPI.convertPdfToWord(this.file) : await DesensitizationAPI.convertWordToPdf(this.file)
+        if (!(blob instanceof Blob) || blob.size === 0) throw new Error('转换服务返回了空文件，请检查后端转换依赖')
         const extension = this.direction === 'pdf-to-word' ? '.docx' : '.pdf'
         const filename = `${this.file.name.replace(/\.[^.]+$/, '')}${extension}`
         const url = URL.createObjectURL(blob); const link = document.createElement('a')
-        link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url)
+        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove()
+        // WebView/浏览器可能在 click 返回后才开始读取 Blob，不能立即撤销 URL。
+        setTimeout(() => URL.revokeObjectURL(url), 30_000)
         this.result = `已生成 ${filename}。`
       } catch (error) { this.error = error.message || '转换失败，请确认后端服务已启动。' } finally { this.converting = false }
     }
