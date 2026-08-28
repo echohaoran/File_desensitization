@@ -199,3 +199,7 @@
 - `.app`：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`
 - `.dmg`：`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`
 - 已启动最新 `.app`，待人工验证。
+### 2026-08-28 转换修复版本地包
+
+- Tauri 构建：通过。
+- 已启动最新 `.app`，可测试 PDF↔Word 转换下载是否仍为空。
