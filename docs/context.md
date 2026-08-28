@@ -408,3 +408,7 @@
 ## 2026-08-28 转换修复版重新打包
 
 - 使用提交 `8ea0a9c` 执行 `npm run tauri:build`，生成最新 macOS `.app` 与 `.dmg` 并启动应用。
+## 2026-08-28 内置文档适配器依赖
+
+- 为 Tauri Rust 核心加入 `zip`、`quick-xml`、`calamine`、`rust_xlsxwriter`、`pdf-extract` 依赖并更新 `Cargo.lock`。
+- `cargo check` 通过；依赖已进入应用构建链，但 DOCX/XLSX/PDF 适配器业务接入仍需下一步实现，当前未宣称结构化脱敏已完成。
