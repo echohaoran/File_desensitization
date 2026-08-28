@@ -178,7 +178,8 @@ class DesensitizationService:
             "gender": re.compile(r'(?:性别|gender)\s*[:：]?\s*(?:男|女|未知)', re.IGNORECASE),
             "ethnicity": re.compile(r'(?:民族|族别)\s*[:：]?\s*[\u4e00-\u9fa5]{1,8}族?'),
             "province": re.compile(r'(?:省份|籍贯|所在省)\s*[:：]?\s*(?:北京市|天津市|上海市|重庆市|河北省|山西省|辽宁省|吉林省|黑龙江省|江苏省|浙江省|安徽省|福建省|江西省|山东省|河南省|湖北省|湖南省|广东省|海南省|四川省|贵州省|云南省|陕西省|甘肃省|青海省|台湾省|内蒙古自治区|广西壮族自治区|西藏自治区|宁夏回族自治区|新疆维吾尔自治区)'),
-            "address": re.compile(r'(?:地址|住址|开户地址|收货地址)\s*[:：]?\s*[\u4e00-\u9fa5A-Za-z0-9#\-]{6,80}|(?<=为)[\u4e00-\u9fa5]{2,8}省[\u4e00-\u9fa5]{2,8}市[\u4e00-\u9fa5]{2,8}(?:区|县|镇|街道)[\u4e00-\u9fa5A-Za-z0-9#\-]{1,20}(?:路|街|巷|道)\d{1,5}号'),
+            # 地址只脱敏省/市之后的区县、街道、道路和门牌；省份与城市保留在正文中。
+            "address": re.compile(r'(?:地址|住址|开户地址|收货地址)\s*[:：]?\s*(?:北京市|天津市|上海市|重庆市|[\u4e00-\u9fa5]{2,8}省[\u4e00-\u9fa5]{2,8}市)([\u4e00-\u9fa5]{2,12}(?:区|县|镇|街道)[\u4e00-\u9fa5A-Za-z0-9#\-]{0,30}(?:号|室|栋|单元|楼|路|街|巷|道)[\u4e00-\u9fa5A-Za-z0-9#\-]{0,12})'),
             
             # 中文姓名（2-4个字，常见姓氏开头）
             "chinese_name": None,  # 需要特殊处理
@@ -347,7 +348,8 @@ class DesensitizationService:
             
             matches = pattern.finditer(text)
             for match in matches:
-                value = match.group(1) if pattern_name == "military_id" and match.lastindex else match.group()
+                partial_group = pattern_name in {"military_id", "address"} and match.lastindex
+                value = match.group(1) if partial_group else match.group()
                 is_valid = self._is_valid_sensitive_value(pattern_name, value)
                 # 企业证照测试数据有时使用虚构校验位；仍标记候选值，交由人工复核，
                 # 避免用户框选后才得到“普通区域”而失去字段类型。
@@ -358,8 +360,8 @@ class DesensitizationService:
                 detections.append({
                     "type": pattern_name,
                     "value": value,
-                    "start": match.start(1) if pattern_name == "military_id" and match.lastindex else match.start(),
-                    "end": match.end(1) if pattern_name == "military_id" and match.lastindex else match.end(),
+                    "start": match.start(1) if partial_group else match.start(),
+                    "end": match.end(1) if partial_group else match.end(),
                     "confidence": 0.9 if is_valid else 0.6,
                     "source": "regex"
                 })

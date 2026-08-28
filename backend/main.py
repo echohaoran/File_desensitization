@@ -433,11 +433,38 @@ async def convert_pdf_to_word(file: UploadFile = File(...)):
             with open(temp_pdf_path, 'wb') as temp_pdf:
                 temp_pdf.write(content)
             from pdf2docx import Converter
-            converter = Converter(temp_pdf_path)
             try:
-                converter.convert(temp_docx_path)
-            finally:
-                converter.close()
+                # pdf2docx 0.5.x expects the legacy PyMuPDF Rect.get_area API.
+                # Newer bundled PyMuPDF versions removed it, so restore the tiny
+                # compatibility method before conversion instead of returning a
+                # fabricated/empty document.
+                import fitz
+                if not hasattr(fitz.Rect, 'get_area'):
+                    fitz.Rect.get_area = lambda rect: abs(rect.width * rect.height)
+                converter = Converter(temp_pdf_path)
+                try:
+                    converter.convert(temp_docx_path)
+                finally:
+                    converter.close()
+            except Exception as conversion_error:
+                # Some PDFs contain layout constructs unsupported by pdf2docx.
+                # Preserve their real text in an editable DOCX and report that
+                # layout reconstruction was degraded; never emit a placeholder.
+                from docx import Document
+                fallback = Document()
+                extracted_pages = []
+                from PyPDF2 import PdfReader
+                with open(temp_pdf_path, 'rb') as pdf_file:
+                    reader = PdfReader(pdf_file)
+                    extracted_pages = [page.extract_text() or '' for page in reader.pages]
+                text = '\n\n'.join(extracted_pages).strip()
+                if not text:
+                    raise RuntimeError(f'PDF 未提取到可编辑文本：{conversion_error}')
+                for paragraph in text.split('\n'):
+                    fallback.add_paragraph(paragraph)
+                fallback.add_paragraph('')
+                fallback.add_paragraph('转换提示：原 PDF 的复杂版式未能完全重建，文字内容已保留，请人工复核。')
+                fallback.save(temp_docx_path)
             if not os.path.exists(temp_docx_path) or os.path.getsize(temp_docx_path) == 0:
                 raise RuntimeError('未生成可编辑的 Word 文件')
             response_ready = True

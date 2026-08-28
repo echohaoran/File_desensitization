@@ -189,3 +189,10 @@ fc-cache -f
 ### 转换完成但下载文件为空
 
 如果转换接口实际返回了内容，而前端在 `link.click()` 后立即调用 `URL.revokeObjectURL`，桌面 WebView 可能尚未读取 Blob。现改为延迟释放并在空响应时明确报错。
+## 2026-08-28 llama.cpp native abort
+
+崩溃栈位于 `llama_decode -> LlamaSession::advance_context`，触发线程为隔离推理子进程。初步判断为输入超过模型默认上下文或 batch 限制。当前已限制会话为 2048 context、256 batch，并限制单次输入；若仍失败，应禁用该模型并记录错误，不得继续直接加载。
+
+## Candle 迁移状态
+
+已移除 llama.cpp。Candle 当前支持 Qwen2 GGUF 推理；模型目录必须同时提供匹配的 `tokenizer.json`。不匹配架构或缺少 tokenizer 时返回明确错误，不会伪造候选结果。

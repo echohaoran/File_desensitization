@@ -152,3 +152,7 @@ git push git@github.com:echohaoran/File_desensitization.git v0.1.1
 
 - 标签工作流会构建 `desensitization_0.1.1.dmg`、`desensitization_0.1.1.msi` 并创建带版本更新说明的 GitHub Release。
 - 发布后应下载两份安装包，在 macOS Apple Silicon 与 Windows x64 真机完成安装、启动、脱敏和还原回归；代码签名与 macOS Notarization 尚未配置。
+### 当前交付约定
+
+- 代码修改后的构建产物先交给用户本地测试。
+- 未收到“测试完成/可以推送”等明确确认前，不执行 `git push`。

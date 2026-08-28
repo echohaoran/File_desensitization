@@ -9,7 +9,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 
 #[derive(Debug, Serialize)]
 pub struct CommandError {
@@ -74,6 +74,21 @@ pub struct FileRedactionRequest {
 pub struct RegisterModelRequest {
     pub schema_version: u32,
     pub path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DownloadModelRequest {
+    pub schema_version: u32,
+    pub url: String,
+    pub filename: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AiDetectRequest {
+    pub schema_version: u32,
+    pub model_path: String,
+    pub rules_summary: String,
+    pub selected_text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -539,4 +554,56 @@ pub fn register_local_model(
         request_id: request_id(),
         data: model,
     })
+}
+
+#[tauri::command]
+pub async fn download_model(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: DownloadModelRequest,
+) -> Result<ApiResponse<ModelRecord>, CommandError> {
+    if request.schema_version != SCHEMA_VERSION || !request.url.starts_with("https://") {
+        return Err(CommandError { code: "INVALID_DOWNLOAD_REQUEST", message: "模型下载地址无效", retryable: false });
+    }
+    let filename = std::path::Path::new(&request.filename).file_name().and_then(|v| v.to_str()).unwrap_or("model.gguf");
+    if !filename.to_ascii_lowercase().ends_with(".gguf") {
+        return Err(CommandError { code: "MODEL_INVALID_FORMAT", message: "下载文件必须是 GGUF 模型", retryable: false });
+    }
+    let dir = app.path().app_data_dir().map_err(|_| CommandError { code: "MODEL_STORE_ERROR", message: "无法定位模型目录", retryable: true })?.join("models");
+    std::fs::create_dir_all(&dir).map_err(|_| CommandError { code: "MODEL_STORE_ERROR", message: "无法创建模型目录", retryable: true })?;
+    let temp = dir.join(format!(".{}.part", filename));
+    let target = dir.join(filename);
+    let response = reqwest::Client::new().get(&request.url).send().await.map_err(|_| CommandError { code: "MODEL_DOWNLOAD_FAILED", message: "模型下载失败，请检查网络或镜像地址", retryable: true })?;
+    if !response.status().is_success() { return Err(CommandError { code: "MODEL_DOWNLOAD_FAILED", message: "模型下载地址返回错误", retryable: true }); }
+    let bytes = response.bytes().await.map_err(|_| CommandError { code: "MODEL_DOWNLOAD_FAILED", message: "模型下载中断", retryable: true })?;
+    std::fs::write(&temp, &bytes).map_err(|_| CommandError { code: "MODEL_STORE_ERROR", message: "无法写入模型目录", retryable: true })?;
+    std::fs::rename(&temp, &target).map_err(|_| CommandError { code: "MODEL_STORE_ERROR", message: "模型保存失败", retryable: true })?;
+    let model = inspect_gguf(&target).map_err(|_| CommandError { code: "MODEL_INVALID_FORMAT", message: "下载完成但文件不是有效的 GGUF 模型", retryable: false })?;
+    let storage = state.storage.lock().map_err(|_| CommandError { code: "STORAGE_LOCK_ERROR", message: "本地数据存储锁不可用", retryable: true })?;
+    let provider = storage.as_ref().ok_or(CommandError { code: "STORAGE_NOT_READY", message: "本地数据存储尚未准备完成", retryable: true })?;
+    let mut models = provider.read_collection::<Value>("models")?;
+    models.items.push(serde_json::to_value(&model).map_err(|_| CommandError { code: "MODEL_STORE_ERROR", message: "模型记录生成失败", retryable: true })?);
+    provider.write_collection("models", &models.items).map_err(CommandError::from)?;
+    Ok(ApiResponse { schema_version: SCHEMA_VERSION, success: true, request_id: request_id(), data: model })
+}
+
+#[tauri::command]
+pub async fn ai_detect_candidates(request: AiDetectRequest) -> Result<ApiResponse<String>, CommandError> {
+    if request.schema_version != SCHEMA_VERSION || request.model_path.is_empty() || request.selected_text.is_empty() {
+        return Err(CommandError { code: "INVALID_AI_REQUEST", message: "AI 检测参数不完整", retryable: false });
+    }
+    let output = tokio::task::spawn_blocking(move || {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let executable = std::env::current_exe().map_err(|_| "无法定位推理进程")?;
+        let mut child = Command::new(executable).arg("--llama-infer").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_| "无法启动隔离推理进程")?;
+        let payload = serde_json::to_vec(&request).map_err(|_| "AI 请求序列化失败")?;
+        child.stdin.take().ok_or("推理进程输入不可用")?.write_all(&payload).map_err(|_| "AI 请求发送失败")?;
+        let result = child.wait_with_output().map_err(|_| "推理进程未正常结束")?;
+        if !result.status.success() { return Err("隔离推理进程失败"); }
+        String::from_utf8(result.stdout).map_err(|_| "AI 输出编码无效")
+    })
+        .await.map_err(|_| CommandError { code: "AI_TASK_FAILED", message: "AI 推理任务异常", retryable: true })?
+        .map_err(|_| CommandError { code: "AI_INFERENCE_FAILED", message: "AI 推理失败，应用已隔离该模型进程，请检查 GGUF 模型兼容性", retryable: true })?;
+    Ok(ApiResponse { schema_version: SCHEMA_VERSION, success: true, request_id: request_id(), data: output })
 }

@@ -2,6 +2,7 @@ mod commands;
 mod document;
 mod domain;
 mod model;
+mod inference;
 mod redaction;
 mod storage;
 mod task;
@@ -14,6 +15,17 @@ use tauri::Manager;
 pub struct AppState {
     pub storage: Mutex<Option<JsonStorageProvider>>,
     pub tasks: task::TaskManager,
+}
+
+pub fn run_inference_cli() -> i32 {
+    use std::io::{Read, Write};
+    let mut input = Vec::new();
+    if std::io::stdin().read_to_end(&mut input).is_err() { return 2; }
+    let request: commands::AiDetectRequest = match serde_json::from_slice(&input) { Ok(value) => value, Err(_) => return 2 };
+    match inference::run_candidate_inference(&request.model_path, &request.rules_summary, &request.selected_text) {
+        Ok(output) => { let _ = std::io::stdout().write_all(output.as_bytes()); 0 }
+        Err(_) => 3,
+    }
 }
 
 pub fn run() {
@@ -56,7 +68,9 @@ pub fn run() {
             commands::list_history,
             commands::list_settings,
             commands::list_models,
-            commands::register_local_model
+            commands::register_local_model,
+            commands::download_model,
+            commands::ai_detect_candidates
         ])
         .run(tauri::generate_context!())
         .expect("error while running DESENS Tauri application");

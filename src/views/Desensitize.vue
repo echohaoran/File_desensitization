@@ -20,9 +20,9 @@
 
     <div class="split">
       <aside class="aside" aria-label="脱敏控制面板">
-        <section class="panel">
-          <div class="panel__head"><h3>上传文件</h3></div>
-          <div class="panel__body">
+        <section class="panel upload-panel" :class="{ 'upload-panel--collapsed': uploadCollapsed }">
+          <div class="panel__head"><h3>上传文件</h3><button v-if="file" class="panel-toggle" type="button" @click="uploadCollapsed = !uploadCollapsed">{{ uploadCollapsed ? '展开' : '折叠' }}</button></div>
+          <div v-if="!uploadCollapsed" class="panel__body">
             <label class="upload-zone" :class="{ 'is-dragover': isDragging }" tabindex="0" role="button" 
               aria-label="选择或拖入文件" @dragenter.prevent="isDragging = true" @dragover.prevent="isDragging = true" @dragleave="isDragging = false" 
               @drop.prevent="handleDrop" @keydown.enter="$refs.fileInput.click()" @keydown.space.prevent="$refs.fileInput.click()">
@@ -90,15 +90,20 @@
             <h3>检测结果</h3>
             <span class="panel__count">{{ detections.length }} 项</span>
           </div>
+          <div class="ai-action" v-if="aiEnabled">
+            <button class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !activeModelPath || !rawOriginalText" @click="runAiDetection">{{ aiDetecting ? 'AI 脱敏检测中…' : 'AI 智能脱敏全文' }}</button>
+            <div v-if="aiDetecting" class="ai-progress"><span :style="{ width: `${aiProgress}%` }"></span></div>
+            <small v-if="!activeModelPath">请先在设置中应用一个 GGUF 模型</small>
+          </div>
           <div class="panel__stats" v-if="detections.length > 0">
             <div class="stat-item" v-for="(count, type) in detectionsByType" :key="type">
               <span class="badge badge--sm" :class="'badge--' + type">{{ getTypeLabel(type) }}</span>
               <span class="stat-count">{{ count }}</span>
             </div>
           </div>
-          <div class="panel__body">
+          <div class="panel__body" ref="detectionScroll">
             <div class="detect-list">
-              <div v-for="item in detections" :key="item.id" class="detect-item">
+              <div v-for="item in detections" :key="item.id" class="detect-item" :data-detection-id="item.id" :class="{ 'is-linked-hover': hoverDetectionId === item.id }" @mouseenter="setHoverDetection(item.id)" @mouseleave="hoverDetectionId = null">
                 <div class="detect-item__main">
                   <div class="detect-item__info">
                     <div class="detect-item__header">
@@ -163,7 +168,7 @@
               <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
                   <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                  <span v-else :class="part.active ? 'tok' : 'det'" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                  <span v-else :class="[part.active ? 'tok' : 'det', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
               <table v-else class="document-preview__table">
@@ -172,7 +177,7 @@
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
                         <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                        <span v-else :class="part.active ? 'tok' : 'det'" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                        <span v-else :class="[part.active ? 'tok' : 'det', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
                   </tr>
@@ -183,11 +188,11 @@
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
             <article class="comparison-pane comparison-pane--original">
               <header class="comparison-pane__head"><span>原始文件</span><small>只读对照</small></header>
-              <pre class="comparison-pane__body">{{ rawOriginalText }}</pre>
+              <pre class="comparison-pane__body" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="{ 'is-linked-hover': hoverDetectionId === part.id }" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.text }}</span></template></pre>
             </article>
             <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
               <header class="comparison-pane__head"><span>脱敏文件</span><small>仅可选区操作</small></header>
-              <pre class="comparison-pane__body">{{ liveRedactedText }}</pre>
+              <pre class="comparison-pane__body" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="{ 'is-linked-hover': hoverDetectionId === part.id }" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
             </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
@@ -247,9 +252,10 @@
 <script>
 import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
+import JSZip from 'jszip'
 import DesensitizationAPI from '@/api/desensitization'
 import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
-import { isTauriRuntime, redactApprovedText } from '@/api/tauriBridge'
+import { isTauriRuntime, redactApprovedText, aiDetectCandidates } from '@/api/tauriBridge'
 
 // Worker is configured via the import above
 
@@ -259,6 +265,7 @@ const PATTERNS = [
   { id: 'email', label: '邮箱', regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
   { id: 'bankcard', label: '银行卡', regex: /\d{16,19}/g },
   { id: 'amount', label: '金额', regex: /(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?\s*(?:万元|元|美元|USD|CNY|￥|\$)/g },
+  { id: 'address', label: '地址', regex: /(?:北京市|天津市|上海市|重庆市|[\u4e00-\u9fa5]{2,8}省[\u4e00-\u9fa5]{2,8}市)(?:[\u4e00-\u9fa5]{2,12}(?:区|县|镇|街道)[\u4e00-\u9fa5A-Za-z0-9#\-]{0,30}(?:号|室|栋|单元|楼|路|街|巷|道)[\u4e00-\u9fa5A-Za-z0-9#\-]{0,12})/g },
   { id: 'name', label: '姓名', regex: /[\u4e00-\u9fa5]{2,4}(?=(?:先生|女士|总|经理|董事|合伙人|投资|基金|LP|GP))/g }
 ]
 
@@ -280,6 +287,13 @@ export default {
       detections: [],
       nextId: 1,
       isDragging: false,
+      uploadCollapsed: false,
+      hoverDetectionId: null,
+      aiDetecting: false,
+      aiProgress: 0,
+      aiEnabled: localStorage.getItem('desens_ai_enabled') === 'true',
+      activeModelPath: localStorage.getItem('desens_active_model_path') || '',
+      syncingScroll: false,
       confirmed: false,
       mapping: null,
       showMapping: false,
@@ -365,6 +379,30 @@ export default {
     }
   },
   methods: {
+    setHoverDetection(id) {
+      this.hoverDetectionId = id
+      this.$nextTick(() => {
+        const targets = this.$el.querySelectorAll(`[data-detection-id="${id}"]`)
+        targets.forEach(target => { if (!this.isElementVisible(target)) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) })
+        const card = this.$el.querySelector(`.detect-item[data-detection-id="${id}"]`)
+        if (card && !this.isElementVisible(card)) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      })
+    },
+    isElementVisible(element) {
+      const rect = element.getBoundingClientRect(); const parent = element.closest('.panel__body, .comparison-pane__body')
+      if (!parent) return true
+      const parentRect = parent.getBoundingClientRect()
+      return rect.top >= parentRect.top && rect.bottom <= parentRect.bottom
+    },
+    syncScroll(source, event) {
+      if (this.syncingScroll) return
+      const origin = event.currentTarget; const max = origin.scrollHeight - origin.clientHeight
+      const ratio = max > 0 ? origin.scrollTop / max : 0
+      this.syncingScroll = true
+      const targets = [this.$refs.detectionScroll, this.$refs.originalScroll, this.$refs.redactedScroll].filter(Boolean)
+      targets.forEach(target => { if (target !== origin) target.scrollTop = ratio * (target.scrollHeight - target.clientHeight) })
+      requestAnimationFrame(() => { this.syncingScroll = false })
+    },
     handleFileSelect(e) {
       if (e.target.files && e.target.files[0]) {
         this.handleFile(e.target.files[0])
@@ -380,6 +418,7 @@ export default {
       this.reset()
       this.file = file
       this.fileType = this.inferFileType(file)
+      this.uploadCollapsed = true
       this.step = 1
       this.isLoadingBackend = true
       this.backendError = null
@@ -456,11 +495,13 @@ export default {
     fallbackToFrontend(file) {
       if (this.fileType === 'pdf') {
         this.handlePdfFile(file)
-      } else if (this.fileType === 'docx' || this.fileType === 'excel') {
+      } else if (this.fileType === 'docx') {
         // 保留已加入的文件，不能因后端不可用而 reset；结构化解析交由兼容后端或适配器。
-        this.rawOriginalText = `${this.file.name}\n\n当前已加入文件。${this.fileType === 'docx' ? 'Word' : 'Excel'} 结构化预览需要后端服务或对应适配器。`
+        this.readDocxText(file)
+      } else if (this.fileType === 'excel') {
+        this.rawOriginalText = `${this.file.name}\n\nExcel 文件已加入。当前本地适配器正在接入工作表结构读取。`
         this.originalText = this.rawOriginalText
-        this.formatWarning = `${this.fileType === 'docx' ? 'Word' : 'Excel'} 文件已成功加入。当前为本地兼容模式，结构化预览将在对应适配器可用后执行。`
+        this.formatWarning = 'Excel 文件已成功加入；当前先保留文件，工作表结构读取适配器接入后执行检测。'
         this.step = 2
       } else if (this.fileType === 'text') {
         const reader = new FileReader()
@@ -477,6 +518,29 @@ export default {
           this.loadImageForCanvas(e.target.result)
         }
         reader.readAsDataURL(file)
+      }
+    },
+    async readDocxText(file) {
+      try {
+        const zip = await JSZip.loadAsync(await file.arrayBuffer())
+        const entry = zip.file('word/document.xml')
+        if (!entry) throw new Error('DOCX 缺少 word/document.xml')
+        const xml = await entry.async('text')
+        const doc = new DOMParser().parseFromString(xml, 'application/xml')
+        if (doc.querySelector('parsererror')) throw new Error('DOCX XML 解析失败')
+        const paragraphs = [...doc.querySelectorAll('w\\:p, p')].map(node => [...node.querySelectorAll('w\\:t, t')].map(text => text.textContent || '').join('')).filter(Boolean)
+        const extracted = paragraphs.join('\n').trim()
+        if (!extracted) throw new Error('DOCX 未提取到正文')
+        this.rawOriginalText = extracted
+        this.originalText = extracted
+        this.formatWarning = 'Word 已在本地读取正文，检测结果仍需人工确认；复杂对象和版式将在结构化适配器中继续保留。'
+        this.runTextDetection()
+        this.step = 2
+      } catch (error) {
+        this.formatWarning = `Word 文件已加入，但读取正文失败：${error.message || '未知错误'}`
+        this.rawOriginalText = this.file.name
+        this.originalText = this.rawOriginalText
+        this.step = 2
       }
     },
     getTypeLabel(type) {
@@ -886,6 +950,26 @@ export default {
       this.detections.push({ id: this.nextId++, type: action === 'rule' ? 'custom' : 'manual', label: action === 'rule' ? '敏感字段' : '区域', value: sourceText, start: selected.start, end: selected.end, placeholder: '{MANUAL_' + String(this.nextId).padStart(3, '0') + '}', active: true, manual: action !== 'rule' })
       this.detections.sort((a, b) => a.start - b.start)
     },
+    async runAiDetection() {
+      if (!this.activeModelPath || !this.aiEnabled || !isTauriRuntime() || !this.rawOriginalText || this.aiDetecting) return
+      this.aiDetecting = true
+      this.aiProgress = 8
+      const timer = window.setInterval(() => { this.aiProgress = Math.min(88, this.aiProgress + 7) }, 700)
+      try {
+        const rules = loadSensitiveRules().filter(rule => rule.enabled).map(rule => `${rule.name}: ${rule.value}`).join('\n').slice(0, 6000)
+        const response = await aiDetectCandidates({ schema_version: 1, model_path: this.activeModelPath, rules_summary: rules, selected_text: this.rawOriginalText.slice(0, 1400) })
+        const parsed = JSON.parse(response.data || '{}')
+        const items = Array.isArray(parsed.items) ? parsed.items : []
+        items.filter(item => item.text && Number.isFinite(item.start) && Number.isFinite(item.end) && item.end > item.start).forEach(item => {
+          const start = item.start; const end = item.end
+          if (start < 0 || end > this.rawOriginalText.length || this.detections.some(d => d.start === start && d.end === end)) return
+          this.detections.push({ id: this.nextId++, type: item.type || 'ai', label: item.type || 'AI候选', value: this.rawOriginalText.slice(start, end), start, end, placeholder: '{AI_' + String(this.nextId).padStart(3, '0') + '}', active: true, manual: false, source: 'ai', confidence: item.confidence })
+        })
+        this.detections.sort((a, b) => a.start - b.start)
+        this.aiProgress = 100
+      } catch (error) { this.backendError = error.message || 'AI 检测失败，请检查模型和输出格式' }
+      finally { window.clearInterval(timer); window.setTimeout(() => { this.aiDetecting = false; this.aiProgress = 0 }, 450) }
+    },
     toggleDetection(item) {
       // 从检测列表中移除该项
       this.detections = this.detections.filter(d => d.id !== item.id)
@@ -1104,6 +1188,7 @@ export default {
       this.image = { img: null, canvas: null, ctx: null, width: 0, height: 0, rects: [] }
       this.canvasDraw = { start: null, current: null }
       this.step = 0
+      this.uploadCollapsed = false
       
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = ''
@@ -1129,6 +1214,9 @@ export default {
 </script>
 
 <style scoped>
+.panel-toggle { border: 0; background: transparent; color: #64748b; font-size: 12px; cursor: pointer; }
+.upload-panel--collapsed .panel__head { padding-bottom: 12px; }
+.is-linked-hover { background: #fef08a !important; color: #111827 !important; border-radius: 3px; box-shadow: 0 0 0 2px #facc15; transition: background .12s ease, box-shadow .12s ease; }
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -1279,5 +1367,9 @@ export default {
 .comparison-pane__head small { font-size: 11px; font-weight: 500; color: #64748b; }
 .comparison-pane__body { flex: 1; margin: 0; padding: 20px; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 14px/1.9 ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155; }
 .comparison-pane--redacted .comparison-pane__body { cursor: text; user-select: text; color: #0f172a; }
+.ai-action { padding: 10px 16px 12px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+.ai-action small { display: block; margin-top: 6px; color: #64748b; font-size: 11px; }
+.ai-progress { height: 6px; margin-top: 8px; border-radius: 999px; overflow: hidden; background: #e2e8f0; }
+.ai-progress span { display: block; height: 100%; background: #111827; transition: width .35s ease; }
 @media (max-width: 1100px) { .comparison-preview { grid-template-columns: 1fr; min-height: auto; } .comparison-pane { min-height: 360px; } }
 </style>
