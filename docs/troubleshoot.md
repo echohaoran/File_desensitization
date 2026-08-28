@@ -180,3 +180,6 @@ fc-cache -f
 
 - Actions 使用 runner 默认目标架构，不手工交叉编译；macOS ARM64、macOS Intel 和 Windows x64 分别在对应 runner 上构建。
 - 若某平台没有生成预期文件，工作流的 `if-no-files-found: error` 会直接失败，避免产生空的成功构建。
+### 拖入 DOCX/XLSX 后文件消失
+
+原因：旧的 Tauri 前端兜底分支提示后调用 `reset()`，导致已加入文件被移除。现改为保留文件并提示后端/适配器待恢复；文本、PDF、图片继续走本地路径。

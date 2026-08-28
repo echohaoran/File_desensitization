@@ -24,7 +24,7 @@
           <div class="panel__head"><h3>上传文件</h3></div>
           <div class="panel__body">
             <label class="upload-zone" :class="{ 'is-dragover': isDragging }" tabindex="0" role="button" 
-              aria-label="选择或拖入文件" @dragover.prevent="isDragging = true" @dragleave="isDragging = false" 
+              aria-label="选择或拖入文件" @dragenter.prevent="isDragging = true" @dragover.prevent="isDragging = true" @dragleave="isDragging = false" 
               @drop.prevent="handleDrop" @keydown.enter="$refs.fileInput.click()" @keydown.space.prevent="$refs.fileInput.click()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <span class="upload-zone__title">点击选择或拖入文件</span>
@@ -65,6 +65,9 @@
               <p style="font-size: 12px; color: #dc2626; margin: 0;">
                 后端服务不可用，已切换到前端处理模式。错误：{{ backendError || '后端服务连接失败（请检查后端是否启动）' }}
               </p>
+            </div>
+            <div v-if="formatWarning" class="backend-error" style="margin-top: 16px; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;">
+              <p style="font-size: 12px; color: #c2410c; margin: 0;">{{ formatWarning }}</p>
             </div>
             <!-- PDF 转换成功提示 -->
             <div v-if="convertedFromPdf" class="conversion-success" style="margin-top: 16px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
@@ -285,6 +288,7 @@ export default {
       redactedText: '',
       isLoadingBackend: false,
       backendError: null,
+      formatWarning: null,
       convertedFromPdf: false,
       documentPreview: [],
       image: {
@@ -379,6 +383,7 @@ export default {
       this.step = 1
       this.isLoadingBackend = true
       this.backendError = null
+      this.formatWarning = null
       
       // Tauri 版本优先使用本地前端解析，避免依赖未打包的 FastAPI 服务。
       // 浏览器/Electron 兼容链路继续使用原有后端检测。
@@ -452,10 +457,11 @@ export default {
       if (this.fileType === 'pdf') {
         this.handlePdfFile(file)
       } else if (this.fileType === 'docx' || this.fileType === 'excel') {
-        // Word 和 Excel 文件需要通过后端处理
-        // 前端无法直接解析这些格式
-        alert('Word 和 Excel 文件需要后端服务支持。请确保后端服务已启动。')
-        this.reset()
+        // 保留已加入的文件，不能因后端不可用而 reset；结构化解析交由兼容后端或适配器。
+        this.rawOriginalText = `${this.file.name}\n\n当前已加入文件。${this.fileType === 'docx' ? 'Word' : 'Excel'} 结构化预览需要后端服务或对应适配器。`
+        this.originalText = this.rawOriginalText
+        this.formatWarning = `${this.fileType === 'docx' ? 'Word' : 'Excel'} 文件已成功加入；当前后端不可用，暂显示文件状态，待服务恢复后执行结构化检测。`
+        this.step = 2
       } else if (this.fileType === 'text') {
         const reader = new FileReader()
         reader.onload = (e) => {
@@ -1091,6 +1097,8 @@ export default {
       this.showMapping = false
       this.showCompletionModal = false
       this.redactedText = ''
+      this.formatWarning = null
+      this.backendError = null
       this.convertedFromPdf = false
       this.documentPreview = []
       this.image = { img: null, canvas: null, ctx: null, width: 0, height: 0, rects: [] }
