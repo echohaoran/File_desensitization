@@ -380,3 +380,6 @@
 
 - GitHub Actions run `33136238637` 验证发现 macOS ARM 构建成功，Windows 在 MSI/WiX `light.exe` 阶段失败。
 - Windows CI 改为只生成 NSIS 安装包，避免受 WiX 环境影响；macOS 继续生成 DMG 与 APP。
+## 2026-08-28 模型下载反馈
+
+- 设置页推荐模型卡片点击下载后显示对应卡片的准备/下载进度条与完成提示。
