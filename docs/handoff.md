@@ -156,3 +156,4 @@ git push git@github.com:echohaoran/File_desensitization.git v0.1.1
 
 - 代码修改后的构建产物先交给用户本地测试。
 - 未收到“测试完成/可以推送”等明确确认前，不执行 `git push`。
+- CI 交付：Windows 使用 MSI，macOS 生成 Apple Silicon/Intel DMG；推送后需在 GitHub Actions 核验三项任务和 artifacts。

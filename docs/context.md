@@ -471,4 +471,5 @@
 - 针对 llama.cpp 在超出上下文时 native abort 的行为，推理会话固定 2048 context、256 batch，并限制单次规则/正文输入长度；后续应继续实现真正的分段合并。
 - 地址脱敏调整为保留省份和城市，只生成区县、街道、道路及门牌号的脱敏候选。
 - 已移除 llama.cpp 推理依赖并接入 Candle Qwen2 GGUF 推理路径：读取同目录 `tokenizer.json`、加载量化权重、执行有限长度生成并返回候选 JSON 文本。
+- GitHub Actions Windows 构建产物已从 NSIS `.exe` 调整为 MSI `.msi`，以符合交付要求。
 - 本次未修改旧 Vue/FastAPI/Electron 兼容链路。
