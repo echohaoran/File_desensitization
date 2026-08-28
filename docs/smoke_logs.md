@@ -181,3 +181,8 @@
 
 - `npm run tauri:build` 成功；macOS `.app` 与 `.dmg` 均生成。
 - 新 `.app` 已启动，进程正常运行；构建包含最新模型大小显示与设置页。
+### GitHub Actions run 33136238637
+
+- macOS Apple Silicon：成功，已产出 `tauri-macos-arm64`。
+- Windows x64：失败，原因是 MSI/WiX `light.exe` 打包失败；已将工作流修复为 NSIS-only，等待新 run 验证。
+- macOS Intel：当时仍在排队/执行中。

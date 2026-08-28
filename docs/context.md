@@ -376,3 +376,7 @@
 
 - 新增 `.github/workflows/tauri-build.yml`，为 macOS ARM64、macOS Intel 和 Windows x64 分别打包 Tauri。
 - 通过 `npm ci` 使用锁文件安装依赖，运行 `npm run tauri:build`，并上传 14 天可下载的构建产物。
+## 2026-08-28 CI 修复
+
+- GitHub Actions run `33136238637` 验证发现 macOS ARM 构建成功，Windows 在 MSI/WiX `light.exe` 阶段失败。
+- Windows CI 改为只生成 NSIS 安装包，避免受 WiX 环境影响；macOS 继续生成 DMG 与 APP。

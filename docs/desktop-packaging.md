@@ -107,3 +107,6 @@ npm run start:local
 
 - `src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`
 - `src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`
+### CI 平台兼容性
+
+Windows GitHub Actions 使用 NSIS 安装包作为发布格式。MSI/WiX 在托管 runner 上可能因 `light.exe` 失败，因此不作为 CI 的必选产物；本地仍可按 Tauri 配置扩展其他 bundle。

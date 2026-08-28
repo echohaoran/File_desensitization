@@ -97,3 +97,4 @@
 
 - Tauri 自动打包工作流必须覆盖 macOS ARM64、macOS Intel 和 Windows x64，并使用锁文件安装依赖。
 - CI 产物仅上传构建包，不上传历史数据、模型文件、映射表或证书材料。
+- Windows CI 默认生成 NSIS 安装包；若 MSI/WiX 在托管 runner 失败，不得将该失败误判为前端或 Rust 编译失败。
