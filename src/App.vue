@@ -31,7 +31,7 @@
         <dl class="version-modal__meta"><div><dt>当前版本</dt><dd>{{ currentVersion }} · {{ shortRevision(versionInfo?.current_revision) }}</dd></div><div><dt>更新来源</dt><dd><select v-model="updateSource" class="version-modal__source-select" @change="changeUpdateSource"><option v-for="item in updateSources" :key="item.key" :value="item.key">{{ item.label }} / main</option></select></dd></div></dl>
         <section class="version-modal__commits"><h3>最近提交</h3><p v-if="checkingUpdate">正在从 {{ sourceLabel }} 获取版本信息…</p><p v-else-if="!versionInfo?.commits?.length">暂未取得提交摘要，可前往 {{ sourceLabel }} 仓库查看。</p><ol v-else><li v-for="commit in versionInfo.commits" :key="commit.id"><code>{{ commit.short_id }}</code><span>{{ commit.message }}</span><time>{{ formatCommitDate(commit.created_at) }}</time></li></ol></section>
         <p class="version-modal__hint">更新版本将通过 {{ sourceLabel }} 部署流程获取；请勿直接覆盖本机脱敏历史。</p>
-        <footer class="version-modal__actions"><button class="btn btn--secondary" @click="checkForUpdates" :disabled="checkingUpdate">检查更新</button><button class="btn btn--primary" @click="requestUpdate">更新版本</button><a class="btn btn--ghost" :href="repositoryUrl" target="_blank" rel="noopener">前往仓库</a></footer>
+        <footer class="version-modal__actions"><button class="btn btn--secondary" @click="checkForUpdates" :disabled="checkingUpdate">{{ checkingUpdate ? '检查中…' : '检查更新' }}</button><a class="btn btn--primary" :href="updateUrl" target="_blank" rel="noopener" @click="requestUpdate">{{ updateAvailable ? '更新版本' : '查看最新版本' }}</a><a class="btn btn--ghost" :href="repositoryUrl" target="_blank" rel="noopener">前往仓库</a></footer>
       </section>
     </div>
 
@@ -75,6 +75,14 @@ export default {
         cnb: 'https://cnb.cool/echohaoran/File_desensitization'
       }[this.updateSource])
     },
+    updateUrl() {
+      if (this.versionInfo?.latest_release) return this.versionInfo.latest_release
+      return ({
+        github: 'https://github.com/echohaoran/File_desensitization/releases/latest',
+        gitee: 'https://gitee.com/echohaoran/file_desensitization/releases',
+        cnb: 'https://cnb.cool/echohaoran/File_desensitization/-/releases'
+      }[this.updateSource])
+    },
     sourceLabel() {
       return this.updateSources.find(item => item.key === this.updateSource)?.label || 'GitHub'
     },
@@ -106,14 +114,7 @@ export default {
     formatCommitDate(value) {
       return value ? new Date(value).toLocaleDateString('zh-CN') : ''
     },
-    requestUpdate() {
-      if (!this.updateAvailable) {
-        this.announce('当前已是最新版本，无需更新')
-        return
-      }
-      window.open(this.repositoryUrl, '_blank', 'noopener')
-      this.announce(`已打开 ${this.sourceLabel} 仓库，请通过部署流程更新版本`)
-    },
+    requestUpdate() { this.announce(this.updateAvailable ? `已打开 ${this.sourceLabel} 最新版本页面，请下载对应平台安装包` : `已打开 ${this.sourceLabel} 发布页面`) },
     async checkForUpdates() {
       const requestId = ++this.updateRequestId
       const source = this.updateSource
