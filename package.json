@@ -16,7 +16,9 @@
     "build:desktop:backend": "node scripts/build-desktop-backend.mjs",
     "desktop:dev": "npm run build:desktop:frontend && electron .",
     "desktop:pack": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder --dir",
-    "desktop:dist": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder"
+    "desktop:dist": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "pdfjs-dist": "^3.11.174",
@@ -27,6 +29,7 @@
     "@vitejs/plugin-vue": "^5.0.0",
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
+    "@tauri-apps/cli": "^2.0.0",
     "vite": "^5.4.0"
   },
   "build": {

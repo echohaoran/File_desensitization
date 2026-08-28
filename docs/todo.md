@@ -1,5 +1,70 @@
 # 待办事项
 
+- [x] 增加 Vue/Tauri bridge 和桌面运行时检测。
+- [x] 增加独立桌面 smoke 页面，验证基础 command。
+
+## 2026-08-28：Tauri 架构迁移与本地 AI
+
+- [x] 确认 Vue 3 + Rust + Tauri 目标架构。
+- [x] 确认左右预览、右侧选区操作和人工确认流程。
+- [x] 确认随机文档 ID、格式文件底部标记、纯文本伴随标记文件。
+- [x] 确认跨设备还原、`.p12` 证书、密码和 AES-256-GCM 加密导出包。
+- [x] 确认第一阶段 JSON 存储、GGUF 模型和本地 LoRA 训练方向。
+- [ ] 设计统一 Detection、Mapping、DocumentMarker、History、Annotation、TrainingJob 数据模型。
+- [ ] 设计 Tauri commands、事件和 Vue 状态边界。
+- [x] 设计随机文档 ID、随机 marker、`.desens-meta`、映射表 JSON 和 `.dlib` 协议草案。
+- [ ] 评审并冻结标记协议、映射表 Schema 和 `.dlib` 文件格式。
+- [x] 设计 Rust/Tauri 模块边界、command 分类和统一任务事件方向。
+- [ ] 冻结 Tauri command DTO、错误码和事件 payload。
+- [x] 完成 Tauri command DTO、错误码和任务事件 payload 草案。
+- [ ] 评审 DTO 字段、错误码和事件命名，并冻结 schema v1。
+- [x] 设计 JSON 存储 envelope、目录结构和 `StorageProvider` 接口。
+- [ ] 冻结各集合字段、迁移规则、原子写入和导入冲突策略。
+- [x] 设计统一 `DocumentAdapter` 接口和各文件格式策略。
+- [ ] 冻结 DocumentBlock、Preview、DocumentOutput 和 RestoreOutput DTO。
+- [x] 设计 `.dlib`、`.p12`、AES-256-GCM、RSA-OAEP-SHA-256 和证书生命周期协议。
+- [ ] 冻结 `.dlib` 二进制/JSON envelope 布局、GCM tag 编码和证书兼容范围。
+- [x] 设计 GGUF 模型目录、下载 Provider、校验流程和推理运行时接口。
+- [x] 建立模型记录、任务状态和统一任务事件 Rust 类型。
+- [x] 接入 `list_models` 基础 command。
+- [x] 实现本地 GGUF magic、大小、SHA-256 校验和注册 command。
+- [x] 实现进程内 TaskManager、TaskSnapshot 以及 create/get task command。
+- [x] 增加 update_task 状态更新 command。
+- [ ] 接入 task-event 事件广播、取消、暂停和持久化。
+- [x] 接入 create/update task 的任务快照持久化和基础 task-event。
+- [x] 实现任务快照的应用启动恢复。
+- [ ] 实现任务取消、暂停/恢复检查点和真实进程恢复。
+- [ ] 选定 Rust GGUF 推理后端并冻结支持的架构、平台和量化范围。
+- [ ] 明确魔搭/Hugging Face 模型清单、固定 revision 和可信 SHA-256 来源。
+- [x] 设计标注数据集、LoRA 训练任务、资源预检、检查点和训练产物协议。
+- [ ] 选定 TrainingBackend，并验证目标 GGUF 架构的训练/转换链路。
+- [x] 定义训练评估集、指标阈值策略和模型晋级规则。
+- [x] 设计测试集隔离、PII 指标、规则/AI 合并和模型晋级流程。
+- [x] 完成进入 coding 前的核心架构设计。
+- [x] 开始 coding：建立 Tauri/Rust 项目骨架和 domain DTO。
+- [ ] 为 Tauri 骨架补充平台图标、权限配置和最小启动烟测。
+- [x] 实现 JsonStorageProvider 与数据目录初始化基础能力。
+- [x] 将 JsonStorageProvider 注册为 Tauri managed state，并接入通用集合读写 command。
+- [x] 接入 settings/rules/history 只读 command。
+- [x] 为通用集合写入增加可选 revision 并发校验。
+- [ ] 接入 settings/rules/history 专用新增、编辑、删除 command。
+- [x] 实现基础文本脱敏/还原核心和审核后 span 校验。
+- [x] 将基础文本脱敏 mapping 持久化到 history/mappings。
+- [x] 增加文本输出的源文件/脱敏文件 SHA-256。
+- [x] 接入文本文档适配器和 `.desens-meta` 基础输出。
+- [x] 增加格式能力查询，明确未迁移格式状态。
+- [ ] 将文件适配器输出的 mapping 接入 history/mappings。
+- [ ] 增加 schema 迁移、备份保留、跨进程锁和导入冲突处理。
+- [ ] 网络或依赖缓存恢复后更新 `package-lock.json`，执行 npm 安装、`cargo check` 和 Tauri 构建验证。
+- [ ] 实现 Rust JSON StorageProvider 与 schema 迁移机制。
+- [ ] 实现文档标记协议和 DOCX/XLSX/PDF/伴随文件输出。
+- [ ] 实现完整脱敏库 `.dlib` 加密导入导出和 `.p12` 密钥流程。
+- [ ] 实现规则库、标注库和历史记录的 CRUD 与版本管理。
+- [ ] 评估并接入 GGUF 本地推理运行时。
+- [ ] 实现 AI 选区检测和人工审核闭环。
+- [ ] 实现单基础模型 LoRA 训练任务、进度和产物管理。
+- [ ] 为加密、标记、部分还原、导入导出和训练流程增加自动化测试。
+
 ## 2026-08-17
 
 - [x] 选定 Electron + PyInstaller 桌面方案，并建立本地后端生命周期管理骨架。
@@ -13,3 +78,17 @@
 - [ ] 补充格式转换、敏感规则、历史还原和校验算法的自动化回归测试。
 - [ ] 收紧 CORS，并评估认证、上传限制、文件扫描、结果加密和访问控制。
 - [ ] 优化 PDF.js worker 的按需加载，降低前端初始包体积。
+# 2026-08-28：实现进度
+
+- [x] Tauri Rust 骨架通过编译并补齐图标资源。
+- [x] 安装并锁定 Tauri CLI，启动 Vue + Tauri 开发服务。
+- [ ] 接入真实脱敏页面的双栏选区交互与人工确认流程。
+- [x] 增加设置页 AI 开关、模型来源入口和本地 GGUF 登记。
+
+## 阶段验收
+
+- [x] Vue + Rust + Tauri 可构建并启动
+- [x] 基础文本脱敏/还原与部分还原
+- [x] 版本化 JSON 存储
+- [x] GGUF 模型登记接口
+- [x] 任务状态与事件接口

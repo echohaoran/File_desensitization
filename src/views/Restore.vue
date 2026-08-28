@@ -173,6 +173,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
 import DesensitizationAPI from '@/api/desensitization'
+import { isTauriRuntime, restoreMappedText } from '@/api/tauriBridge'
 
 // Worker is configured via the import above
 
@@ -426,6 +427,26 @@ export default {
       img.src = this.selectedHistory.redacted_image
     },
     async restoreText() {
+      if (isTauriRuntime() && this.redactedFileType === 'text') {
+        try {
+          const text = await this.redactedFile.text()
+          const mappings = (this.mapping.mappings || []).map(item => ({
+            mapping_id: item.id || item.mapping_id || `map_${item.placeholder}`,
+            marker: item.placeholder || item.marker,
+            kind: item.type || item.kind || 'manual',
+            original: item.original,
+            start: item.start || 0,
+            end: item.end || 0
+          }))
+          const response = await restoreMappedText(text, mappings)
+          this.restoredText = response.data.restored_text
+          this.restored = true
+          return
+        } catch (error) {
+          alert(`Rust 还原失败：${error.message}`)
+          return
+        }
+      }
       if (this.redactedFileType === 'pdf') {
         try {
           const arrayBuffer = await this.redactedFile.arrayBuffer()

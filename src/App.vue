@@ -18,6 +18,7 @@
           <router-link to="/restore">还原</router-link>
           <router-link to="/sensitive-rules">敏感字段</router-link>
           <router-link to="/convert">格式转换</router-link>
+          <router-link to="/settings">设置</router-link>
         </nav>
         <div class="header-spacer"></div>
       </div>

@@ -25,6 +25,16 @@ const routes = [
     path: '/convert',
     name: 'Convert',
     component: () => import('@/views/Convert.vue')
+  },
+  {
+    path: '/desktop-smoke',
+    name: 'DesktopSmoke',
+    component: () => import('@/views/DesktopSmoke.vue')
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/views/Settings.vue')
   }
 ]
 

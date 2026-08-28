@@ -2,6 +2,8 @@
 
 更新时间：2026-08-17
 
+> 该文档仅记录历史 Electron + PyInstaller 方案。新功能开发目标为 Vue 3 + Rust + Tauri；不得将本文件中的 Electron 流程视为新架构实施方案。
+
 ## 当前交付方式
 
 项目当前不再通过 GitHub Actions 构建 DMG/MSI。普通用户使用源码安装脚本：
@@ -87,3 +89,21 @@ npm run start:local
 - 应用通过 `/api/runtime/capabilities` 检测可用性；缺失时禁用 DOCX→PDF 并给出安装提示。
 - 后端在实际调用时再次检查，缺失时返回 HTTP 503 和中文可执行提示。
 - 首版不随安装包捆绑 LibreOffice，以避免大体积、许可证、系统签名与升级维护成本；后续如需要离线一体化安装，再单独评估分发许可与平台测试矩阵。
+# 2026-08-28：Tauri 正式打包入口
+
+- 新架构桌面包使用 `npm run tauri:build`，产物来自 Vue + Rust + Tauri。
+- `npm run desktop:dist` 继续保留为旧 Electron/FastAPI 兼容链路，不代表新架构桌面包。
+- Tauri 打包开关已开启；开发测试使用 `npm run tauri:dev`。
+
+## GitHub Actions 自动打包
+
+- 工作流：`.github/workflows/tauri-build.yml`。
+- 触发条件：手动触发、推送 `main`、推送 `v*` 标签。
+- 构建矩阵：macOS Apple Silicon、macOS Intel、Windows x64。
+- 产物：macOS DMG/应用包，Windows MSI/NSIS（若配置生成）。Actions artifact 保留 14 天。
+- 工作流只构建 Tauri 新架构；旧 Electron/FastAPI 兼容包仍由本地旧命令维护。
+
+## 本次产物
+
+- `src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`
+- `src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`

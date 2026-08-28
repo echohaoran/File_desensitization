@@ -1,6 +1,43 @@
 # 项目记忆
 
-更新时间：2026-08-16
+- Vue 通过 `src/api/tauriBridge.js` 统一调用 Tauri，浏览器兼容模式不会调用桌面 command。
+- `/desktop-smoke` 是新 Tauri command 的虚构数据测试入口，不是完整脱敏业务页。
+
+更新时间：2026-08-28
+
+- 下一代目标架构为 Vue 3 + Rust + Tauri，现有 Vue + FastAPI + Electron 仅作为迁移基线。
+- 脱敏必须经过人工确认；AI 默认关闭，只处理右侧用户选区，不能直接修改最终文件。
+- 文件使用随机不可读文档 ID；DOCX/XLSX/PDF 在底部追加标记，JSON/TXT/CSV/Markdown 使用 `.desens-meta` 伴随文件。
+- 跨设备还原依赖用户携带映射数据；完整脱敏库导出包含历史映射，必须使用 AES-256-GCM、`.p12` 和密码保护。
+- 第一阶段使用版本化 JSON，不以 Redis 作为单机主库。规则、标注和历史需要 Rust 统一管理并支持导入导出。
+- 模型统一 GGUF，不进入安装包；LoRA 训练每次固定一个基础模型，训练后不可在任务内切换。
+- 标记协议使用随机 `document_id` 和随机 `marker`；格式文件在末尾写明文标记，JSON/TXT/CSV/Markdown 使用 `.desens-meta` 伴随文件。
+- 完整脱敏库使用 `.dlib` 加密包，包含规则、标注、历史和映射表；AES-256-GCM 负责加密，`.p12` + 密码负责解密，SHA-256 负责校验。
+- Tauri 边界：Vue 不直接访问本地文件或映射原文，Rust 通过版本化 command DTO 提供能力；长任务使用统一事件流。
+- Command 协议要求 schema_version、request_id、结构化错误和统一 task-event；事件/日志不得包含敏感原文、映射值、密码或私钥。
+- 第一阶段 JSON 存储按规则、历史、映射、标注、模型和训练任务分文件保存，使用版本化 envelope、原子写入和 StorageProvider 抽象。
+- 所有文件格式通过统一 DocumentAdapter 处理；适配器负责解析、结构化预览、标记、脱敏输出和部分还原，并报告结构/版式警告。
+- `.dlib` 每包使用随机 AES-256-GCM 密钥和 nonce，数据密钥由 `.p12` 中 RSA 公钥以 OAEP-SHA-256 包装；证书密码只保护私钥。
+- GGUF 模型通过魔搭/Hugging Face/本地 Provider 安装，必须完成断点下载、SHA-256、格式和运行时兼容性校验；AI 只处理用户选区并返回待审核候选。
+- LoRA 训练固定基础模型 SHA-256、数据集 revision、配置和随机种子；暂停依赖检查点，产物先注册为 adapter，评估通过后才能晋级为推理模型。
+- 模型评估按来源文件隔离测试集，报告 precision/recall/F1、误报漏报和资源指标；规则与 AI 冲突统一进入人工审核。
+- 2026-08-28 核心架构设计已完成，项目可开始 Tauri/Rust 骨架和 domain DTO 的 coding。
+- 2026-08-28 已建立 `src-tauri` Tauri 2 骨架、domain DTO 和健康检查 command；迁移采用增量方式，旧链路保留。
+- 2026-08-28 已新增第一版 JsonStorageProvider，支持版本化 envelope、集合白名单、目录初始化、进程内写锁和原子写入。
+- `AppState` 已通过 Tauri setup 持有 JsonStorageProvider，并提供通用 read/write collection command；业务 CRUD 尚未接入。
+- 已新增 settings/rules/history 只读 command；业务写入仍需通过专用 CRUD 和事务校验。
+- 通用集合写入支持 `expected_revision` 乐观并发校验，冲突返回 `STORAGE_REVISION_CONFLICT`。
+- 基础 Rust 脱敏核心只处理已确认 spans，生成随机 document ID/marker，支持部分还原并报告缺失 marker。
+- `redact_and_persist_text` 已按 mapping 先写、history 后写的顺序持久化基础文本任务，并使用 history revision 保护追加。
+- TextAdapter 已支持 TXT/CSV/Markdown 的按行 block 和 `_desensitized` + `.desens-meta` 输出；不覆盖原文件。
+- 文本 `.desens-meta` 已记录源文件和脱敏文件 SHA-256；SHA-256 仅用于关联/校验。
+- `document_capabilities` 已登记各格式新链路能力；未迁移的二进制格式继续走旧 FastAPI 兼容路径。
+- Rust 已建立 ModelRecord、TaskStatus、TaskEvent 基础类型，并提供 models 集合只读 command。
+- 本地模型注册已检查 GGUF magic、大小和 SHA-256，并写入 models 集合；完整 metadata 探测尚未实现。
+- TaskManager 已提供进程内任务快照和 create/get command；任务执行器和事件持久化尚未接入。
+- TaskManager 已支持 update_task 更新状态、进度和消息；未知任务不自动创建。
+- create/update task 已持久化 tasks 快照并发送基础 task-event；任务执行器和检查点恢复尚未接入。
+- Tauri 启动会从 tasks 集合恢复任务快照；终态任务不可由普通更新回退，真实进程恢复仍未实现。
 
 - 项目由 Vue 3/Vite 前端和 FastAPI 后端组成，当前交付形态是浏览器应用，不是已打包的原生桌面客户端。
 - 产品不含登录、访客模式、账号或多用户隔离；页头不显示运行模式状态。

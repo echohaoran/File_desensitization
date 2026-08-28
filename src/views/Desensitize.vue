@@ -145,9 +145,15 @@
           <h3>{{ previewTitle }}</h3>
         </div>
         <div class="preview__body" ref="previewBody">
-          <div v-if="!file" class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <p>上传文件后在此预览检测结果</p>
+          <div v-if="!file" class="comparison-preview comparison-preview--empty">
+            <article class="comparison-pane comparison-pane--original">
+              <header class="comparison-pane__head"><span>原始文件</span><small>等待上传</small></header>
+              <div class="empty-state"><p>上传文件后显示原始内容</p></div>
+            </article>
+            <article class="comparison-pane comparison-pane--redacted">
+              <header class="comparison-pane__head"><span>脱敏文件</span><small>等待人工确认</small></header>
+              <div class="empty-state"><p>确认脱敏后显示结果</p></div>
+            </article>
           </div>
           <div v-else-if="fileType === 'docx' && documentPreview.length" class="document-preview" @mouseup="handleTextSelect">
             <template v-for="(block, blockIndex) in documentPreview" :key="blockIndex">
@@ -171,12 +177,15 @@
               </table>
             </template>
           </div>
-          <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="text-preview" @mouseup="handleTextSelect">
-            <template v-for="(part, i) in textParts" :key="i">
-              <span v-if="part.type === 'normal'">{{ part.text }}</span>
-              <span v-else :class="part.active ? 'tok' : 'det'" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" 
-                @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
-            </template>
+          <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
+            <article class="comparison-pane comparison-pane--original">
+              <header class="comparison-pane__head"><span>原始文件</span><small>只读对照</small></header>
+              <pre class="comparison-pane__body">{{ rawOriginalText }}</pre>
+            </article>
+            <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
+              <header class="comparison-pane__head"><span>脱敏文件</span><small>仅可选区操作</small></header>
+              <pre class="comparison-pane__body">{{ liveRedactedText }}</pre>
+            </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
             <canvas ref="canvas" :width="imageWidth" :height="imageHeight" @mousedown="startCanvasDraw" 
@@ -237,6 +246,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
 import DesensitizationAPI from '@/api/desensitization'
 import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
+import { isTauriRuntime, redactApprovedText } from '@/api/tauriBridge'
 
 // Worker is configured via the import above
 
@@ -328,6 +338,13 @@ export default {
       
       return parts
     },
+    liveRedactedText() {
+      if (!this.rawOriginalText) return ''
+      const active = [...this.detections].filter(d => d.active).sort((a, b) => b.start - a.start)
+      let result = this.rawOriginalText
+      active.forEach(d => { result = result.slice(0, d.start) + d.placeholder + result.slice(d.end) })
+      return result
+    },
     imageWidth() {
       return this.image.width || 800
     },
@@ -363,8 +380,14 @@ export default {
       this.isLoadingBackend = true
       this.backendError = null
       
-      // 首先尝试调用后端 API 进行初步脱敏
-      this.callBackendRedaction(file)
+      // Tauri 版本优先使用本地前端解析，避免依赖未打包的 FastAPI 服务。
+      // 浏览器/Electron 兼容链路继续使用原有后端检测。
+      if (isTauriRuntime()) {
+        this.isLoadingBackend = false
+        this.fallbackToFrontend(file)
+      } else {
+        this.callBackendRedaction(file)
+      }
     },
     async callBackendRedaction(file) {
       try {
@@ -586,7 +609,7 @@ export default {
         value: r.value,
         start: r.start,
         end: r.end,
-        placeholder: '掩码-' + (TYPE_NAMES[r.type] || '敏感项') + '-' + String(i + 1).padStart(3, '0'),
+        placeholder: isTauriRuntime() ? `{${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}}` : '掩码-' + (TYPE_NAMES[r.type] || '敏感项') + '-' + String(i + 1).padStart(3, '0'),
         active: true,
         manual: false
       }))
@@ -737,7 +760,7 @@ export default {
       let text = sel.toString().replace(/\s+/g, ' ').trim()
       if (!text || text.length < 2) return
       // 选区可能包含已经脱敏的占位符；先还原为对应原值，再计算原文偏移。
-      const sourceText = text.replace(/\{[A-Z][A-Z0-9_]*_\d+\}/g, (placeholder) => {
+      const sourceText = text.replace(/\{[A-Z0-9]{4,}\}/g, (placeholder) => {
         const detection = this.detections.find(d => d.placeholder === placeholder)
         return detection?.value || placeholder
       })
@@ -866,7 +889,42 @@ export default {
         this.drawImageCanvas()
       }
     },
-    confirmRedaction() {
+    async confirmRedaction() {
+      if (isTauriRuntime() && (this.fileType === 'text' || this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel')) {
+        try {
+          const toByteOffset = (value) => new TextEncoder().encode(this.rawOriginalText.slice(0, value)).length
+          const response = await redactApprovedText({
+            schema_version: 1,
+            text: this.rawOriginalText,
+            spans: this.detections.filter(d => d.active).map(d => ({ start: toByteOffset(d.start), end: toByteOffset(d.end), kind: d.type || 'manual' }))
+          })
+          const result = response.data
+          this.redactedText = result.redacted_text
+          this.mapping = {
+            version: '1.0',
+            created_at: new Date().toISOString(),
+            document_id: result.document_id,
+            file_name: this.file.name,
+            file_type: this.fileType,
+            mappings: result.mappings.map((item, index) => ({
+              id: item.mapping_id,
+              placeholder: item.marker,
+              type: item.kind,
+              original: item.original,
+              start: item.start,
+              end: item.end,
+              index
+            }))
+          }
+          this.confirmed = true
+          this.step = 4
+          this.storeMapping()
+          this.showCompletionModal = true
+          return
+        } catch (error) {
+          this.backendError = error?.message || 'Rust 脱敏处理失败'
+        }
+      }
       if (this.fileType === 'text' || this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
         this.buildTextMapping()
       } else {
@@ -1046,10 +1104,18 @@ export default {
   },
   mounted() {
     this.selectionListener = () => this.handleTextSelect()
+    this.selectionDismissListener = (event) => {
+      if (this.selectionPopup && !event.target.closest?.('.selection-popup')) {
+        this.selectionPopup = null
+        window.getSelection()?.removeAllRanges()
+      }
+    }
     document.addEventListener('mouseup', this.selectionListener)
+    document.addEventListener('mousedown', this.selectionDismissListener)
   },
   beforeUnmount() {
     document.removeEventListener('mouseup', this.selectionListener)
+    document.removeEventListener('mousedown', this.selectionDismissListener)
   }
 }
 </script>
@@ -1196,4 +1262,14 @@ export default {
   word-break: break-all;
   line-height: 1.5;
 }
+
+.comparison-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; height: 100%; min-height: 520px; }
+.comparison-pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.comparison-pane--redacted { border-color: #cbd5e1; }
+.comparison-pane__head { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; font-weight: 650; color: #0f172a; }
+.comparison-pane--redacted .comparison-pane__head { background: #f8fafc; }
+.comparison-pane__head small { font-size: 11px; font-weight: 500; color: #64748b; }
+.comparison-pane__body { flex: 1; margin: 0; padding: 20px; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 14px/1.9 ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155; }
+.comparison-pane--redacted .comparison-pane__body { cursor: text; user-select: text; color: #0f172a; }
+@media (max-width: 1100px) { .comparison-preview { grid-template-columns: 1fr; min-height: auto; } .comparison-pane { min-height: 360px; } }
 </style>

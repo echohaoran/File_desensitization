@@ -8,6 +8,8 @@ release/
 backend/dist/
 tmp/pyinstaller/
 .build/
+/src-tauri/target/
+/trash/
 
 # Logs
 logs/

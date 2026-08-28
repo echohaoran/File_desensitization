@@ -1,5 +1,113 @@
 # 故障排查
 
+- 浏览器中出现“当前不是 Tauri 桌面运行环境”是预期行为；使用 Tauri 时再调用 bridge。
+- 新链路测试从 `/desktop-smoke` 进入；若脱敏报区间无效，检查输入是否使用 Rust UTF-8 字节偏移。
+
+## 跨设备还原失败
+
+- 确认脱敏文件、映射数据或 `.dlib` 导出包均来自同一份脱敏任务。
+- 使用 `.dlib` 时必须同时提供对应 `.p12` 证书和证书密码。
+- SHA-256 不可用于解密，只能用于检查文件完整性。
+- 文档标记不匹配时，应停止自动还原并让用户选择正确的映射数据。
+- 映射缺失时允许部分还原，并展示未还原标记，不得静默删除。
+- JSON、TXT、CSV、Markdown 需要同时提供对应的 `.desens-meta` 伴随文件；缺失时不能可靠匹配文档 ID。
+- `.dlib` 导入失败时依次检查证书文件、证书密码、导出包完整性和文档标记，不要尝试使用 SHA-256 作为解密密码。
+
+## 模型或 LoRA 训练失败
+
+- 确认模型是完整且可读取的 GGUF 文件，并通过 SHA-256 校验。
+- 检查模型架构、tokenizer、量化方式和本机内存/显存是否满足训练运行时要求。
+- 每个训练任务只能绑定一个基础模型；训练启动后替换模型路径不会改变任务绑定。
+- AI 默认关闭；只有用户在右侧选区后主动点击 AI 智能脱敏，才会发起推理。
+
+## Tauri command 或任务进度异常
+
+- 先检查 command 的输入 DTO 版本和必填字段，不要直接把底层 Rust 异常展示给用户。
+- 长任务应监听统一任务事件；不要依赖轮询临时目录判断进度。
+- 若任务已失败，优先查看结构化错误码、任务日志和输入文件校验值。
+- 若前后端字段不兼容，先检查 `schema_version` 和 `request_id`，不要通过复用旧字段绕过版本检查。
+- 遇到 `INTEGRITY_CHECK_FAILED`、`CERTIFICATE_PASSWORD_INVALID` 或 `DECRYPTION_FAILED` 时，不要重写或覆盖原导出包。
+
+## JSON 存储损坏或导入冲突
+
+- 先保留损坏文件，不要直接删除；检查同目录临时文件和最近一次有效备份。
+- 不要手工修改历史映射 JSON 后覆盖原文件；优先通过导入流程生成新 revision。
+- 导入规则、标注或历史时先选择 `merge`、`replace` 或 `skip_conflicts`，并确认冲突统计。
+- 若出现并发写入覆盖，检查是否绕过 `StorageProvider` 直接写入数据目录。
+
+## 文档结构或格式异常
+
+- 先查看适配器返回的 warnings，不要把结构变化当作静默成功。
+- JSON 脱敏后必须仍能被标准 JSON 解析器读取；若失败，应停止输出并保留原文件。
+- CSV 重点检查分隔符、引号、换行和列数是否变化。
+- DOCX/XLSX/PDF 重点检查底部标记、表格结构、页数、字体和版式；PDF 标记应位于专门末尾页。
+- TXT、CSV、JSON、Markdown 跨设备还原时必须同时提供 `.desens-meta` 伴随文件。
+
+## `.dlib` 或 `.p12` 无法解密
+
+- 先检查 `.dlib` 格式版本、密文 SHA-256 和证书指纹，再检查 `.p12` 密码。
+- `CERTIFICATE_PASSWORD_INVALID` 表示无法解锁 `.p12`；`CERTIFICATE_INVALID` 表示证书不含兼容私钥或用途不符。
+- `INTEGRITY_CHECK_FAILED` 表示密文、AAD 或 GCM tag 校验失败，不得继续导入。
+- 更换 `.p12` 文件不能解密旧包；证书轮换必须先用旧证书解密，再使用新证书重新导出。
+- 不要把证书密码当作 AES 密钥，也不要修改 nonce、wrapped_key 或 ciphertext 后重试。
+
+## GGUF 下载或加载失败
+
+- 检查下载任务是否停留在 resolving、downloading、verifying 或 installing 阶段。
+- 校验失败的 `.part` 文件不得改名为 `.gguf` 或手动加入模型目录。
+- 检查仓库、固定 revision、文件名、预期大小和 SHA-256 是否一致。
+- `MODEL_INCOMPATIBLE` 表示 GGUF 架构、tokenizer、量化或运行时后端不支持，不代表文件一定损坏。
+- `MODEL_CHECKSUM_MISMATCH` 表示下载内容与可信校验值不同，应隔离并重新下载。
+- 模型内存需求超过本机能力时，降低上下文或选择更小量化模型，不要绕过兼容性检查强制加载。
+- 当前 `list_models` 只读取模型清单，不会自动下载或加载模型；具体 Provider 和运行时尚未接入。
+- `MODEL_INVALID_FORMAT` 表示文件头不是 `GGUF` 或文件无法读取；请确认选择的是完整 GGUF 文件而非压缩包、adapter 或分片文件。
+- `TASK_STORE_ERROR` 表示任务状态读写不可用；任务快照已写入 `tasks.json`，但当前版本不保证训练/下载重启恢复。
+- `update_task` 返回空任务时，检查 task ID 是否来自当前进程的 `create_task` 或已加载的任务记录；当前版本尚未自动恢复内存中的任务索引。
+- 当前任务快照已持久化；若事件未到达 UI，先检查监听注册时机，再检查 tasks 写入是否成功。不要以事件缺失判断快照未保存。
+- 应用重启后只能恢复任务快照，不能自动恢复未实现的下载/训练进程；若任务为终态，普通 update command 不应将其重新置为运行态。
+
+## LoRA 训练无法启动或恢复
+
+- 先检查基础模型 SHA-256、数据集 revision 和训练配置是否与任务记录一致。
+- 任意 GGUF 可以被选择探测，但缺少训练后端支持、tokenizer 或可训练权重时不能启动训练。
+- 资源不足时降低最大序列长度、batch、梯度累积或 LoRA rank，再重新执行资源预检。
+- 暂停任务必须先生成有效检查点；进程被异常终止且无检查点时不能保证恢复。
+- 已完成 adapter 不得自动替换当前推理模型；先查看评估报告和基础模型绑定。
+
+## 模型评估异常
+
+- 检查训练、验证、测试集合是否按来源文件 SHA-256 隔离，避免同源样本泄漏。
+- 不要只查看训练 loss；同时检查实体级 precision、recall、F1、各标签误报和漏报。
+- 规则和 AI 部分重叠时不得自动裁剪，检查候选是否被正确标记为 conflict。
+- 模型评估通过但未成为 active 时，确认用户是否完成了明确的启用操作。
+
+## Tauri 骨架无法构建
+
+- 确认 Rust、Cargo、Node.js 版本满足项目要求，并在项目根目录执行依赖安装。
+- 确认前端先生成 `dist/`，且 `src-tauri/tauri.conf.json` 的 `frontendDist` 指向正确目录。
+- 若缺少平台图标或系统开发库，先记录具体平台错误；不要删除 Tauri 配置来绕过构建。
+- 骨架阶段只包含健康检查 command，完整文件处理能力尚未迁移。
+- 当前 provider 已注册到 managed state；若出现 `STORAGE_NOT_READY`，检查 Tauri setup 是否完成以及应用数据目录权限。
+- `list_rules`、`list_history` 或 `list_settings` 返回空集合时，先确认对应 JSON 文件是否尚未初始化；空集合是正常初始状态。
+- 写入遇到 `STORAGE_REVISION_CONFLICT` 时先重新读取集合并合并用户修改，不要强制覆盖最新文件。
+
+## 基础文本脱敏失败
+
+- 检查 span 是否使用 Rust 字符串的 UTF-8 字节偏移，而不是 JavaScript UTF-16 偏移。
+- 检查 start/end 是否越界或落在多字节字符中间。
+- 重叠 span 必须回到审核阶段解决，Rust 不会自动裁剪或覆盖。
+- 还原出现 missing markers 时属于部分还原结果，不能通过清理未知占位符掩盖问题。
+- 若 mapping 已写入但 history 未写入，不要重复覆盖 mapping；先检查 history revision，再由恢复流程补写摘要。
+
+## 文本文件输出异常
+
+- `redact_text_file` 只支持 TXT、CSV、Markdown；JSON 尚未接入此适配器。
+- 输出文件应为源文件同目录的 `_desensitized` 后缀，原文件不应被覆盖。
+- 跨设备使用文本文件时必须同时携带对应 `.desens-meta`；该文件不包含 mapping 原文。
+- `.desens-meta` 指纹不匹配时，说明文件被修改或元数据对应了错误文件，应停止自动还原并重新匹配。
+- 若新 Tauri 适配器返回某格式不可用，先查看 `document_capabilities`；不要将 DOCX/XLSX/PDF 强制送入文本适配器。
+- 若 `cargo check` 或 npm 锁定失败并提示无法连接代理/镜像，先恢复网络或准备依赖缓存；不要手工填写锁文件中的版本、integrity 或 resolved 字段。
+
 ## 前端或后端不可访问
 
 1. 本地执行 `bash scripts/status.sh`，检查 `logs/frontend.log` 和 `logs/backend.log`。
@@ -53,3 +161,22 @@ fc-cache -f
 
 - 不要在 Node 的 `execFileSync` 中直接执行 `npm.cmd`。GitHub Windows PowerShell Runner 会拒绝该调用。
 - 桌面前端构建脚本应使用 `process.execPath` 执行 `process.env.npm_execpath`，以当前 npm 调用链启动 `npm run build`；修改后同时在本机运行 `npm run build:desktop:frontend` 和 GitHub Actions Windows 任务验证。
+# 2026-08-28：开发启动提示
+
+- Tauri 首次启动会编译约 341 个 Rust 依赖，后续增量启动会明显更快。
+- 当前编译器提示未使用的领域 DTO 和文档适配器，这是功能尚未接线的提示，不是运行错误。
+- 历史样本与上传数据统一位于项目 `trash/`，如需恢复请从对应子目录移回原路径；不要将其提交到 Git。
+
+# 2026-08-28：安装包显示旧界面
+
+- 重新打包前必须执行最新版 Vue 构建；当前 Tauri 已配置 `beforeBuildCommand` 自动完成此步骤。
+- Tauri 包没有 FastAPI 子进程；文本/PDF 应走本地检测，不应再出现后端不可用提示。DOCX/XLSX 的完整结构解析仍需对应 Rust 适配器或兼容链路。
+- 前端构建提示 PDF.js 使用 eval 以及个别 chunk 较大；后续处理 PDF 适配器和代码分包时再专项优化。
+
+# 2026-08-28：文本区间
+
+- Rust 接口的 `start/end` 是 UTF-8 字节偏移，不是 JavaScript 字符数；前端正式接入时必须统一转换或由 Rust 接受字符区间后转换。
+# 2026-08-28：CI 自动打包
+
+- Actions 使用 runner 默认目标架构，不手工交叉编译；macOS ARM64、macOS Intel 和 Windows x64 分别在对应 runner 上构建。
+- 若某平台没有生成预期文件，工作流的 `if-no-files-found: error` 会直接失败，避免产生空的成功构建。

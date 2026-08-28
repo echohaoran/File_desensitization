@@ -1,0 +1,24 @@
+[package]
+name = "desens-tauri"
+version = "0.1.1"
+description = "本地优先的文件脱敏与还原工具桌面核心"
+authors = ["DESENS"]
+edition = "2021"
+
+[lib]
+name = "desens_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tauri = { version = "2", features = [] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

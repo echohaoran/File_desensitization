@@ -1,5 +1,44 @@
 # 开发交接记录
 
+- 前端进度：已新增 `tauriBridge.js` 和 Tauri runtime 检测；现有页面尚未整体切换，浏览器兼容链路保持不变。
+- 前端进度更新：新增 `/desktop-smoke` 测试页，覆盖新 command 的基础调用；只使用虚构文本，未替换现有生产工作流。
+
+## 2026-08-28：Tauri 架构设计交接
+
+- 已确认下一代架构为 Vue 3 + Rust + Tauri；当前代码尚未迁移，本轮仅同步设计文档。
+- 交互要求：脱敏页左原右脱敏，右侧只允许选区操作；规则、Rust 和 AI 检测均必须人工确认。
+- 标记要求：DOCX/XLSX/PDF 底部追加明文标记页/标记区；JSON/TXT/CSV/Markdown 输出 `.desens-meta` 伴随标记文件。
+- 还原要求：跨设备使用脱敏文件 + 映射数据；完整脱敏库包使用 AES-256-GCM 加密，需 `.p12` 和密码，SHA-256 仅校验。
+- 数据要求：第一阶段版本化 JSON；规则、标注、历史和映射可完整导出导入；暂不使用 Redis 作为单机主存储。
+- AI 要求：模型统一 GGUF，不打入安装包；AI 默认关闭，仅处理用户选区；LoRA 训练任务固定一个基础模型。
+- 协议草案：格式文件末尾写入明文随机文档标记，纯文本/结构化文本使用 `.desens-meta`；完整脱敏库为 AES-256-GCM 加密的 `.dlib`，使用 `.p12` + 密码解密。
+- 接口设计：Vue 通过版本化 Tauri command DTO 调用 Rust；Rust 按 commands/domain/application/document/storage/crypto/inference/training 分层，长任务通过统一事件报告状态。
+- DTO 设计：command 统一使用 `schema_version`、`request_id`、`success`；错误含稳定 code/message/details/retryable；长任务使用 `task-event` 事件，禁止输出敏感原文和密钥。
+- 存储设计：规则、历史、映射、标注、模型和训练任务分文件保存为 JSON envelope；通过 `StorageProvider` 抽象实现原子写入、schema 迁移、写锁和导入冲突策略。
+- 文档设计：所有格式通过 `DocumentAdapter` 统一处理；纯文本/结构化文本使用 `.desens-meta`，DOCX/XLSX/PDF 分别使用底部标记区、元数据工作表和末尾标记页。
+- 安全协议：`.dlib` 每包使用随机 AES-256-GCM 密钥和 nonce，AES 密钥由 `.p12` 中 RSA 公钥以 OAEP-SHA-256 包装；证书密码只保护 `.p12` 私钥，SHA-256 只做指纹和传输校验。
+- 模型设计：魔搭/Hugging Face/本地文件通过 `ModelProvider` 安装 GGUF；下载需断点续传、SHA-256 和兼容性校验，AI 通过 `InferenceRuntime` 仅处理用户选区并返回待审核候选。
+- 训练设计：标注数据使用不可变 dataset revision；LoRA 任务固定基础模型/数据集/配置，暂停依赖检查点，产物先注册为 adapter，评估通过后才允许合并 GGUF 或设为候选推理模型。
+- 评估设计：测试集按来源文件指纹隔离，报告 PII 实体指标与资源指标；规则/AI 冲突不自动覆盖，模型需评估并由用户确认后才能 active。
+- 开工状态：核心架构设计已完成，可以开始 Tauri/Rust 项目骨架与 domain DTO 实现；具体 crate 和运行时后端在实现阶段通过技术验证确定。
+- 当前实现：已新增 `src-tauri/` Tauri 2 骨架、基础 domain DTO、结构化错误和 health command；现有 Electron/FastAPI 链路保持不变。
+- 当前存储：已新增第一版 `JsonStorageProvider`，可初始化数据目录并对允许集合执行版本化 JSON 原子读写。
+- 当前存储进度：provider 已接入 Tauri managed state，并提供通用集合读写 command；下一步实现 settings/rules/history 专用 CRUD。
+- 当前 command 进度：已增加 `list_settings`、`list_rules`、`list_history` 只读 command；写入和删除仍未开放。
+- 通用写入 command 已增加可选 `expected_revision`，用于乐观并发校验；专用 CRUD 仍待实现。
+- 脱敏进度：已实现审核后文本 span 的 Rust 脱敏/还原核心和对应 command；尚未持久化映射或接入真实文件格式。
+- 脱敏进度更新：基础文本 mapping 已写入 `mappings/`，history 摘要按 revision 追加；真实文件输出和适配器仍待实现。
+- 脱敏进度更新：已增加 TXT/CSV/Markdown 文本适配器和 `redact_text_file`，可生成 `_desensitized` 文件及 `.desens-meta`；mapping 与 SHA-256 尚未绑定到文件输出。
+- 脱敏进度更新：文本 `.desens-meta` 已绑定 source/redacted SHA-256；mapping 仍需后续接入文件输出与历史记录。
+- 模型/任务进度：已建立模型记录、任务状态/事件类型和 `list_models` command；具体模型 Provider、推理和训练实现仍待接入。
+- 模型/任务进度更新：已增加本地 GGUF magic/大小/SHA-256 校验和 `register_local_model`，成功记录进入 models 集合。
+- 格式进度：已增加 `document_capabilities`，新 Rust 链路明确区分已接入文本格式和待迁移 JSON/DOCX/XLSX/PDF；旧 FastAPI 格式链路保持可用。
+- 任务进度更新：已增加进程内 TaskManager、TaskSnapshot 和 create/get task command；事件广播、长任务执行和恢复仍待实现。
+- 任务进度更新：已增加 `update_task`，可更新任务状态、进度和消息；事件广播、长任务执行、暂停/恢复和持久化仍待实现。
+- 任务进度更新：create/update 已持久化 tasks 快照并发送基础 `task-event`；长任务执行、取消、检查点和重启恢复仍待实现。
+- 任务进度更新：Tauri 启动已加载 tasks 快照，终态任务不可回退；真实执行进程和检查点恢复仍待实现。
+- 验证状态：Rust 格式化和差异检查通过；因当前环境无法访问 crates.io/npm 镜像，`cargo check` 与 `package-lock.json` 更新待依赖网络恢复后完成。
+
 ## 2026-08-18：当前交付方式
 
 - 普通用户改用 `scripts/install-from-source.sh`，通过 curl 下载源码，再执行 npm 与 Python 本机安装。
