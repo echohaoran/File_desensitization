@@ -474,4 +474,5 @@
 - GitHub Actions Windows 构建产物已从 NSIS `.exe` 调整为 MSI `.msi`，以符合交付要求。
 - CI 修复：移除 Candle 的强制 Metal feature，避免 Windows 编译引入 Apple 专属 `objc2`；当前使用跨平台 CPU 路径。
 - Windows MSI 增加平台专用 ASCII 产品名 `DESENS`，规避 WiX light 对中文 MSI 产品元数据的兼容问题；窗口标题仍为中文。
+- GitHub Actions 已调整为仅在 `v*` tag 推送时打包，并将 MSI/DMG 自动发布到同名 GitHub Release；普通 main 提交不再触发桌面发布构建，`.app` 仅保留在 Actions artifact 中。
 - 本次未修改旧 Vue/FastAPI/Electron 兼容链路。

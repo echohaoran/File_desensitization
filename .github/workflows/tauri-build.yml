@@ -3,11 +3,10 @@ name: Build Tauri Desktop Packages
 on:
   workflow_dispatch:
   push:
-    branches: [main]
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -24,6 +23,7 @@ jobs:
             paths: |
               src-tauri/target/release/bundle/dmg/*.dmg
               src-tauri/target/release/bundle/macos/*.app
+            release_paths: src-tauri/target/release/bundle/dmg/*.dmg
           - name: macOS Intel
             os: macos-13
             artifact: tauri-macos-x64
@@ -31,12 +31,14 @@ jobs:
             paths: |
               src-tauri/target/release/bundle/dmg/*.dmg
               src-tauri/target/release/bundle/macos/*.app
+            release_paths: src-tauri/target/release/bundle/dmg/*.dmg
           - name: Windows x64
             os: windows-2022
             artifact: tauri-windows-x64
             build_args: -- --bundles msi
             paths: |
               src-tauri/target/release/bundle/msi/*.msi
+            release_paths: src-tauri/target/release/bundle/msi/*.msi
 
     steps:
       - name: Checkout
@@ -64,3 +66,11 @@ jobs:
           path: ${{ matrix.paths }}
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish packages to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: ${{ matrix.release_paths }}
