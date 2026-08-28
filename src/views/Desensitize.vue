@@ -66,8 +66,8 @@
                 后端服务不可用，已切换到前端处理模式。错误：{{ backendError || '后端服务连接失败（请检查后端是否启动）' }}
               </p>
             </div>
-            <div v-if="formatWarning" class="backend-error" style="margin-top: 16px; padding: 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;">
-              <p style="font-size: 12px; color: #c2410c; margin: 0;">{{ formatWarning }}</p>
+            <div v-if="formatWarning" class="format-info" style="margin-top: 16px; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+              <p style="font-size: 12px; color: #1d4ed8; margin: 0;">{{ formatWarning }}</p>
             </div>
             <!-- PDF 转换成功提示 -->
             <div v-if="convertedFromPdf" class="conversion-success" style="margin-top: 16px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
@@ -460,7 +460,7 @@ export default {
         // 保留已加入的文件，不能因后端不可用而 reset；结构化解析交由兼容后端或适配器。
         this.rawOriginalText = `${this.file.name}\n\n当前已加入文件。${this.fileType === 'docx' ? 'Word' : 'Excel'} 结构化预览需要后端服务或对应适配器。`
         this.originalText = this.rawOriginalText
-        this.formatWarning = `${this.fileType === 'docx' ? 'Word' : 'Excel'} 文件已成功加入；当前后端不可用，暂显示文件状态，待服务恢复后执行结构化检测。`
+        this.formatWarning = `${this.fileType === 'docx' ? 'Word' : 'Excel'} 文件已成功加入。当前为本地兼容模式，结构化预览将在对应适配器可用后执行。`
         this.step = 2
       } else if (this.fileType === 'text') {
         const reader = new FileReader()
