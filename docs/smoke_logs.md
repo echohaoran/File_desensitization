@@ -186,3 +186,10 @@
 - macOS Apple Silicon：成功，已产出 `tauri-macos-arm64`。
 - Windows x64：失败，原因是 MSI/WiX `light.exe` 打包失败；已将工作流修复为 NSIS-only，等待新 run 验证。
 - macOS Intel：当时仍在排队/执行中。
+### 2026-08-28 多格式样本烟测
+
+- 已生成虚构样本：`txt / csv / json / md / pdf / docx / xlsx / png / jpg`，均位于 `trash/`，未进入版本库。
+- 样本包含虚构姓名、手机号、邮箱、身份证、地址和电话等候选敏感信息。
+- `cargo test --manifest-path src-tauri/Cargo.toml --quiet`：4 passed。
+- `npm run build`：通过。
+- 当前 Tauri 本地引擎已验证文本与 PDF 基础检测路径；DOCX/XLSX/PDF 结构化输出、图片 OCR 仍需在适配器/兼容后端可用时完成端到端验证。
