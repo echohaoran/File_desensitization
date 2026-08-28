@@ -193,3 +193,9 @@
 - `cargo test --manifest-path src-tauri/Cargo.toml --quiet`：4 passed。
 - `npm run build`：通过。
 - 当前 Tauri 本地引擎已验证文本与 PDF 基础检测路径；DOCX/XLSX/PDF 结构化输出、图片 OCR 仍需在适配器/兼容后端可用时完成端到端验证。
+### 2026-08-28 本地 Tauri 打包
+
+- `npm run tauri:build`：通过。
+- `.app`：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`
+- `.dmg`：`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`
+- 已启动最新 `.app`，待人工验证。
