@@ -198,3 +198,5 @@ fc-cache -f
 已移除 llama.cpp。Candle 当前支持 Qwen2 GGUF 推理；模型目录必须同时提供匹配的 `tokenizer.json`。不匹配架构或缺少 tokenizer 时返回明确错误，不会伪造候选结果。
 
 Windows CI 曾因强制启用 Candle Metal 引入 `objc2` 而失败，已改为不启用平台专属 feature 的 CPU 默认构建。
+
+Windows MSI 后续在 WiX `light.exe` 阶段失败，改用 `tauri.windows.conf.json` 提供 ASCII 产品名，避免中文 MSI 元数据触发无详细信息的 WiX 退出码 1。
