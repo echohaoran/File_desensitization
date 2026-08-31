@@ -131,4 +131,5 @@
 
 - [x] GitHub Actions 增加 Linux x64 DEB 发布作业。
 - [x] GitHub Release 文件统一为 local_desens_系统_架构 平台命名。
-- [ ] 推送 `v0.1.3` 后使用 ego-browser 监控四个平台发布状态。
+- [x] 推送 `v0.1.3` 后使用 ego-browser 监控四个平台发布状态；Linux 因缺少 GDK 开发依赖失败。
+- [ ] 推送 `v0.1.4` 后使用 ego-browser 监控四个平台发布状态。

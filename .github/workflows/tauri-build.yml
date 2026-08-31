@@ -35,7 +35,7 @@ jobs:
             source_glob: src-tauri/target/release/bundle/msi/*.msi
             release_name: local_desens_系统_架构_windows_x64.msi
           - name: Linux x64
-            os: ubuntu-22.04
+            os: ubuntu-24.04
             artifact: local_desens_linux_x64
             build_args: -- --bundles deb
             source_glob: src-tauri/target/release/bundle/deb/*.deb
@@ -56,6 +56,20 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Install Linux desktop build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            patchelf
 
       - name: Build Tauri package
         run: npm run tauri:build ${{ matrix.build_args }}

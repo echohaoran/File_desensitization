@@ -589,4 +589,5 @@
 
 - 扩展 Tauri 发布矩阵为 macOS ARM64、macOS Intel、Windows x64 和 Linux x64。
 - 每个作业在构建后复制并重命名真实产物，再上传 artifact 和 GitHub Release；发布文件以 `local_desens_系统_架构_<平台>.<格式>` 命名。
-- 同步 package、Tauri、Cargo 版本为 `0.1.3`，计划创建并推送 `v0.1.3`。
+- 初次 `v0.1.3` Linux DEB 作业因缺少 `gdk-3.0` 开发库失败；工作流改用 Ubuntu 24.04 并在构建前安装 Linux 桌面依赖。
+- 同步 package、Tauri、Cargo 版本为 `0.1.4`，计划创建并推送 `v0.1.4`。

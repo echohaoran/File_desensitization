@@ -343,4 +343,5 @@
 
 - GitHub tag 发布统一构建 macOS ARM64/Intel DMG、Windows x64 MSI、Linux x64 DEB。
 - 发布包采用 `local_desens_系统_架构_<平台>.<格式>`：macOS 双架构保留平台后缀，避免同一 GitHub Release 中同名 DMG 相互覆盖。
-- 本轮发布版本统一提升为 `0.1.3`，Git tag 为 `v0.1.3`。
+- 初次 `v0.1.3` Linux DEB 作业因 Runner 缺少 GTK/GDK 开发依赖失败；改用 Ubuntu 24.04 并显式安装 Tauri Linux 编译依赖。
+- 修复发布版本统一提升为 `0.1.4`，Git tag 为 `v0.1.4`。

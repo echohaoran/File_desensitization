@@ -246,3 +246,8 @@ Windows MSI 后续在 WiX `light.exe` 阶段失败，改用 `tauri.windows.conf.
 - 现象：`npm run tauri:build` 在 `bundle_dmg.sh` 阶段失败，手动 `hdiutil create` 报“设备上无剩余空间”，但磁盘空间充足。
 - 根因：macOS 新版 hdiutil 对 `-srcfolder` 自动容量估算失败（deprecated 调用路径）。
 - 处理：`.app` 打包不受影响；DMG 可进入 `src-tauri/target/release/bundle/dmg` 手动执行 `bash bundle_dmg.sh --volname "..." --volicon "..." --skip-jenkins --disk-image-size 128 <输出.dmg> ../macos` 生成。发布 DMG 仍以 GitHub Actions 产物为准。
+## Linux Tauri CI 缺少 GDK/GTK 开发依赖
+
+- 现象：GitHub Actions Linux DEB 构建在 `gdk-sys` 阶段失败，提示找不到 `gdk-3.0.pc`。
+- 原因：Ubuntu Runner 默认不提供 Tauri WebView/GTK 的编译开发包。
+- 修复：使用 Ubuntu 24.04，并在构建前安装 `libgtk-3-dev`、`libwebkit2gtk-4.1-dev`、`libayatana-appindicator3-dev`、`librsvg2-dev`、`libssl-dev` 和 `patchelf`。

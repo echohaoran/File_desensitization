@@ -2,7 +2,8 @@
 
 ## 2026-08-31：GitHub 发布命名更新
 
-- 计划发布 tag：`v0.1.3`；源码版本统一更新为 `0.1.3`。
+- 首次发布 tag：`v0.1.3`；Linux DEB 因 GitHub Runner 缺失 `gdk-3.0` 开发依赖失败。
+- 修复发布 tag：`v0.1.4`；源码版本统一更新为 `0.1.4`，工作流改用 Ubuntu 24.04 并安装 Tauri Linux 编译依赖。
 - 发布矩阵：macOS ARM64 DMG、macOS Intel DMG、Windows x64 MSI、Linux x64 DEB。
 - Release 文件使用 `local_desens_系统_架构_<平台>.<格式>`，保留双 macOS 架构后缀以避免资产同名覆盖。
 - 用户明确授权本轮提交、打 tag 与推送；推送后必须用 ego-browser 监控构建与 Release 状态。
