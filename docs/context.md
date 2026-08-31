@@ -591,3 +591,18 @@
 - 每个作业在构建后复制并重命名真实产物，再上传 artifact 和 GitHub Release；发布文件以 `local_desens_系统_架构_<平台>.<格式>` 命名。
 - 初次 `v0.1.3` Linux DEB 作业因缺少 `gdk-3.0` 开发库失败；工作流改用 Ubuntu 24.04 并在构建前安装 Linux 桌面依赖。
 - 同步 package、Tauri、Cargo 版本为 `0.1.4`，计划创建并推送 `v0.1.4`。
+
+# 2026-08-31 检测片段双波浪线
+
+- 原始与脱敏预览的对应检测片段均增加红色双波浪线；文档段落、表格与纯文本预览共用 `detection-mark` 样式。
+- 保持既有检测 ID、hover 联动和点击复核行为不变。
+
+## 2026-08-31 README 贡献与许可证说明
+
+- README 新增贡献流程，明确 Issue/PR、验证、文档同步及虚构测试数据与敏感信息边界。
+- README 许可证标题统一为「许可证 / License」，继续明确项目采用 Apache License 2.0 并链接根目录 `LICENSE`。
+# 2026-08-31：清理发布包名模板字样
+
+- GitHub Release 包名已移除实际文件名中的 `系统_架构` 占位字样。
+- 新命名为 `local_desens_macos_arm64.dmg`、`local_desens_macos_x64.dmg`、`local_desens_windows_x64.msi`、`local_desens_linux_amd64.deb`。
+- 本轮版本推进至 v0.1.5，待提交并触发新的 tag 发布。

@@ -130,8 +130,9 @@
 - 设置页推荐模型必须基于真实仓库和真实 GGUF 文件核验；小于 1B 的模型优先用于本地候选检测，找不到真实地址的模型不得展示为可下载。
 - 历史记录未保存复杂格式的真实文件字节时，下载入口必须明确提示无法重建；禁止根据预览文本伪造 DOCX、XLSX 或 PDF 文件。
 - 所有下载入口必须在系统接收下载后显示成功弹窗，并在生成、校验或提交失败时显示失败弹窗，不得静默结束。
+- 原始预览与脱敏预览中同一检测项必须同时使用红色双波浪线标识，且不得影响现有 hover 联动、定位或选区操作。
 - 所有用户文件上传、开始执行和“重新开始”操作必须先显示统一的应用内二次确认；取消确认不得读取文件、启动任务或清空当前状态，不得依赖 WebView 原生 `window.confirm`。
-- GitHub Release 由 `v*` tag 触发，必须同时构建 macOS ARM64 DMG、macOS Intel DMG、Windows x64 MSI 与 Linux x64 DEB；发布文件以 `local_desens_系统_架构_<平台>.<格式>` 命名，架构后缀用于避免同一 Release 的双 DMG 覆盖。
+- GitHub Release 由 `v*` tag 触发，必须同时构建 macOS ARM64 DMG、macOS Intel DMG、Windows x64 MSI 与 Linux x64 DEB；发布文件以 `local_desens_<平台>.<格式>` 命名，架构后缀用于避免同一 Release 的双 DMG 覆盖，不得把“系统_架构”等模板字样写入实际包名。
 - DOCX/XLSX 脱敏与还原必须直接改写原始 OOXML ZIP 包并校验确有替换；浏览器兼容模式也不得回退到未打包的服务生成占位文件。
 - JSON、TXT、CSV、Markdown 下载不得向业务正文插入说明文字；脱敏关联信息使用同名 `.desens-meta` 伴随文件。
 - 日期规则的月、日多位分支必须优先于单数字分支，避免将 `14` 截断为 `1`。

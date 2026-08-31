@@ -21,25 +21,25 @@ jobs:
             artifact: local_desens_macos_arm64
             build_args: -- --bundles dmg
             source_glob: src-tauri/target/release/bundle/dmg/*.dmg
-            release_name: local_desens_系统_架构_macos_arm64.dmg
+            release_name: local_desens_macos_arm64.dmg
           - name: macOS Intel
             os: macos-13
             artifact: local_desens_macos_x64
             build_args: -- --bundles dmg
             source_glob: src-tauri/target/release/bundle/dmg/*.dmg
-            release_name: local_desens_系统_架构_macos_x64.dmg
+            release_name: local_desens_macos_x64.dmg
           - name: Windows x64
             os: windows-2022
             artifact: local_desens_windows_x64
             build_args: -- --bundles msi
             source_glob: src-tauri/target/release/bundle/msi/*.msi
-            release_name: local_desens_系统_架构_windows_x64.msi
+            release_name: local_desens_windows_x64.msi
           - name: Linux x64
             os: ubuntu-24.04
             artifact: local_desens_linux_x64
             build_args: -- --bundles deb
             source_glob: src-tauri/target/release/bundle/deb/*.deb
-            release_name: local_desens_系统_架构_linux_amd64.deb
+            release_name: local_desens_linux_amd64.deb
 
     steps:
       - name: Checkout

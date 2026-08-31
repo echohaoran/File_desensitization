@@ -168,7 +168,7 @@
               <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
                   <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                  <span v-else :class="[part.active ? 'tok' : 'det', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
               <table v-else class="document-preview__table">
@@ -177,7 +177,7 @@
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
                         <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                        <span v-else :class="[part.active ? 'tok' : 'det', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
                   </tr>
@@ -188,11 +188,11 @@
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
             <article class="comparison-pane comparison-pane--original">
               <header class="comparison-pane__head"><span>原始文件</span><small>只读对照</small></header>
-              <pre class="comparison-pane__body" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="{ 'is-linked-hover': hoverDetectionId === part.id }" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.text }}</span></template></pre>
             </article>
             <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
               <header class="comparison-pane__head"><span>脱敏文件</span><small>仅可选区操作</small></header>
-              <pre class="comparison-pane__body" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="{ 'is-linked-hover': hoverDetectionId === part.id }" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
             </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
@@ -1363,6 +1363,18 @@ export default {
 .panel-toggle { border: 0; background: transparent; color: #64748b; font-size: 12px; cursor: pointer; }
 .upload-panel--collapsed .panel__head { padding-bottom: 12px; }
 .is-linked-hover { background: #fef08a !important; color: #111827 !important; border-radius: 3px; box-shadow: 0 0 0 2px #facc15; transition: background .12s ease, box-shadow .12s ease; }
+.detection-mark {
+  padding-bottom: 4px;
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #dc2626;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='3' viewBox='0 0 12 3'%3E%3Cpath d='M0 1.2Q1.5-.1 3 1.2T6 1.2T9 1.2T12 1.2M0 2.7Q1.5 1.4 3 2.7T6 2.7T9 2.7T12 2.7' fill='none' stroke='%23dc2626' stroke-width='.65'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 12px 3px;
+  background-position: left calc(100% + 2px);
+}
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
