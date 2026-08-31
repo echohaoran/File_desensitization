@@ -476,3 +476,117 @@
 - Windows MSI 增加平台专用 ASCII 产品名 `DESENS`，规避 WiX light 对中文 MSI 产品元数据的兼容问题；窗口标题仍为中文。
 - GitHub Actions 已调整为仅在 `v*` tag 推送时打包，并将 MSI/DMG 自动发布到同名 GitHub Release；普通 main 提交不再触发桌面发布构建，`.app` 仅保留在 Actions artifact 中。
 - 本次未修改旧 Vue/FastAPI/Electron 兼容链路。
+## 2026-08-28 README 更新
+
+- 更新根目录 README，明确 Vue 3 + Rust + Tauri 2 为当前桌面架构。
+- 补充 `v*` tag 触发 macOS DMG、Windows MSI 并发布到 GitHub Release 的说明。
+- 补充 GGUF 模型登记、校验、应用和 AI 人工确认边界。
+- 明确旧 Electron/FastAPI 链路仍为兼容入口，未删除。
+
+## 2026-08-28 DOCX 下载修复
+
+- 发现 Tauri 桌面版 DOCX 下载错误调用未打包的 FastAPI，导致复杂格式输出为空白小文件。
+- 增加 Tauri 本地 DOCX ZIP 文档包写回：直接更新正文、页眉和页脚 XML，并在文档末尾追加脱敏标记。
+- 下载前增加 Blob 非空和写入结果校验，失败时阻止生成占位文件。
+
+## 2026-08-28 按钮交互反馈
+
+- 根组件增加统一 Toast 反馈和无障碍状态播报。
+- 普通按钮点击后提供即时触发提示；已有下载、转换、脱敏、还原和模型操作继续使用各自的加载状态与结果提示。
+
+## 2026-08-28 还原链路修复与冒烟测试
+
+- 修复 Tauri 还原页 DOCX 不再依赖 FastAPI：本地解压 DOCX ZIP 并替换正文、页眉、页脚中的映射标记。
+- 修复还原按钮无反馈：执行期间显示“正在还原…”，完成或失败显示状态信息。
+- 下载前增加空 Blob 校验，禁止生成空白占位文件。
+- 使用 `trash/output/smoke-fixtures/input/word_1_customer-record.docx` 完成桌面 UI 脱敏测试，生成 `/Users/echowang/Downloads/redacted_word_1_customer-record.docx`，实测大小 829241 bytes，已确认不是 666 字节空文件。
+- 本次 Tauri 构建和启动通过；还原 UI 已补齐本地 DOCX 处理，待用户继续验证还原后的文件内容。
+
+## 2026-08-28 下载结果弹窗
+
+- 所有文件下载入口统一发送下载结果事件。
+- 成功弹窗显示文件名、文件大小，并说明已提交到系统下载目录。
+- 空文件、转换失败和模型下载失败显示失败弹窗及原因。
+
+## 2026-08-28 转交文档更新
+
+- 收到转交指令，重新记录项目、Git 状态与开发进度，并同步全部文档。
+- 复核验收：`npm run build` 通过；`cargo check` 通过（5 条未使用类型警告）；`cargo test` 4 passed / 0 failed。
+- `docs/handoff.md`：新增 16:10 交接快照，旧快照归档为「2026-08-28 15:59：DOCX 下载与交互反馈交接」。
+- `docs/readme.md`：修正烟测记录路径引用，由已删除的 `dpcs/smoke_logs.md` 改为 `docs/smoke_logs.md`。
+- `docs/decisions.md`：补充统一下载结果弹窗与全局按钮反馈的 UI 决策。
+- `docs/smoke_logs.md`：补记交接前的构建、测试与打包产物路径。
+- `docs/todo.md`：补记带时间戳的待验证项。
+- `docs/memory.md`：补记本阶段稳定事实增量。
+- 本次仅更新文档，未改动源码；未执行 commit/push。
+# 2026-08-28 历史下载真实性与反馈修复
+
+- 修复还原页“下载脱敏后文件”引用未定义 Blob 并误报成功的问题。
+- 对未保存真实文件字节的 DOCX/XLSX/PDF 历史记录停止生成占位文件，改为全局失败弹窗说明必须使用脱敏时下载的真实文件。
+- 文本历史仍可下载真实脱敏正文，成功与失败均通过统一下载结果弹窗反馈。
+
+## 2026-08-31 全链路真实性与交互回归
+
+- DOCX 与 XLSX 的脱敏下载统一改为本地 OOXML ZIP 写回，不再调用旧 FastAPI 输出链路。
+- 修复 Rust 确认后随机标记与文件写回仍读取旧检测标记不一致的问题；输出改用最终 mapping。
+- 修复 XLSX `t="str"` 单元格文本无法提取，现可检测并写回工作表字符串值。
+- DOCX/XLSX 还原直接修改原始文档包；DOCX 预览从还原后的 XML 提取，未知标记原样保留以支持部分还原。
+- 修复异步文本与图片还原提前结束加载状态，以及日期 `2026-08-14` 被截断的问题。
+- 文本、JSON、CSV、Markdown 输出不再向正文插入提示，改为同时生成 `.desens-meta` 伴随文件。
+- 所有按钮提供即时 Toast；下载统一成功/失败弹窗；删除规则、删除历史及清空历史增加二次确认。
+- 未执行 commit 或 push，等待用户本地验收。
+
+## 2026-08-31 历史真实文件持久化
+
+- 新增 IndexedDB `desens_history_files`，保存脱敏完成时生成的真实 Blob、文件名、MIME、大小和时间。
+- `localStorage` 历史记录新增 `redacted_file_key` 索引，不再承载大型二进制内容。
+- 历史页可直接下载新记录的真实 DOCX/XLSX/文本/图片脱敏文件；成功和失败继续使用统一弹窗。
+- 删除单条或清空历史时同步清理 IndexedDB 文件。
+- 旧记录因为没有保存真实字节，标注为“旧记录”，提示重新脱敏一次，不伪造文件。
+- 浏览器烟测：新 DOCX 历史保存 829261 bytes，并从历史页成功触发同大小真实下载。
+
+## 2026-08-31 历史清空修复
+
+- 根因：Tauri WebView 未可靠展示 `window.confirm()`，点击“全部清空”只触发了全局按钮 Toast，实际删除分支被取消。
+- 历史单条删除和全部清空改用应用内 `alertdialog`，显示影响范围并提供取消/确认按钮。
+- 确认清空后同步移除页面状态、`localStorage` 历史元数据和 IndexedDB 真实文件。
+- 隔离烟测以 2 条虚构记录和 1 个测试 Blob 验证：清空后页面记录 0、localStorage 记录 0、IndexedDB 文件 0。
+## 2026-08-31 上传与任务执行二次确认
+
+- 新增全局异步应用确认组件，统一承接脱敏、还原和格式转换页面的确认请求。
+- 文件选择和拖拽上传在用户确认前不读取、不解析；取消后清空文件输入并保留当前页面状态。
+- 脱敏、AI 全文检测、还原、格式转换和重新开始均增加二次确认；重新开始使用警示样式。
+- 浏览器烟测覆盖上传取消/确认、开始执行、还原历史上传、格式转换和重新开始状态保留。
+- `npm run tauri:build` 已生成并启动本次最新 macOS 应用和 ARM64 DMG，等待用户人工验收。
+## 2026-08-31 接手记录
+
+- 收到「接手」指令，完成项目状态核验并记录交接，未改动源码。
+- 核实：分支 `main`、HEAD `9af66b7`；版本源码/Tauri 配置 0.1.1、tag v0.1.2；最新 `.app` 与 `.dmg` 存在（09:35 产物）；桌面应用未运行，仅 Vite 开发服务在跑。
+- 工作区：18 个未提交修改文件（+920/-290），未跟踪 `.workbuddy/`、`src/utils/appConfirm.js`、`src/utils/historyFiles.js`；`dpcs/smoke_logs.md` 保持既有删除状态。
+- `docs/handoff.md`：新增「2026-08-31 接手快照」，归档二次确认交接快照为上一节。
+- 未执行 commit/push，等待用户对二次确认体验与最近回归的验收结论。
+
+## 2026-08-31 还原下载本地化、历史检索与格式转换页移除
+
+- 新增 `src/utils/formatExport.js`：本地生成 TXT/CSV/Markdown Blob 与 JSZip 真实 DOCX/XLSX，输出前做 ZIP 签名、非空与内容抽样校验。
+- `Restore.vue`：还原完成下载栏新增「表格 CSV」按钮；Word/Excel/TXT/Markdown 全部改为本地生成，不再调用 FastAPI `/api/text-to-*`；Excel 还原后提取真实单元格文本供文本类导出与预览；图片还原提供 PNG 下载出口，不再对图片显示文档格式按钮。
+- `Restore.vue` 脱敏历史：新增搜索框（按文件名/时间过滤）、时间排序切换（默认最新在前）、匹配计数与无匹配提示。
+- 删除格式转换页面：`router/index.js` 移除 `/convert`，`App.vue` 移除导航入口，`src/views/Convert.vue` 归档到 `trash/removed-2026-08-31/`（含未提交的二次确认改动，可恢复）。
+- 浏览器烟测：Vite 5173 + ego-browser 隔离任务空间，虚构 CSV 数据端到端还原，5 个下载按钮全部成功且落盘文件校验为真实内容（docx/xlsx 含还原值、csv 带 BOM、无 index.html 占位内容）。
+- 未执行 commit/push，等待用户在最新 `.app` 上验收。
+
+## 2026-08-31 Tauri 打包与 DMG 绕行
+
+- 第二次 `npm run tauri:build` 重新生成 `dist/` 并打包最新 `.app`；DMG 步骤因本机 hdiutil 容量估算失败中断，已按 `docs/troubleshoot.md` 新规则用 `bundle_dmg.sh --skip-jenkins --disk-image-size 128` 手动生成 17MB DMG。
+- 已启动 `src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`（pid 59188）等待用户人工验收；未执行 commit/push。
+
+## 2026-08-31 转交文档更新
+
+- 收到「转交」指令，新增 `docs/handoff.md`「还原下载本地化交接快照」，记录本轮改动、验证、Git 状态、待验收项与下一步。
+- 同步更新：`README.md`（页面列表移除「格式转换」，还原流程改为本地多格式导出与历史搜索排序）、`docs/memory.md`（增量稳定事实）、`docs/troubleshoot.md`（DMG hdiutil 绕行规则）、`docs/smoke_logs.md`、`docs/decisions.md`、`docs/todo.md`、`AGENTS.md`。
+- 本次仅更新文档，未改动源码；交接核对时 `.app` 进程已退出（此前 10:30 启动、供用户验收），最新产物路径不变；未执行 commit/push。
+## 2026-08-31 GitHub Actions 发布规范
+
+- 扩展 Tauri 发布矩阵为 macOS ARM64、macOS Intel、Windows x64 和 Linux x64。
+- 每个作业在构建后复制并重命名真实产物，再上传 artifact 和 GitHub Release；发布文件以 `local_desens_系统_架构_<平台>.<格式>` 命名。
+- 同步 package、Tauri、Cargo 版本为 `0.1.3`，计划创建并推送 `v0.1.3`。

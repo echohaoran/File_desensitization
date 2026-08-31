@@ -60,3 +60,22 @@
 - Release 安装包命名统一为 `desensitization_版本号.格式`，并已修正 `v0.1.0` Release 的资产名称和校验和。
 - 保留现有文档处理能力的前提下，排除了因可选 Presidio/spaCy 导入被 PyInstaller 收集的无用依赖；macOS ARM64 后端从约 115 MB 降至约 93 MB。
 - `v0.1.1` 已提交至 `main`，带独立更新说明文件；尚未推送版本标签，等待发布动作。
+
+# 2026-08-28：交互反馈与下载可靠性增量
+
+- 下载结果统一由 `desens:download-result` 自定义事件驱动，根组件集中弹窗；页面不再各自实现下载提示。
+- 下载前必须校验 Blob 非空，Download 后延迟释放 Object URL；失败不生成占位文件。
+- 桌面版 DOCX 下载与还原直接改写原始 DOCX ZIP 的 `word/document.xml`、页眉和页脚 XML，不调用未打包的 FastAPI。
+- 复杂格式能力未接入时必须给出信息提示，明确区分「文件已加入」与「结构化检测不可用」，不得用错误样式制造歧义。
+- 版本现状：源码与 Tauri 配置均为 `0.1.1`，Git tag 已到 `v0.1.2`；发布前三者必须对齐。
+- 烟测记录统一在 `docs/smoke_logs.md`；`dpcs/smoke_logs.md` 已废弃。
+- 发布推送必须显式指定 `git@github.com:echohaoran/File_desensitization.git`，因为 `origin` 配置了多个 push URL。
+- 用户未明确确认测试完成前，不执行 commit/push。
+
+## 2026-08-31 增量
+
+- 还原结果导出（Word/Excel/CSV/TXT/Markdown）统一由 `src/utils/formatExport.js` 前端本地生成；Tauri 内调用 `/api/text-to-*` 会被 SPA 回退成 index.html 占位文件，此链路已废弃。
+- 本地 OOXML 导出必须通过 ZIP 签名、非空与内容抽样校验后才允许触发下载。
+- 脱敏历史面板支持文件名/时间搜索与时间双向排序（默认最新在前）。
+- 独立「格式转换」页面已按用户指令删除，`Convert.vue` 归档于 `trash/removed-2026-08-31/`；脱敏页内 PDF→Word 兼容流程保留。
+- 本机 `bundle_dmg.sh` DMG 打包失败为 hdiutil 容量估算误报，绕行规则已固定到 `docs/troubleshoot.md`。

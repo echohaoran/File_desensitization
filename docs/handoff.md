@@ -1,5 +1,214 @@
 # 开发交接记录
 
+## 2026-08-31：GitHub 发布命名更新
+
+- 计划发布 tag：`v0.1.3`；源码版本统一更新为 `0.1.3`。
+- 发布矩阵：macOS ARM64 DMG、macOS Intel DMG、Windows x64 MSI、Linux x64 DEB。
+- Release 文件使用 `local_desens_系统_架构_<平台>.<格式>`，保留双 macOS 架构后缀以避免资产同名覆盖。
+- 用户明确授权本轮提交、打 tag 与推送；推送后必须用 ego-browser 监控构建与 Release 状态。
+
+
+## 2026-08-31 10:5x：还原下载本地化交接快照
+
+### 本轮完成
+
+- 还原结果下载全部改为前端本地生成：新增 `src/utils/formatExport.js`，TXT/CSV/Markdown 用 Blob，DOCX/XLSX 用 JSZip 生成真实 OOXML，输出前做 ZIP 签名、非空与内容抽样校验；Tauri 页面不再调用未打包的 FastAPI `/api/text-to-*`，消除占位示例文件根因（SPA 回退返回 index.html）。
+- 下载栏新增「表格 CSV」；Excel 源还原后提取真实单元格文本供文本导出与预览；图片还原改为「图片 PNG」出口。
+- 脱敏历史面板新增搜索（文件名/时间）与时间排序切换，默认最新在前。
+- 按用户指令删除独立「格式转换」页面：路由 `/convert`、导航入口移除；`Convert.vue`（含未提交改动）归档 `trash/removed-2026-08-31/`；脱敏页内 PDF→Word 兼容流程与后端接口保留。
+
+### 验证与产物
+
+- `npm run build` 通过；Node 直测 formatExport 输出为真实 PK 签名文档包。
+- ego-browser 烟测（Vite 5173、虚构 CSV 样本）：搜索/排序/还原流程/5 个下载按钮全通过，落盘文件逐一校验为真实内容。
+- `npm run tauri:build` 生成最新 `.app`；DMG 因本机 hdiutil 容量估算误报失败，按 `docs/troubleshoot.md` 新规则用 `bundle_dmg.sh --skip-jenkins --disk-image-size 128` 手动生成 17MB DMG。
+- 产物：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`（10:30 构建；曾启动供用户验收，交接核对时进程已退出）、`bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`（10:41）。
+
+### Git 状态
+
+- 分支 `main`，HEAD `9af66b7`；工作区未提交改动约 24 个文件（+994/-284，含本轮），`Convert.vue` 删除与 `App.vue`/`router` 修改已暂存。
+- 未跟踪源码：`src/utils/appConfirm.js`、`src/utils/historyFiles.js`、`src/utils/formatExport.js`（均为正式源码，待提交）。
+- `dpcs/smoke_logs.md` 保持既有删除状态；发布推送必须显式使用 `git@github.com:echohaoran/File_desensitization.git`。
+- 未执行 commit/push，等待用户验收。
+
+### 待用户验收
+
+1. 桌面 `.app`：还原页 5 个格式下载（可用 `~/Downloads/restored_脱敏测试数据.*` 复核）、图片还原 PNG 出口。
+2. 脱敏历史搜索与排序。
+3. 顶部导航已无「格式转换」。
+
+### 尚未完成（不得虚报）
+
+- PDF 保格式 Rust 适配器、图片 OCR、LoRA 后训练、Candle 全文推理未达交付标准。
+- 版本号未对齐：源码/Tauri 配置 0.1.1，tag 已到 v0.1.2。
+
+### 下一步
+
+1. 用户在 `.app` 上验收；有问题修复后重新打包复测。
+2. 用户明确「测试完成/可以推送」后整理工作区提交并推送。
+
+## 2026-08-31 09:4x：接手快照
+
+### 接手背景
+
+- 收到「接手」指令，本轮仅完成状态核验与交接记录，未改动源码、未执行 commit/push。
+
+### 当前项目状态
+
+- 主架构：Vue 3 + Rust + Tauri 2；旧 Vue + FastAPI + Electron 保留为兼容链路，未经确认不得删除。
+- 分支 `main`，HEAD `9af66b7 ci(release): publish desktop packages on version tags`。
+- 版本：源码与 Tauri 配置均为 `0.1.1`；Git tag 已到 `v0.1.2`，发布前必须对齐三者。
+- 最新构建产物（2026-08-31 09:34/09:35）：
+  - `.app`：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`
+  - `.dmg`：`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`（约 8.3 MB）
+- 桌面 `.app` 当前未运行；本机仅有多个 Vite 开发服务进程（127.0.0.1 与 5174 端口）。
+
+### 待用户验收的最近改动
+
+- 全局应用内二次确认（`src/utils/appConfirm.js` + 根组件 alertdialog）：文件上传、拖拽上传、脱敏/AI 检测/还原/格式转换开始、两个主流程“重新开始”均在读取/执行前要求确认；取消保留状态。
+- 历史真实文件持久化：IndexedDB `desens_history_files` 保存真实 Blob，`localStorage` 仅存索引；删除/清空同步清理 IndexedDB。
+- 全链路真实性与交互：DOCX/XLSX 本地 OOXML ZIP 写回、统一下载成功/失败弹窗、普通按钮即时 Toast。
+- 以上均已通过 `npm run build`、`cargo test`（4 passed）、ego-browser 二次确认烟测、`npm run tauri:build`；等待用户在最新 `.app` 上人工验收。
+
+### Git 工作区
+
+- 未提交修改 18 个文件（+920/-290）：`AGENTS.md`、`README.md`、`src/App.vue`、`src/utils/sensitiveRules.js`、五个视图页、`docs/*` 等。
+- 未跟踪：`.workbuddy/`、`src/utils/appConfirm.js`、`src/utils/historyFiles.js`（后两者为正式源码，待提交）。
+- `dpcs/smoke_logs.md` 处于既有删除状态（历史遗留路径），不要恢复、删除或提交，除非用户明确指定。
+- `uploads/`、`trash/`、`src-tauri/target/` 已忽略，不进入版本控制。
+- 远端 `origin` 配置多个 push URL；发布/推送必须显式使用 `git@github.com:echohaoran/File_desensitization.git`。
+
+### 尚未完成（不得虚报）
+
+- PDF 保格式 Rust 适配器、图片 OCR、LoRA 后训练、Candle 全文推理未达交付标准。
+- 发布前版本号（源码 0.1.1 / tag v0.1.2）尚未统一。
+
+### 下一步
+
+1. 等用户对二次确认体验与最近回归给出验收结论。
+2. 用户反馈问题则修复并重新 `npm run tauri:build` 后交给用户复测。
+3. 用户明确“测试完成/可以推送”后再整理工作区改动并提交推送。
+
+## 2026-08-31：二次确认交接快照
+
+### 本轮完成
+
+- 新增 `src/utils/appConfirm.js` 与根组件应用内确认框；不依赖 WebView 原生 `window.confirm`。
+- 脱敏、还原、格式转换的文件选择与拖拽上传均在读取前要求二次确认。
+- 确认脱敏、AI 全文检测、开始还原、开始格式转换和两个主流程的“重新开始”均要求二次确认；取消保持当前数据与流程状态。
+- 所有变更已同步记录到 `AGENTS.md`、`docs/context.md`、`docs/decisions.md`、`docs/todo.md`、`docs/troubleshoot.md` 和 `docs/smoke_logs.md`。
+
+### 验证与产物
+
+- `npm run build`：通过；仅保留 PDF.js 体积告警。
+- `cargo test`：4 passed / 0 failed；仍有既有未使用类型警告。
+- ego-browser 交互烟测：使用 `trash/` 中虚构 TXT/PDF/DOCX，验证上传取消/确认、脱敏开始、还原开始、转换开始与重新开始确认；通过。
+- `npm run tauri:build`：通过并生成最新 `.app` 和 ARM64 `.dmg`；最新应用已启动。
+- 当前可测试应用：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`。
+- 当前可测试安装包：`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`。
+
+### 当前 Git 与注意事项
+
+- 分支：`main`；HEAD：`9af66b7 ci(release): publish desktop packages on version tags`。
+- 工作区包含本轮与前序未提交改动，且有未跟踪 `.workbuddy/`、`src/utils/appConfirm.js`、`src/utils/historyFiles.js`。
+- `dpcs/smoke_logs.md` 处于既有删除状态；不要擅自恢复、删除或提交，除非用户明确指定。
+- 用户尚在本地测试阶段，未获得“测试完成/允许推送”授权：不得提交或推送。
+
+### 下一步
+
+1. 等待用户验证最新应用中的二次确认体验。
+2. 若用户反馈问题，优先在统一确认组件或对应流程入口修复并重新打包。
+3. 用户明确确认后，审查工作区中前序改动与既有删除项，按用户授权范围提交并推送。
+
+## 2026-08-28 16:10：当前交接快照
+
+### 当前目标与状态
+
+- 主架构：Vue 3 + Rust + Tauri 2；旧 Vue + FastAPI + Electron 仅保留兼容链路，未经确认不得删除。
+- 版本状态：`package.json` 与 `src-tauri/tauri.conf.json` 仍为 `0.1.1`，Git 已有 tag `v0.1.2`；版本号尚未统一升级，发布前必须对齐三者。
+- 本轮主题：交互反馈与下载可靠性——全局 Toast、统一“下载已完成/下载失败”弹窗、DOCX 本地 ZIP 写回、空 Blob 校验。
+
+### 本轮未提交改动
+
+- `src/App.vue`：新增全局 Toast 提示、统一“下载已完成/下载失败”弹窗（监听 `desens:download-result`，显示文件名与大小）、普通按钮点击即时反馈。
+- `src/views/Desensitize.vue`、`Restore.vue`、`Convert.vue`、`Settings.vue`：接入下载结果事件、加载态与失败提示。
+- `docs/*`：同步 `README.md`（根）、`context.md`、`handoff.md`、`readme.md`、`troubleshoot.md`。
+- 删除遗留的 `dpcs/smoke_logs.md`；烟测记录统一落在 `docs/smoke_logs.md`，不要恢复旧路径。
+
+### 已完成验证（2026-08-28 16:08）
+
+- `npm run build`：通过，耗时约 2.8 秒；仅有 jszip chunk 超过 500 kB 的体积警告，不影响产物。
+- `cargo check --manifest-path src-tauri/Cargo.toml`：通过，仅有 5 条未使用类型警告。
+- `cargo test --manifest-path src-tauri/Cargo.toml --quiet`：4 passed / 0 failed。
+- `npm run tauri:build`：本轮产物时间与最新源码一致，未重新打包。
+- 最新应用：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`。
+- 最新 DMG：`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`（约 8.7 MB）。
+- 虚构样本 `trash/output/smoke-fixtures/input/word_1_customer-record.docx` 经桌面 UI 完成检测与下载，输出 `/Users/echowang/Downloads/redacted_word_1_customer-record.docx` 829241 bytes，不再是 666 字节空白容器。
+
+### 需要继续验证
+
+- DOCX 完整闭环：脱敏下载 → 还原页选择对应历史 → 上传脱敏 DOCX → 还原 → 下载 → 解压检查 `word/document.xml`，确认原值恢复且占位符清零。
+- 在最新 `.app` 中验证统一“下载已完成/下载失败”弹窗的实际表现。
+- XLSX/PDF 的 Tauri 原生结构化脱敏与还原尚未达到 DOCX 同等完整度；不得宣称全部复杂格式已完成。
+- 历史记录只保存映射和 `redacted_text`，不能凭历史重建原格式 DOCX；真实 DOCX 还原必须上传脱敏后的 DOCX。
+
+### Git 状态
+
+- 当前分支：`main`，与 `origin/main` 同步于 `9af66b7 ci(release): publish desktop packages on version tags`。
+- 未提交修改：`README.md`、`docs/context.md`、`docs/handoff.md`、`docs/readme.md`、`docs/troubleshoot.md`、`src/App.vue`、`src/views/Convert.vue`、`src/views/Desensitize.vue`、`src/views/Restore.vue`、`src/views/Settings.vue`。
+- 未提交删除：`dpcs/smoke_logs.md`（遗留路径，不要恢复）。
+- 无未跟踪文件；`uploads/`、`trash/`、`src-tauri/target/` 已被忽略，不进入版本控制。
+- 远端：`origin` 配置了多个 push URL。发布时显式使用 `git@github.com:echohaoran/File_desensitization.git`，避免误推镜像。
+- 未收到用户明确“测试完成/可以推送”确认前，不执行 commit/push。
+
+### 下一步建议
+
+1. 先用最新 `.app` 完成 DOCX 端到端还原验证，并检查生成文件内部 XML。
+2. 根据验证结果修复残余占位符或映射字段兼容问题。
+3. 补齐 XLSX/PDF 本地适配器及可重复自动化测试。
+4. 用户确认后再整理提交并推送；发布时统一更新 `package.json`、Tauri 配置和 tag 版本。
+
+## 2026-08-28 15:59：DOCX 下载与交互反馈交接
+
+### 上一轮目标与状态
+
+- 主架构：Vue 3 + Rust + Tauri 2；旧 Electron/FastAPI 仅保留兼容链路。
+- 当前版本：源码配置仍为 `0.1.1`，Git tag 已存在 `v0.1.2`；版本号尚未统一升级。
+- 本轮重点修复了 Tauri DOCX 脱敏下载、DOCX 本地还原、按钮交互反馈和统一下载结果弹窗。
+- 所有 Blob 文件下载入口会显示成功/失败弹窗；成功弹窗显示文件名和大小，模型下载也会显示校验结果。
+
+### 已完成验证
+
+- `npm run build`：通过。
+- `cargo check --manifest-path src-tauri/Cargo.toml`：通过，仅有未使用类型警告。
+- `npm run tauri:build`：通过。
+- 最新应用：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`。
+- 最新 DMG：`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`。
+- 使用虚构样本 `trash/output/smoke-fixtures/input/word_1_customer-record.docx` 经桌面 UI 完成检测、确认和下载。
+- 下载结果 `/Users/echowang/Downloads/redacted_word_1_customer-record.docx` 大小为 829241 bytes，不再是 666 字节空白容器。
+
+### 需要继续验证
+
+- 在最新构建中再次验证统一“下载已完成/下载失败”弹窗。
+- 完成完整 DOCX 闭环：脱敏下载 → 还原页选择对应历史 → 上传脱敏 DOCX → 开始还原 → 下载还原 DOCX → 解压检查 `word/document.xml`，确认原值恢复且占位符清零。
+- XLSX/PDF 的 Tauri 原生结构化脱敏与还原尚未达到 DOCX 同等完整度；不得宣称全部复杂格式已完成。
+- 历史记录当前主要保存映射和 `redacted_text`，不能仅凭历史重建原格式 DOCX；真实 DOCX 还原必须上传脱敏后的 DOCX。
+
+### Git 状态
+
+- 当前分支：`main`。
+- HEAD：`9af66b7 ci(release): publish desktop packages on version tags`。
+- 未提交修改：`README.md`、`docs/context.md`、`docs/readme.md`、`docs/troubleshoot.md`、`docs/handoff.md`、`src/App.vue`、`src/views/Convert.vue`、`src/views/Desensitize.vue`、`src/views/Restore.vue`、`src/views/Settings.vue`。
+- `dpcs/smoke_logs.md` 为此前遗留删除状态，不要擅自恢复或提交。
+- 未收到用户明确测试完成/允许推送前，不执行 commit/push。
+
+### 下一步建议
+
+1. 先用最新 `.app` 完成 DOCX 端到端还原验证，并检查生成文件内部 XML。
+2. 根据验证结果修复残余占位符或映射字段兼容问题。
+3. 补齐 XLSX/PDF 本地适配器及可重复自动化测试。
+4. 用户确认后再整理提交并推送；发布时统一更新 `package.json`、Tauri 配置和 tag 版本。
+
 - 前端进度：已新增 `tauriBridge.js` 和 Tauri runtime 检测；现有页面尚未整体切换，浏览器兼容链路保持不变。
 - 前端进度更新：新增 `/desktop-smoke` 测试页，覆盖新 command 的基础调用；只使用虚构文本，未替换现有生产工作流。
 
@@ -157,3 +366,15 @@ git push git@github.com:echohaoran/File_desensitization.git v0.1.1
 - 代码修改后的构建产物先交给用户本地测试。
 - 未收到“测试完成/可以推送”等明确确认前，不执行 `git push`。
 - CI 交付：Windows 使用 MSI，macOS 生成 Apple Silicon/Intel DMG；推送后需在 GitHub Actions 核验三项任务和 artifacts。
+# 2026-08-28 下载反馈修复补充
+
+- 复杂格式历史记录不再伪造可下载文件；只有脱敏阶段基于原始 ZIP/二进制生成的文件可作为真实脱敏文件。
+- DOCX 本地样本已验证上传、7 项检测与人工确认流程；成功/失败下载均使用全局结果弹窗。
+- 最新 macOS `.app` 与 DMG 已重新打包，尚未提交或推送，等待用户人工测试反馈。
+
+## 2026-08-31 交付回归快照
+
+- DOCX 脱敏/还原真实文件闭环与 XLSX 结构化脱敏下载已通过。
+- 所有下载入口已统一结果弹窗，普通按钮有即时反馈，破坏性操作有确认。
+- 最终源码重新执行 Tauri 打包并启动后交由用户测试，用户确认前不得 push。
+- 尚未完成且不得虚报：PDF 保格式 Rust 适配器、图片 OCR、LoRA 后训练、Candle 全文推理。

@@ -1,12 +1,36 @@
 # 多步骤脱敏系统 / Multi-Step Desensitization System
 
-面向企业内部投资人员与私募基金管理员的开箱即用、本机优先型敏感数据脱敏工具。无需登录，提供「脱敏」「还原」和「敏感字段管理」页面，支持自动识别、人工复核及本地自定义规则。
+面向企业内部投资人员与私募基金管理员的本机优先型敏感数据脱敏工具。当前桌面版采用 Vue 3 + Rust + Tauri 2，提供「脱敏」「还原」「敏感字段管理」和「设置」页面，支持自动识别、人工复核及本地自定义规则；还原结果可在本地直接导出 Word/Excel/CSV/TXT/Markdown，不依赖后端转换服务。
+
+> 当前版本：`v0.1.2`。Tauri 桌面包是新架构验收入口；旧版 Electron/FastAPI 链路仍保留用于兼容和对比测试。
+
+## 下载与发布
+
+版本 tag 使用 `v*` 格式时，GitHub Actions 会自动构建并发布：
+
+- macOS Apple Silicon：DMG
+- macOS Intel：DMG
+- Windows x64：MSI
+
+构建产物会上传到对应的 GitHub Release。源码仓库：[echohaoran/File_desensitization](https://github.com/echohaoran/File_desensitization)。
 
 ---
 
 ## 快速开始
 
-### 源码安装（推荐）
+### Tauri 桌面版开发
+
+需要 Node.js 20+、Rust stable 和 Tauri 2 的系统依赖：
+
+```bash
+npm ci
+npm run tauri:dev       # 启动桌面开发版
+npm run tauri:build     # 构建安装包
+```
+
+构建产物位于 `src-tauri/target/release/bundle/`。模型文件不随安装包发布，需在设置页下载或登记本地 GGUF 文件。
+
+### 旧版源码安装（兼容链路）
 
 ```bash
 # 需要 Node.js 20+、Python 3.10+、git 和 curl
@@ -106,14 +130,22 @@ File_desensitization/
 
 ## 技术架构
 
-### 前端
+### 当前桌面架构
+
+- **界面**：Vue.js 3 + Vue Router + Vite
+- **桌面容器**：Tauri 2
+- **本地核心**：Rust，统一处理任务、文件适配器、存储和安全边界
+- **推理接口**：Rust 原生 Candle 接口；AI 默认关闭，模型必须先通过 GGUF 校验并由用户显式应用
+- **数据存储**：版本化 JSON；历史映射、规则、训练数据和模型登记信息分离保存
+
+### 兼容前端
 
 - **框架**: Vue.js 3 + Vue Router
 - **构建工具**: Vite
 - **PDF 处理**: pdfjs-dist
 - **样式**: 自定义 CSS 设计系统
 
-### 后端
+### 兼容后端
 
 - **框架**: FastAPI (Python)
 - **PII 检测**:
@@ -176,6 +208,14 @@ File_desensitization/
 | 实时预览 | 文本预览高亮敏感信息；Word 保留段落、标题、列表和表格结构 |
 | 映射表生成 | 自动生成脱敏映射表 JSON |
 
+桌面版脱敏流程要求规则引擎、Rust 引擎和 AI 结果均进入人工确认；脱敏页使用原始文件/脱敏文件左右预览，右侧只允许选区操作。纯文本、CSV、JSON、Markdown 使用 `.desens-meta` 伴随标记文件，DOCX/XLSX/PDF 使用文档底部标记区或专用标记页。
+
+### 本地 AI
+
+AI 默认不参与脱敏。用户可在设置页选择 Hugging Face（默认使用 `hf-mirror.com`）或魔搭社区，下载真实可核验的 GGUF 文件，也可以登记本地 GGUF。下载完成并通过 magic、可读性和 SHA-256 校验后，用户点击“应用模型”才会启用。
+
+AI 只生成候选敏感区间和置信度，不能直接覆盖文件；候选结果必须由人工复核。没有模型时使用敏感库和规则检测；启用模型后，以敏感库为基础，再合并模型候选结果。
+
 ### 检测的敏感信息类型
 
 | 类型 | 说明 | 检测方式 |
@@ -228,11 +268,10 @@ File_desensitization/
 ### 还原流程
 
 ```
-1. 上传已脱敏文件
-2. 上传对应映射表 JSON
-3. 系统校验用户归属
-4. 执行还原（替换占位符为原始值）
-5. 下载还原后的文件
+1. 选择本机脱敏历史（支持按文件名/时间搜索，按时间正序/倒序排列）
+2. 上传待还原的脱敏文件
+3. 执行还原（替换占位符为原始值）
+4. 下载还原结果：Word / Excel / CSV / TXT / Markdown 均在本地生成真实文件；图片还原导出 PNG
 ```
 
 ---

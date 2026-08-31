@@ -34,7 +34,8 @@ export default {
   },
   methods: {
     methodName(rule) { return rule.method || ({ name: '姓名', keyword: '关键词', regex: '正则表达式', algorithm: '算法校验', nlp: 'NLP / 上下文' })[rule.kind] || '规则' },
-    persist() { saveSensitiveRules(this.rules) },
+    notify(message) { window.dispatchEvent(new CustomEvent('desens:status', { detail: { message } })) },
+    persist() { saveSensitiveRules(this.rules); this.notify('敏感字段状态已保存') },
     editRule(rule) { this.error = ''; this.editingId = rule.id; this.draft = { name: rule.name, kind: rule.kind, value: rule.value }; window.scrollTo({ top: 0, behavior: 'smooth' }) },
     cancelEdit() { this.editingId = ''; this.error = ''; this.draft = emptyDraft() },
     saveRule() {
@@ -43,9 +44,10 @@ export default {
       if (this.draft.kind === 'regex') { try { new RegExp(this.draft.value) } catch (_) { this.error = '正则表达式格式无效。'; return } }
       if (this.editingId) Object.assign(this.rules.find(item => item.id === this.editingId), this.draft, { method: undefined })
       else this.rules.push({ id: `custom_${Date.now().toString(36)}`, ...this.draft, enabled: true, builtIn: false })
-      this.persist(); this.cancelEdit()
+      const message = this.editingId ? '敏感字段修改已保存' : '敏感字段已添加'
+      saveSensitiveRules(this.rules); this.cancelEdit(); this.notify(message)
     },
-    removeRule(rule) { deleteSensitiveRule(rule); this.rules = this.rules.filter(item => item.id !== rule.id); this.persist(); if (this.editingId === rule.id) this.cancelEdit() }
+    removeRule(rule) { if (!window.confirm(`确定删除敏感字段“${rule.name}”吗？`)) return; deleteSensitiveRule(rule); this.rules = this.rules.filter(item => item.id !== rule.id); saveSensitiveRules(this.rules); if (this.editingId === rule.id) this.cancelEdit(); this.notify(`已删除敏感字段：${rule.name}`) }
   }
 }
 </script>

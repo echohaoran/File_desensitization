@@ -1,5 +1,7 @@
 # 文档索引
 
+根目录 README 已同步当前 Tauri 桌面入口、版本发布方式、模型管理和兼容链路说明。涉及架构或协议的细节，以 `spec.md`、`decisions.md` 和 `handoff.md` 为准。
+
 本目录是开发转交的事实来源。代码或运行方式变更后，必须同步更新以下文件。
 
 | 文档 | 内容 |
@@ -11,7 +13,8 @@
 | `context.md` | 每次产生变更后的会话执行记录。 |
 | `todo.md` | 带时间戳的待办事项。 |
 | `decisions.md` | 架构与功能的重要决策。 |
+| `smoke_logs.md` | 每次烟测的范围、结果和环境。 |
 
-烟测结果记录在 `dpcs/smoke_logs.md`。
+烟测结果记录在 `docs/smoke_logs.md`；旧的 `dpcs/smoke_logs.md` 已废弃，不要恢复。
 
 根目录 `README.md` 是项目概览；`backend/README.md` 说明后端；`scripts/README.md` 说明启动脚本。它们含有历史内容时，以本目录的 `spec.md` 和 `handoff.md` 为当前转交依据。

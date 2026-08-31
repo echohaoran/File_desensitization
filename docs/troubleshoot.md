@@ -200,3 +200,49 @@ fc-cache -f
 Windows CI 曾因强制启用 Candle Metal 引入 `objc2` 而失败，已改为不启用平台专属 feature 的 CPU 默认构建。
 
 Windows MSI 后续在 WiX `light.exe` 阶段失败，改用 `tauri.windows.conf.json` 提供 ASCII 产品名，避免中文 MSI 元数据触发无详细信息的 WiX 退出码 1。
+## DOCX 下载后为空白
+
+现象：脱敏完成后下载得到数百字节的空白 DOCX。
+
+原因：Tauri 桌面版不应调用未打包的 FastAPI 结构化输出接口；仅有预览文本不能代表原始 DOCX 已被写回。
+
+处理：桌面版 DOCX 下载直接读取原始 DOCX ZIP，改写 `word/document.xml`、页眉和页脚 XML，并校验输出 Blob 大小与实际替换结果。若没有写入任何内容，直接报错，不生成下载文件。
+# 历史记录生成空白复杂格式文件
+
+- 原因：历史记录只持久化映射和预览文本，没有保存原始 DOCX/XLSX/PDF 的 ZIP/二进制结构，无法从文本可靠重建原格式。
+- 规则：复杂格式历史下载不得调用文本转格式接口伪造文件；若没有真实文件字节，应明确失败并提示使用脱敏阶段下载的文件。
+- 验证：失败弹窗可见、无下载文件产生；文本类历史仍能生成非空正文文件。
+
+## Rust 标记与 OOXML 输出不一致
+
+- 现象：预览已显示脱敏，但下载时报告“未能写入”，或还原找不到标记。
+- 原因：Tauri 确认阶段会生成新的随机标记，检测列表中的预览标记不是最终 mapping 标记。
+- 处理：DOCX/XLSX 写回必须只读取确认后 mapping 的 `original/placeholder`，还原使用同一 mapping 反向替换。
+
+## XLSX 检测结果为空
+
+- 原因：部分 XLSX 将字符串直接存入 `<v>` 且单元格类型为 `t="str"`，并不使用 `<t>` 或共享字符串表。
+- 处理：同时提取命名空间下的 `<t>` 和 `t="str"` 单元格 `<v>`；输出仍原位改写对应 XML。
+
+## 历史记录无法下载复杂格式
+
+- 旧记录只保存 mapping 和预览文本，不可能还原 DOCX/XLSX/PDF 的完整二进制结构。
+- 新记录在确认脱敏后立即将真实输出 Blob 写入 IndexedDB，并在历史元数据保存索引。
+- 如果浏览器清理了站点数据或 IndexedDB 写入失败，历史下载必须提示文件内容已丢失，不能生成占位文件。
+
+## “全部清空”只有 Toast、记录未删除
+
+- 原因：Tauri WebView 中原生 `window.confirm()` 可能不弹出并直接返回取消，后续清理逻辑不会执行。
+- 处理：使用应用内 `role="alertdialog"` 二次确认；用户点击确认后再清理 localStorage 与 IndexedDB。
+- 验证必须同时检查页面历史数量、localStorage 数组长度和 IndexedDB object store 数量，不能只看 Toast。
+## WebView 原生确认框不稳定
+
+- 现象：点击按钮后 `window.confirm` 可能不显示、被系统窗口拦截，或无法稳定自动化验证。
+- 规则：上传、开始和重置动作使用 `desens:confirm-request` 应用内确认协议；确认结果通过独立事件返回。
+- 验证：取消上传后页面不得出现文件元数据；取消重置后检测和文件状态必须仍然存在。
+
+## Tauri macOS DMG 打包失败：设备上无剩余空间
+
+- 现象：`npm run tauri:build` 在 `bundle_dmg.sh` 阶段失败，手动 `hdiutil create` 报“设备上无剩余空间”，但磁盘空间充足。
+- 根因：macOS 新版 hdiutil 对 `-srcfolder` 自动容量估算失败（deprecated 调用路径）。
+- 处理：`.app` 打包不受影响；DMG 可进入 `src-tauri/target/release/bundle/dmg` 手动执行 `bash bundle_dmg.sh --volname "..." --volicon "..." --skip-jenkins --disk-image-size 128 <输出.dmg> ../macos` 生成。发布 DMG 仍以 GitHub Actions 产物为准。

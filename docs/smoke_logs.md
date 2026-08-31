@@ -224,3 +224,64 @@
 - 范围：AI 全文检测入口、进度状态、隔离推理进程。
 - 已完成：源码静态检查与前端逻辑更新。
 - 待完成：`cargo check`、前端构建、Tauri macOS 打包及应用启动验证。
+
+## 2026-08-28：交接前验收复核
+
+- 范围：前端生产构建、Rust 编译检查、Rust 单元测试、桌面包产物核对。
+- `npm run build`：通过，2.8s，仅有 jszip chunk 500 kB 体积警告。
+- `cargo check --manifest-path src-tauri/Cargo.toml`：通过，5 条未使用类型警告。
+- `cargo test --manifest-path src-tauri/Cargo.toml --quiet`：4 passed / 0 failed。
+- 产物：`src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`；`src-tauri/target/release/bundle/dmg/文件脱敏与还原工具_0.1.1_aarch64.dmg`（8674419 bytes）。
+- 环境：macOS Apple Silicon，Node 22，Rust stable；本轮未重新执行 `tauri:build`，产物时间与最新源码一致。
+- 结论：构建与测试通过；DOCX 端到端还原、XLSX/PDF 结构化链路仍需人工在最新 `.app` 上验证。
+
+## 2026-08-28：下载反馈与 DOCX 脱敏回归
+
+- 虚构样本：`trash/output/smoke-fixtures/input/word_1_customer-record.docx`。
+- 本地页面成功读取 DOCX 并识别手机号、身份证、邮箱、银行卡、IPv4、MAC、日期共 7 项；确认脱敏弹窗正常出现。
+- 所有生成类下载失败分支已统一改为“下载失败”弹窗；成功分支显示文件名和实际 Blob 大小。
+- 历史记录未保存真实复杂格式字节时，不再生成占位 DOCX/XLSX/PDF，改为失败弹窗。
+- `npm run build` 与 `npm run tauri:build`：通过；最新 `.app`、DMG 已生成。
+- computer-use 能读取桌面应用状态，但本机点击通道反复断开；浏览器回退完成上传、检测和确认验证。最终桌面下载目录落盘及还原按钮仍交由用户在最新 `.app` 复核。
+
+## 2026-08-31：全量交付回归
+
+- 环境：macOS Apple Silicon、Vite 浏览器兼容模式、Tauri release 包；样本全部位于 `trash/output/smoke-fixtures/`，内容为虚构数据。
+- DOCX：识别手机号、身份证、邮箱、银行卡、IPv4、MAC、完整日期 7 项；脱敏下载 829261 bytes；映射还原成功；还原下载 829158 bytes；成功弹窗与真实下载事件均通过。
+- XLSX：修复 `t="str"` 单元格读取后识别 5 类敏感项；脱敏工作簿下载 11128 bytes；真实下载事件通过。
+- 历史：复杂格式无真实字节时下载显示失败弹窗，不生成占位文件；映射表下载显示成功弹窗。
+- 设置与交互：AI 开关、来源选择、模型登记/应用状态可见；普通按钮即时 Toast、下载结果弹窗、删除二次确认已接入。
+- 转换：适配器不可用时显示失败弹窗且不生成文件。
+- 自动验证：`npm run build` 通过；`cargo check` 通过（仅 5 条未使用类型警告）；`cargo test` 4 passed / 0 failed。
+- 桌面构建：`npm run tauri:build` 通过；最新 `.app` 已启动并通过截图确认加载 Vue 3 新界面。
+- 已知边界：PDF 保格式输出、图片 OCR、LoRA 和 Candle 全文推理未完成，不纳入“已通过”范围。
+
+## 2026-08-31：历史文件再次下载
+
+- 新建 DOCX 脱敏历史，IndexedDB 记录键为随机历史 ID，保存文件名 `redacted_word_1_customer-record.docx`。
+- 历史元数据读取到真实文件大小 829261 bytes。
+- 从还原页点击“下载脱敏后文件”成功，浏览器下载事件完成，接收字节 829261，成功弹窗显示 809.8 KB。
+- 旧历史未保存文件索引时继续阻止伪造下载，并提示重新脱敏生成新记录。
+
+## 2026-08-31：全部清空回归
+
+- 使用独立端口和隔离任务空间写入 2 条虚构历史及 1 个 IndexedDB 测试 Blob。
+- 点击“全部清空”后应用内确认弹窗正确显示记录数量、不可撤销提示、取消和确认操作。
+- 点击“确认清空”后：页面显示暂无记录；localStorage 历史数量为 0；IndexedDB 文件数量为 0；确认弹窗关闭。
+## 2026-08-31 二次确认交互烟测
+
+- 环境：Vite `http://127.0.0.1:5175`，ego-browser 隔离任务空间。
+- 脱敏：上传虚构 TXT 后弹出文件名和大小；取消后无文件/检测项，确认后得到 5 项检测；开始脱敏与重新开始均弹出确认；取消重置保留 5 项，确认重置清空。
+- 还原：注入虚构本地历史，上传虚构 DOCX；取消后不接收文件，确认后文件就绪；开始还原显示映射数量确认；重新开始显示状态清理确认。
+- 格式转换：上传虚构 PDF 前确认，开始 PDF 转 Word 前再次确认。
+- 结果：通过。未使用真实用户文件，未执行仓库推送。
+- 构建验证：Vue 生产构建通过；Rust 4 项测试通过；Tauri release 构建完成并生成 `.app` 与 `文件脱敏与还原工具_0.1.1_aarch64.dmg`；最新 `.app` 已启动。
+
+## 2026-08-31 还原下载本地化与历史检索烟测
+
+- 环境：Vite `http://localhost:5173`，ego-browser 隔离任务空间，虚构 CSV 样本（4 项占位映射）。
+- 历史面板：搜索 `csv` 命中 1/2；无关键词显示专属空提示；排序切换“最新在前/最早在前”列表顺序正确。
+- 还原流程：选择历史 → 上传确认 → 校验就绪 → 开始还原确认 → 预览显示全部还原值。
+- 下载栏 5 个按钮（Word/Excel/CSV/TXT/Markdown）全部成功弹窗；落盘校验：docx/xlsx 为 PK 签名真实 OOXML 且含还原值、无残留占位符，csv 带 UTF-8 BOM，txt/md 为真实正文，均非 index.html 占位内容。
+- Tauri 打包：`npm run tauri:build` 生成最新 `.app`（bundle/macos）；DMG 因本机 hdiutil 自动容量估算失败，改用 `bundle_dmg.sh --skip-jenkins --disk-image-size 128` 手动生成 17MB DMG（bundle/dmg）。
+- 待用户验证：桌面 `.app` 内各格式下载、历史搜索/排序、导航已无格式转换入口、图片还原 PNG 出口。

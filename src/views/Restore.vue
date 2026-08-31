@@ -13,14 +13,23 @@
     </section>
 
     <section class="history-panel" aria-label="脱敏历史">
-      <div class="history-panel__head"><h2>脱敏历史</h2><div class="history-panel__tools"><span>{{ history.length }} 条记录</span><button v-if="history.length" class="btn btn--ghost btn--xs" @click="clearHistory">全部清空</button></div></div>
+      <div class="history-panel__head">
+        <h2>脱敏历史</h2>
+        <div class="history-panel__tools">
+          <input v-model.trim="historySearch" class="history-search" type="search" placeholder="搜索文件名或时间" aria-label="搜索脱敏历史" />
+          <button v-if="history.length" class="btn btn--ghost btn--xs" @click="historySortDesc = !historySortDesc" :title="historySortDesc ? '当前按时间倒序，点击切换为正序' : '当前按时间正序，点击切换为倒序'">{{ historySortDesc ? '最新在前' : '最早在前' }}</button>
+          <span>{{ historySearch ? `匹配 ${visibleHistory.length} / ${history.length} 条` : `${history.length} 条记录` }}</span>
+          <button v-if="history.length" class="btn btn--ghost btn--xs" @click="requestClearHistory">全部清空</button>
+        </div>
+      </div>
       <p v-if="!history.length" class="history-panel__empty">暂无本机历史记录。完成一次脱敏后，记录会自动显示在这里。</p>
+      <p v-else-if="!visibleHistory.length" class="history-panel__empty">没有匹配“{{ historySearch }}”的历史记录，换个关键词试试。</p>
       <div v-else class="history-list">
-        <article v-for="item in history" :key="item.id" class="history-item" :class="{ 'is-selected': selectedHistory?.id === item.id }">
+        <article v-for="item in visibleHistory" :key="item.id" class="history-item" :class="{ 'is-selected': selectedHistory?.id === item.id }">
           <button class="history-item__select" @click="selectHistory(item)">
-            <strong>{{ item.file_name }}</strong><span>{{ formatDate(item.created_at) }} · {{ item.mapping?.mappings?.length || 0 }} 项脱敏</span>
+            <strong>{{ item.file_name }}</strong><span>{{ formatDate(item.created_at) }} · {{ item.mapping?.mappings?.length || 0 }} 项脱敏{{ item.redacted_file_key ? ' · 脱敏文件已保存' : ' · 旧记录' }}</span>
           </button>
-          <button class="icon-btn" @click="removeHistory(item.id)" :aria-label="`删除 ${item.file_name} 历史记录`">×</button>
+          <button class="icon-btn" @click="requestRemoveHistory(item)" :aria-label="`删除 ${item.file_name} 历史记录`">×</button>
         </article>
       </div>
     </section>
@@ -118,11 +127,11 @@
     </div>
 
     <div class="action-bar" style="margin-bottom: 24px">
-      <button class="btn btn--primary btn--lg btn--block" @click="runRestore" :disabled="!canRestore">
+      <button class="btn btn--primary btn--lg btn--block" @click="requestRunRestore" :disabled="!canRestore || working">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-        开始还原
+        {{ working ? '正在还原…' : '开始还原' }}
       </button>
-      <button class="btn btn--ghost btn--block" @click="reset" :disabled="!redactedFile && !selectedHistory">
+      <button class="btn btn--ghost btn--block" @click="requestReset" :disabled="!redactedFile && !selectedHistory">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         重新开始
       </button>
@@ -144,10 +153,17 @@
         </div>
       </div>
     </div>
+    <p v-if="feedback" class="restore-feedback" role="status">{{ feedback }}</p>
 
     <div class="download-bar" v-if="restored">
       <span class="download-bar__label">还原完成</span>
-      <div class="download-bar__formats">
+      <div class="download-bar__formats" v-if="redactedFileType === 'image'">
+        <button class="btn btn--primary" @click="downloadRestoredImage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          图片 PNG
+        </button>
+      </div>
+      <div class="download-bar__formats" v-else>
         <button class="btn btn--primary" @click="downloadAsWord">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           文档 Word
@@ -155,6 +171,10 @@
         <button class="btn btn--secondary" @click="downloadAsExcel">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           表格 Excel
+        </button>
+        <button class="btn btn--secondary" @click="downloadAsCsv">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          表格 CSV
         </button>
         <button class="btn btn--secondary" @click="downloadAsTxt">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -166,14 +186,30 @@
         </button>
       </div>
     </div>
+
+    <div v-if="confirmDialog" class="confirm-overlay" role="presentation" @click.self="cancelConfirm">
+      <section class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="history-confirm-title" aria-describedby="history-confirm-message">
+        <div class="confirm-dialog__icon" aria-hidden="true">!</div>
+        <h2 id="history-confirm-title">{{ confirmDialog.title }}</h2>
+        <p id="history-confirm-message">{{ confirmDialog.message }}</p>
+        <div class="confirm-dialog__actions">
+          <button class="btn btn--secondary" type="button" @click="cancelConfirm">取消</button>
+          <button class="btn btn--primary" type="button" :disabled="clearingHistory" @click="executeConfirm">{{ clearingHistory ? '正在清理…' : confirmDialog.confirmText }}</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
 <script>
 import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
+import JSZip from 'jszip'
 import DesensitizationAPI from '@/api/desensitization'
 import { isTauriRuntime, restoreMappedText } from '@/api/tauriBridge'
+import { getHistoryFile, deleteHistoryFile, clearHistoryFiles } from '@/utils/historyFiles'
+import { requestAppConfirm } from '@/utils/appConfirm'
+import { buildTextBlob, buildCsvBlob, buildDocxBlob, buildXlsxBlob } from '@/utils/formatExport'
 
 // Worker is configured via the import above
 
@@ -191,11 +227,28 @@ export default {
       restored: false,
       restoredText: '',
       restoredImageDataUrl: null,
+      restoredBlob: null,
       history: [],
       selectedHistory: null
+      ,working: false
+      ,feedback: ''
+      ,confirmDialog: null
+      ,clearingHistory: false
+      ,historySearch: ''
+      ,historySortDesc: true
     }
   },
   computed: {
+    visibleHistory() {
+      const query = this.historySearch.toLowerCase()
+      const items = this.history.filter(item =>
+        !query ||
+        String(item.file_name || '').toLowerCase().includes(query) ||
+        this.formatDate(item.created_at).toLowerCase().includes(query)
+      )
+      const timeOf = item => { const t = new Date(item.created_at || 0).getTime(); return Number.isNaN(t) ? 0 : t }
+      return items.sort((a, b) => this.historySortDesc ? timeOf(b) - timeOf(a) : timeOf(a) - timeOf(b))
+    },
     canRestore() {
       return Boolean(this.selectedHistory && this.redactedFile && this.mapping && this.validation?.type === 'ok')
     },
@@ -230,6 +283,7 @@ export default {
     }
   },
   methods: {
+    notify(message) { window.dispatchEvent(new CustomEvent('desens:status', { detail: { message } })) },
     loadHistory() {
       try { this.history = JSON.parse(localStorage.getItem('desens_history') || '[]') } catch (_) { this.history = [] }
     },
@@ -241,58 +295,107 @@ export default {
       this.validation = { type: 'wait', title: '历史记录已选择', message: `已加载 ${item.file_name}。请上传当前需要还原的脱敏文件。` }
       this.restored = false; this.restoredText = ''; this.restoredImageDataUrl = null
     },
-    removeHistory(id) {
+    requestRemoveHistory(item) {
+      this.confirmDialog = { action: 'remove', id: item.id, title: '删除历史记录', message: `确定删除“${item.file_name}”吗？对应的脱敏文件也会删除，此操作无法撤销。`, confirmText: '确认删除' }
+    },
+    requestClearHistory() {
+      this.confirmDialog = { action: 'clear', title: '清空全部历史', message: `确定清空全部 ${this.history.length} 条脱敏历史吗？对应的脱敏文件也会全部删除，此操作无法撤销。`, confirmText: '确认清空' }
+    },
+    cancelConfirm() { if (!this.clearingHistory) this.confirmDialog = null },
+    async executeConfirm() {
+      if (!this.confirmDialog || this.clearingHistory) return
+      this.clearingHistory = true
+      try {
+        if (this.confirmDialog.action === 'clear') await this.clearHistory()
+        else await this.removeHistory(this.confirmDialog.id)
+        this.confirmDialog = null
+      } finally { this.clearingHistory = false }
+    },
+    async removeHistory(id) {
       this.history = this.history.filter(item => item.id !== id)
       localStorage.setItem('desens_history', JSON.stringify(this.history))
+      await deleteHistoryFile(id).catch(() => {})
       if (this.selectedHistory?.id === id) this.reset()
+      this.notify('脱敏历史已删除')
     },
-    clearHistory() {
+    async clearHistory() {
       this.history = []
       localStorage.removeItem('desens_history')
+      await clearHistoryFiles().catch(() => {})
       this.reset()
+      this.notify('全部脱敏历史已清空')
     },
     formatDate(value) { return value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '未知时间' },
     downloadHistoryMapping() {
-      if (!this.selectedHistory?.mapping) return
+      if (!this.selectedHistory?.mapping) { window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: '当前历史记录没有映射表' } })); return }
       const blob = new Blob([JSON.stringify(this.selectedHistory.mapping, null, 2)], { type: 'application/json' })
       this.triggerDownload(blob, `mapping_${this.selectedHistory.file_name.replace(/\.[^.]+$/, '')}.json`)
     },
     async downloadHistoryRedacted() {
       if (!this.selectedHistory) return
-      const text = this.selectedHistory.redacted_text || ''
       const stem = this.selectedHistory.file_name.replace(/\.[^.]+$/, '')
       try {
-        if (this.selectedHistory.file_type === 'excel') {
-          this.triggerDownload(await DesensitizationAPI.convertTextToExcel(text, `redacted_${stem}.xlsx`, true), `redacted_${stem}.xlsx`)
-        } else if (['docx', 'pdf'].includes(this.selectedHistory.file_type)) {
-          this.triggerDownload(await DesensitizationAPI.convertTextToWord(text, `redacted_${stem}.docx`, true), `redacted_${stem}.docx`)
-        } else {
-          const notice = '【处理与还原规则】本文件包含脱敏占位符（例如 {PHONE_001}）。请用户及任何 AI/Agent 在计算、分析、编辑、改写或排版时完整保留占位符的花括号、字段名与编号，不得删除、拆分、改写或替换；否则可能无法还原原始内容。'
-          this.triggerDownload(new Blob([`${notice}\n\n${text}`], { type: 'text/plain;charset=utf-8' }), `redacted_${stem}.txt`)
+        if (this.selectedHistory.redacted_file_key) {
+          const stored = await getHistoryFile(this.selectedHistory.redacted_file_key)
+          if (!stored?.blob) throw new Error('历史文件索引存在，但真实文件内容已丢失或被浏览器清理。')
+          this.triggerDownload(stored.blob, stored.filename || `redacted_${this.selectedHistory.file_name}`)
+          this.feedback = `已下载历史脱敏文件 ${stored.filename || ''}`
+          return
         }
-      } catch (error) { alert(`下载失败：${error.message}`) }
-    },
-    handleRedactedSelect(e) {
-      if (e.target.files && e.target.files[0]) {
-        this.setRedactedFile(e.target.files[0])
+        const text = this.selectedHistory.redacted_text || ''
+        const complexTypes = ['docx', 'word', 'excel', 'xlsx', 'xls', 'pdf']
+        if (complexTypes.includes(this.selectedHistory.file_type)) {
+          throw new Error('这是旧版历史记录，当时未保存真实文件字节。请重新执行一次脱敏，新记录将支持随时下载。')
+        }
+        if (!text) throw new Error('历史记录中没有可下载的脱敏正文')
+        const notice = '【处理与还原规则】本文件包含脱敏占位符。请完整保留占位符，不得删除、拆分或改写，否则可能无法还原。'
+        this.triggerDownload(new Blob([`${notice}\n\n${text}`], { type: 'text/plain;charset=utf-8' }), `redacted_${stem}.txt`)
+      } catch (error) {
+        this.feedback = `下载失败：${error.message}`
+        window.dispatchEvent(new CustomEvent('desens:download-result', {
+          detail: { success: false, message: error.message, filename: this.selectedHistory.file_name }
+        }))
       }
     },
-    handleRedactedDrop(e) {
+    async handleRedactedSelect(e) {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0]
+        if (await this.confirmUpload(file, '待还原的脱敏文件')) this.setRedactedFile(file)
+        else e.target.value = ''
+      }
+    },
+    async handleRedactedDrop(e) {
       this.isDraggingRedacted = false
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        this.setRedactedFile(e.dataTransfer.files[0])
+        const file = e.dataTransfer.files[0]
+        if (await this.confirmUpload(file, '待还原的脱敏文件')) this.setRedactedFile(file)
       }
     },
-    handleMappingSelect(e) {
+    async handleMappingSelect(e) {
       if (e.target.files && e.target.files[0]) {
-        this.setMappingFile(e.target.files[0])
+        const file = e.target.files[0]
+        if (await this.confirmUpload(file, 'JSON 映射表')) this.setMappingFile(file)
+        else e.target.value = ''
       }
     },
-    handleMappingDrop(e) {
+    async handleMappingDrop(e) {
       this.isDraggingMapping = false
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        this.setMappingFile(e.dataTransfer.files[0])
+        const file = e.dataTransfer.files[0]
+        if (await this.confirmUpload(file, 'JSON 映射表')) this.setMappingFile(file)
       }
+    },
+    confirmUpload(file, purpose) {
+      return requestAppConfirm({ title: '确认上传文件', message: `即将读取${purpose}：\n${file.name} · ${this.formatSize(file.size)}\n确认后才会开始校验。`, confirmText: '确认上传' })
+    },
+    async requestRunRestore() {
+      const count = this.mapping?.mappings?.length || 0
+      const accepted = await requestAppConfirm({ title: '开始还原文件', message: `将使用 ${count} 条映射还原“${this.redactedFile?.name || '当前文件'}”。请确认文件与映射记录对应。`, confirmText: '开始还原' })
+      if (accepted) await this.runRestore()
+    },
+    async requestReset() {
+      const accepted = await requestAppConfirm({ title: '重新开始当前流程', message: '已选择的历史记录、上传文件和当前还原结果将被清除。确认重新开始吗？', confirmText: '确认重新开始', tone: 'warning' })
+      if (accepted) this.reset()
     },
     setRedactedFile(file) {
       this.redactedFile = file
@@ -300,6 +403,7 @@ export default {
       this.restored = false
       this.restoredText = ''
       this.restoredImageDataUrl = null
+      this.restoredBlob = null
       this.validateFiles()
     },
     inferFileType(file) {
@@ -324,6 +428,7 @@ export default {
       this.restored = false
       this.restoredText = ''
       this.restoredImageDataUrl = null
+      this.restoredBlob = null
       this.validateFiles()
     },
     clearRedactedFile() {
@@ -332,6 +437,7 @@ export default {
       this.restored = false
       this.restoredText = ''
       this.restoredImageDataUrl = null
+      this.restoredBlob = null
       if (this.$refs.redactedInput) this.$refs.redactedInput.value = ''
       this.validateFiles()
     },
@@ -400,19 +506,24 @@ export default {
       }
       reader.readAsText(this.mappingFile)
     },
-    runRestore() {
+    async runRestore() {
       if (!this.canRestore) return
+      this.working = true; this.feedback = '正在还原文件…'
       
       this.restored = false
       this.restoredText = ''
       this.restoredImageDataUrl = null
       
-      if (this.redactedFileType === 'text' || this.redactedFileType === 'pdf' ||
-          this.redactedFileType === 'docx' || this.redactedFileType === 'excel') {
-        this.restoreText()
-      } else {
-        this.restoreImage()
-      }
+      try {
+        if (this.redactedFileType === 'text' || this.redactedFileType === 'pdf' ||
+            this.redactedFileType === 'docx' || this.redactedFileType === 'excel') await this.restoreText()
+        else await this.restoreImage()
+        if (this.restored) { this.feedback = '还原完成，请检查结果后下载'; this.notify('文件还原完成') }
+      } catch (error) {
+        this.feedback = `还原失败：${error.message}`
+        this.validation = { type: 'err', title: '还原失败', message: error.message }
+        this.notify(this.feedback)
+      } finally { this.working = false }
     },
     restoreHistoryImage() {
       const img = new Image()
@@ -442,10 +553,7 @@ export default {
           this.restoredText = response.data.restored_text
           this.restored = true
           return
-        } catch (error) {
-          alert(`Rust 还原失败：${error.message}`)
-          return
-        }
+        } catch (error) { throw new Error(`Rust 还原失败：${error.message}`) }
       }
       if (this.redactedFileType === 'pdf') {
         try {
@@ -467,26 +575,79 @@ export default {
           this.restored = true
         } catch (error) {
           console.error('PDF parsing error:', error)
-          alert('PDF 解析失败，请确保文件未加密或尝试其他格式。')
+          throw new Error('PDF 解析失败，请确保文件未加密或尝试其他格式。')
         }
-      } else if (this.redactedFileType === 'docx' || this.redactedFileType === 'excel') {
+      } else if (this.redactedFileType === 'docx') {
         try {
-          const mappingFile = new File([JSON.stringify(this.mapping)], 'history-mapping.json', { type: 'application/json' })
-          const result = await DesensitizationAPI.restoreFile(this.redactedFile, mappingFile)
-          this.restoredText = result.restored_text
+          const zip = await JSZip.loadAsync(await this.redactedFile.arrayBuffer())
+          const markers = [...(this.mapping.mappings || [])].filter(item => item.placeholder && item.original !== undefined).sort((a, b) => b.placeholder.length - a.placeholder.length)
+          const entries = Object.keys(zip.files).filter(name => /^word\/(document|header\d+|footer\d+)\.xml$/.test(name))
+          if (!entries.length) throw new Error('DOCX 缺少可还原的文档结构')
+          let changed = false
+          for (const name of entries) {
+            let xml = await zip.file(name).async('text')
+            const before = xml
+            markers.forEach(item => { xml = xml.split(item.placeholder).join(item.original) })
+            if (xml !== before) { zip.file(name, xml); changed = true }
+          }
+          if (!changed) throw new Error('未找到可匹配的脱敏标记，请确认文件和映射表对应')
+          const bodyXml = await zip.file('word/document.xml')?.async('text')
+          if (bodyXml) {
+            const parsed = new DOMParser().parseFromString(bodyXml, 'application/xml')
+            this.restoredText = [...parsed.querySelectorAll('w\\:p, p')]
+              .map(node => [...node.querySelectorAll('w\\:t, t')].map(text => text.textContent || '').join(''))
+              .filter(Boolean).join('\n')
+          }
+          this.restoredBlob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
           this.restored = true
-        } catch (error) { alert(`还原失败：${error.message}`) }
+        } catch (error) { throw error }
+      } else if (this.redactedFileType === 'excel') {
+        try {
+          const zip = await JSZip.loadAsync(await this.redactedFile.arrayBuffer())
+          const markers = [...(this.mapping.mappings || [])].filter(item => item.placeholder && item.original !== undefined).sort((a, b) => b.placeholder.length - a.placeholder.length)
+          const entries = Object.keys(zip.files).filter(name => /^(xl\/sharedStrings\.xml|xl\/worksheets\/sheet\d+\.xml)$/.test(name))
+          if (!entries.length) throw new Error('XLSX 缺少可还原的工作表结构')
+          let changed = false
+          for (const name of entries) {
+            let xml = await zip.file(name).async('text'); const before = xml
+            markers.forEach(item => { xml = xml.split(item.placeholder).join(item.original) })
+            if (xml !== before) { zip.file(name, xml); changed = true }
+          }
+          if (!changed) throw new Error('未找到可匹配的脱敏标记，请确认文件和映射表对应')
+          this.restoredText = (await this.extractExcelText(zip)) || 'Excel 工作簿已按映射表完成结构化还原。'
+          this.restoredBlob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+          this.restored = true
+        } catch (error) { throw error }
       } else {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          let text = e.target.result
-          text = this.performRestore(text)
-          
-          this.restoredText = text
-          this.restored = true
-        }
-        reader.readAsText(this.redactedFile)
+        const text = await this.redactedFile.text()
+        this.restoredText = this.performRestore(text)
+        this.restored = true
       }
+    },
+    async extractExcelText(zip) {
+      const parser = new DOMParser()
+      let shared = []
+      const ssFile = zip.file('xl/sharedStrings.xml')
+      if (ssFile) {
+        const ssDoc = parser.parseFromString(await ssFile.async('text'), 'application/xml')
+        shared = [...ssDoc.getElementsByTagName('si')].map(si =>
+          [...si.getElementsByTagName('t')].map(t => t.textContent || '').join(''))
+      }
+      const sheetNames = Object.keys(zip.files).filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()
+      const lines = []
+      for (const name of sheetNames) {
+        const doc = parser.parseFromString(await zip.file(name).async('text'), 'application/xml')
+        ;[...doc.getElementsByTagName('row')].forEach(row => {
+          const cells = [...row.getElementsByTagName('c')].map(cell => {
+            const type = cell.getAttribute('t')
+            if (type === 's') return shared[Number(cell.getElementsByTagName('v')[0]?.textContent)] ?? ''
+            if (type === 'inlineStr') return [...cell.getElementsByTagName('t')].map(t => t.textContent || '').join('')
+            return cell.getElementsByTagName('v')[0]?.textContent || ''
+          })
+          if (cells.some(cell => cell !== '')) lines.push(cells.join(','))
+        })
+      }
+      return lines.join('\n')
     },
     performRestore(text) {
       const mappings = [...(this.mapping.mappings || [])]
@@ -508,31 +669,19 @@ export default {
         }
       })
       
-      // 清理可能残留的占位符格式 {TYPE_数字}
-      restored = restored.replace(/\{[A-Z]+_\d{3}\}/g, '')
-      
-      // 清理可能残留的单个大括号
-      restored = restored.replace(/\}(\s*)\{/g, '$1')
-      restored = restored.replace(/^\}/, '')
-      restored = restored.replace(/\{$/, '')
-      
-      // 清理连续的大括号
-      restored = restored.replace(/\{\s*\}/g, '')
-      
-      // 清理可能残留的不完整占位符（如 {TYPE_ 没有闭合）
-      restored = restored.replace(/\{[A-Z_]+(?=_\d{3}\})/g, '')
-      
-      // 清理可能残留的数字片段（如 _018}）
-      restored = restored.replace(/_\d{3}\}/g, '')
+      // 未知标记必须原样保留，支持部分还原并便于人工复核。
       
       console.log(`还原完成: ${replacements}/${mappings.length} 个占位符已替换`)
       
       return restored
     },
     restoreImage() {
-      const reader = new FileReader()
-      reader.onload = (e) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onerror = () => reject(new Error('无法读取脱敏图片'))
+        reader.onload = (e) => {
         const img = new Image()
+        img.onerror = () => reject(new Error('脱敏图片格式无效'))
         img.onload = () => {
           const canvas = document.createElement('canvas')
           canvas.width = img.naturalWidth
@@ -546,19 +695,27 @@ export default {
           if (mappings.length === 0) {
             this.restoredImageDataUrl = canvas.toDataURL('image/png')
             this.restored = true
+            resolve()
             return
           }
-          
-          mappings.forEach(m => {
-            if (!m.rect || !m.patch) return
+          const patchMappings = mappings.filter(m => m.rect && m.patch)
+          if (!patchMappings.length) {
+            this.restoredImageDataUrl = canvas.toDataURL('image/png')
+            this.restored = true
+            resolve()
+            return
+          }
+          patchMappings.forEach(m => {
             const r = m.rect
             const patchImg = new Image()
+            patchImg.onerror = () => reject(new Error('映射表中的图片补丁无效'))
             patchImg.onload = () => {
               ctx.drawImage(patchImg, r.x, r.y)
               loaded++
-              if (loaded === mappings.length) {
+              if (loaded === patchMappings.length) {
                 this.restoredImageDataUrl = canvas.toDataURL('image/png')
                 this.restored = true
+                resolve()
               }
             }
             patchImg.src = m.patch
@@ -566,54 +723,81 @@ export default {
         }
         img.src = e.target.result
       }
-      reader.readAsDataURL(this.redactedFile)
+        reader.readAsDataURL(this.redactedFile)
+      })
     },
+    restoredStem() { return 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') },
+    sourceLooksLikeCsv() { return /\.csv$/i.test(this.activeFileName()) },
     async downloadAsWord() {
       if (!this.restored) return
-      
+      const filename = this.restoredStem() + '.docx'
       try {
-        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.docx'
-        const blob = await DesensitizationAPI.convertTextToWord(this.restoredText, filename)
+        // 还原的是 DOCX 时优先使用改写过的原始文档包，其余情况本地生成真实 OOXML。
+        const blob = (this.redactedFileType === 'docx' && this.restoredBlob) ? this.restoredBlob : await buildDocxBlob(this.restoredText)
         this.triggerDownload(blob, filename)
+        this.feedback = `已下载 ${filename}`
       } catch (error) {
         console.error('生成 Word 文件失败:', error)
-        alert('生成 Word 文件失败: ' + error.message)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `生成 Word 文件失败：${error.message}`, filename } }))
       }
     },
     async downloadAsExcel() {
       if (!this.restored) return
-      
+      const filename = this.restoredStem() + '.xlsx'
       try {
-        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.xlsx'
-        const blob = await DesensitizationAPI.convertTextToExcel(this.restoredText, filename)
+        const blob = this.redactedFileType === 'excel' && this.restoredBlob ? this.restoredBlob : await buildXlsxBlob(this.restoredText, { csv: this.sourceLooksLikeCsv() })
         this.triggerDownload(blob, filename)
+        this.feedback = `已下载 ${filename}`
       } catch (error) {
         console.error('生成 Excel 文件失败:', error)
-        alert('生成 Excel 文件失败: ' + error.message)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `生成 Excel 文件失败：${error.message}`, filename } }))
+      }
+    },
+    async downloadAsCsv() {
+      if (!this.restored) return
+      const filename = this.restoredStem() + '.csv'
+      try {
+        const blob = await buildCsvBlob(this.restoredText, { csv: this.sourceLooksLikeCsv() })
+        this.triggerDownload(blob, filename)
+        this.feedback = `已下载 ${filename}`
+      } catch (error) {
+        console.error('生成 CSV 文件失败:', error)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `生成 CSV 文件失败：${error.message}`, filename } }))
       }
     },
     async downloadAsTxt() {
       if (!this.restored) return
-      
+      const filename = this.restoredStem() + '.txt'
       try {
-        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.txt'
-        const blob = await DesensitizationAPI.convertTextToTxt(this.restoredText, filename)
+        const blob = await buildTextBlob(this.restoredText, 'text/plain')
         this.triggerDownload(blob, filename)
+        this.feedback = `已下载 ${filename}`
       } catch (error) {
         console.error('生成 TXT 文件失败:', error)
-        alert('生成 TXT 文件失败: ' + error.message)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `生成 TXT 文件失败：${error.message}`, filename } }))
       }
     },
     async downloadAsMarkdown() {
       if (!this.restored) return
-      
+      const filename = this.restoredStem() + '.md'
       try {
-        const filename = 'restored_' + this.activeFileName().replace(/\.[^.]+$/, '') + '.md'
-        const blob = await DesensitizationAPI.convertTextToMarkdown(this.restoredText, filename)
+        const blob = await buildTextBlob(this.restoredText, 'text/markdown')
         this.triggerDownload(blob, filename)
+        this.feedback = `已下载 ${filename}`
       } catch (error) {
         console.error('生成 Markdown 文件失败:', error)
-        alert('生成 Markdown 文件失败: ' + error.message)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `生成 Markdown 文件失败：${error.message}`, filename } }))
+      }
+    },
+    downloadRestoredImage() {
+      if (!this.restored || !this.restoredImageDataUrl) return
+      const filename = this.restoredStem() + '.png'
+      try {
+        this.triggerDownload(this.dataURLToBlob(this.restoredImageDataUrl), filename)
+        this.feedback = `已下载 ${filename}`
+      } catch (error) {
+        console.error('导出还原图片失败:', error)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `导出还原图片失败：${error.message}`, filename } }))
       }
     },
     downloadRestoredFile() {
@@ -631,13 +815,18 @@ export default {
       return new Blob([u8arr], { type: mime })
     },
     triggerDownload(blob, filename) {
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: '下载内容为空，已阻止生成文件。', filename } }))
+        throw new Error('下载内容为空，已阻止下载')
+      }
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove() }, 100)
+      window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: '文件已生成并提交到系统下载目录。', filename, size: blob.size } }))
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove() }, 30_000)
     },
     formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B'
@@ -669,4 +858,5 @@ export default {
 .history-panel__head { display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid var(--border-soft); }.history-panel__head h2{font-size:var(--text-lg);margin:0}.history-panel__tools{display:flex;align-items:center;gap:12px}.history-panel__tools>span{font:12px var(--font-mono);color:var(--muted)}.history-panel__tools .btn--xs{padding:5px 10px;font-size:12px}
 .history-panel__empty{padding:18px 22px;color:var(--muted);margin:0}.history-item{display:flex;align-items:center;border-bottom:1px solid var(--border-soft)}.history-item:last-child{border-bottom:0}.history-item.is-selected{background:#f8fafc}.history-item__select{flex:1;text-align:left;padding:14px 22px;border:0;background:transparent;cursor:pointer;display:grid;gap:5px}.history-item__select span{font-size:var(--text-sm);color:var(--muted)}.history-item .icon-btn{margin-right:14px;font-size:22px}.restore-upload{margin:24px 0}.restore-upload summary{cursor:pointer;font-weight:600;margin-bottom:16px}
 .history-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 24px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--radius-lg);background:#f8fafc}.history-actions>span{font-size:var(--text-sm);font-weight:600}.history-actions>div{display:flex;gap:8px}.restore-current-upload__hint{margin:8px 0 16px;color:var(--muted)}
+.confirm-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.confirm-dialog{width:min(460px,100%);padding:30px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 80px rgba(15,23,42,.24)}.confirm-dialog__icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:30px;font-weight:700}.confirm-dialog h2{margin:0;font-size:26px}.confirm-dialog p{margin:16px 0 24px;color:var(--muted);line-height:1.7}.confirm-dialog__actions{display:flex;justify-content:center;gap:12px}
 </style>

@@ -22,11 +22,6 @@ const routes = [
     component: () => import('@/views/SensitiveRules.vue')
   },
   {
-    path: '/convert',
-    name: 'Convert',
-    component: () => import('@/views/Convert.vue')
-  },
-  {
     path: '/desktop-smoke',
     name: 'DesktopSmoke',
     component: () => import('@/views/DesktopSmoke.vue')

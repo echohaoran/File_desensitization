@@ -44,7 +44,7 @@
                 <div class="file-meta__name">{{ file.name }}</div>
                 <div class="file-meta__detail">{{ fileType === 'image' ? '图片' : fileType === 'pdf' ? 'PDF' : fileType === 'docx' ? 'Word' : fileType === 'excel' ? 'Excel' : '文本' }} · {{ formatSize(file.size) }}</div>
               </div>
-              <button class="icon-btn" @click="reset" aria-label="移除当前文件" title="移除文件">
+              <button class="icon-btn" @click="requestReset" aria-label="移除当前文件" title="移除文件">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -91,7 +91,7 @@
             <span class="panel__count">{{ detections.length }} 项</span>
           </div>
           <div class="ai-action" v-if="aiEnabled">
-            <button class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !activeModelPath || !rawOriginalText" @click="runAiDetection">{{ aiDetecting ? 'AI 脱敏检测中…' : 'AI 智能脱敏全文' }}</button>
+            <button class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !activeModelPath || !rawOriginalText" @click="requestAiDetection">{{ aiDetecting ? 'AI 脱敏检测中…' : 'AI 智能脱敏全文' }}</button>
             <div v-if="aiDetecting" class="ai-progress"><span :style="{ width: `${aiProgress}%` }"></span></div>
             <small v-if="!activeModelPath">请先在设置中应用一个 GGUF 模型</small>
           </div>
@@ -137,11 +137,11 @@
         </section>
 
         <section class="action-bar">
-          <button class="btn btn--primary btn--lg btn--block" @click="confirmRedaction" :disabled="!file || confirmed">
+          <button class="btn btn--primary btn--lg btn--block" @click="requestConfirmRedaction" :disabled="!file || confirmed">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             确认脱敏
           </button>
-          <button class="btn btn--ghost btn--block" @click="reset" :disabled="!file">
+          <button class="btn btn--ghost btn--block" @click="requestReset" :disabled="!file">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             重新开始
           </button>
@@ -255,7 +255,9 @@ import 'pdfjs-dist/build/pdf.worker.entry'
 import JSZip from 'jszip'
 import DesensitizationAPI from '@/api/desensitization'
 import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
+import { saveHistoryFile } from '@/utils/historyFiles'
 import { isTauriRuntime, redactApprovedText, aiDetectCandidates } from '@/api/tauriBridge'
+import { requestAppConfirm } from '@/utils/appConfirm'
 
 // Worker is configured via the import above
 
@@ -296,6 +298,7 @@ export default {
       syncingScroll: false,
       confirmed: false,
       mapping: null,
+      currentHistoryId: null,
       showMapping: false,
       showCompletionModal: false,
       selectionPopup: null,
@@ -403,16 +406,34 @@ export default {
       targets.forEach(target => { if (target !== origin) target.scrollTop = ratio * (target.scrollHeight - target.clientHeight) })
       requestAnimationFrame(() => { this.syncingScroll = false })
     },
-    handleFileSelect(e) {
+    async handleFileSelect(e) {
       if (e.target.files && e.target.files[0]) {
-        this.handleFile(e.target.files[0])
+        const accepted = await this.confirmUpload(e.target.files[0])
+        if (accepted) this.handleFile(e.target.files[0])
+        else e.target.value = ''
       }
     },
-    handleDrop(e) {
+    async handleDrop(e) {
       this.isDragging = false
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        this.handleFile(e.dataTransfer.files[0])
+        if (await this.confirmUpload(e.dataTransfer.files[0])) this.handleFile(e.dataTransfer.files[0])
       }
+    },
+    confirmUpload(file) {
+      return requestAppConfirm({ title: '确认上传文件', message: `即将读取并检测以下文件：\n${file.name} · ${this.formatSize(file.size)}\n确认后才会开始本地解析。`, confirmText: '确认上传' })
+    },
+    async requestAiDetection() {
+      const accepted = await requestAppConfirm({ title: '开始 AI 全文检测', message: `模型将基于敏感库检测“${this.file?.name || '当前文档'}”，结果仍需人工确认。`, confirmText: '开始检测' })
+      if (accepted) await this.runAiDetection()
+    },
+    async requestConfirmRedaction() {
+      const count = this.detections.filter(item => item.active).length
+      const accepted = await requestAppConfirm({ title: '开始生成脱敏文件', message: `将按当前人工确认的 ${count} 项检测结果处理“${this.file?.name || '当前文件'}”。`, confirmText: '开始脱敏' })
+      if (accepted) await this.confirmRedaction()
+    },
+    async requestReset() {
+      const accepted = await requestAppConfirm({ title: '重新开始当前流程', message: '当前文件、检测结果和未下载的处理状态将被清除。确认重新开始吗？', confirmText: '确认重新开始', tone: 'warning' })
+      if (accepted) this.reset()
     },
     handleFile(file) {
       this.reset()
@@ -499,10 +520,7 @@ export default {
         // 保留已加入的文件，不能因后端不可用而 reset；结构化解析交由兼容后端或适配器。
         this.readDocxText(file)
       } else if (this.fileType === 'excel') {
-        this.rawOriginalText = `${this.file.name}\n\nExcel 文件已加入。当前本地适配器正在接入工作表结构读取。`
-        this.originalText = this.rawOriginalText
-        this.formatWarning = 'Excel 文件已成功加入；当前先保留文件，工作表结构读取适配器接入后执行检测。'
-        this.step = 2
+        this.readExcelText(file)
       } else if (this.fileType === 'text') {
         const reader = new FileReader()
         reader.onload = (e) => {
@@ -541,6 +559,32 @@ export default {
         this.rawOriginalText = this.file.name
         this.originalText = this.rawOriginalText
         this.step = 2
+      }
+    },
+    async readExcelText(file) {
+      try {
+        const zip = await JSZip.loadAsync(await file.arrayBuffer())
+        const entries = Object.keys(zip.files).filter(name => /^(xl\/sharedStrings\.xml|xl\/worksheets\/sheet\d+\.xml)$/.test(name))
+        if (!entries.length) throw new Error('XLSX 缺少可读取的工作表结构')
+        const values = []
+        for (const name of entries) {
+          const xml = await zip.file(name).async('text')
+          const doc = new DOMParser().parseFromString(xml, 'application/xml')
+          if (doc.querySelector('parsererror')) continue
+          const textNodes = [
+            ...doc.getElementsByTagNameNS('*', 't'),
+            ...[...doc.getElementsByTagNameNS('*', 'v')].filter(node => node.parentElement?.getAttribute('t') === 'str')
+          ]
+          textNodes.forEach(node => { const value = (node.textContent || '').trim(); if (value) values.push(value) })
+        }
+        const extracted = values.join('\n').trim()
+        if (!extracted) throw new Error('XLSX 未提取到文本单元格')
+        this.rawOriginalText = extracted; this.originalText = extracted
+        this.formatWarning = 'Excel 已在本地读取文本单元格；公式、样式和工作表结构将在输出中保留。'
+        this.runTextDetection(); this.step = 2
+      } catch (error) {
+        this.formatWarning = `Excel 文件已加入，但读取失败：${error.message || '未知错误'}`
+        this.rawOriginalText = ''; this.originalText = ''; this.step = 2
       }
     },
     getTypeLabel(type) {
@@ -646,8 +690,10 @@ export default {
         this.step = 2
       } catch (error) {
         console.error('PDF parsing error:', error)
-        alert('PDF 解析失败，请确保文件未加密或尝试其他格式。')
-        this.reset()
+        this.formatWarning = 'PDF 解析失败，请确认文件未加密；文件已保留，可重新选择或换用其他格式。'
+        this.backendError = error?.message || 'PDF 解析失败'
+        this.step = 2
+        window.dispatchEvent(new CustomEvent('desens:status', { detail: { message: this.formatWarning } }))
       }
     },
     runTextDetection() {
@@ -1008,7 +1054,8 @@ export default {
           }
           this.confirmed = true
           this.step = 4
-          this.storeMapping()
+          this.currentHistoryId = this.storeMapping()
+          await this.persistHistoryRedactedFile(this.currentHistoryId)
           this.showCompletionModal = true
           return
         } catch (error) {
@@ -1022,7 +1069,8 @@ export default {
       }
       this.confirmed = true
       this.step = 4
-      this.storeMapping()
+      this.currentHistoryId = this.storeMapping()
+      await this.persistHistoryRedactedFile(this.currentHistoryId)
       this.showCompletionModal = true
     },
     buildTextMapping() {
@@ -1082,8 +1130,9 @@ export default {
       try {
         const key = 'desens_history'
         const list = JSON.parse(localStorage.getItem(key) || '[]')
+        const id = 'history_' + Date.now().toString(36) + '_' + crypto.randomUUID().slice(0, 8)
         list.push({
-          id: 'history_' + Date.now().toString(36),
+          id,
           file_name: this.file.name,
           file_type: this.fileType,
           created_at: this.mapping.created_at,
@@ -1092,15 +1141,39 @@ export default {
           redacted_image: this.fileType === 'image' ? this.$refs.canvas?.toDataURL('image/png') : null
         })
         localStorage.setItem(key, JSON.stringify(list.slice(-20)))
-      } catch (e) { console.warn('保存脱敏历史失败：本机存储空间不足。', e) }
+        return id
+      } catch (e) { console.warn('保存脱敏历史失败：本机存储空间不足。', e); return null }
+    },
+    async persistHistoryRedactedFile(historyId) {
+      if (!historyId) return
+      try {
+        let blob, filename
+        if (this.fileType === 'docx') {
+          blob = await this.buildLocalDocxBlob(); filename = `redacted_${this.file.name}`
+        } else if (this.fileType === 'excel') {
+          blob = await this.buildLocalXlsxBlob(); filename = `redacted_${this.file.name.replace(/\.xls$/i, '.xlsx')}`
+        } else if (this.fileType === 'text') {
+          const extension = (this.file.name.split('.').pop() || 'txt').toLowerCase()
+          const mime = extension === 'json' ? 'application/json' : extension === 'csv' ? 'text/csv' : extension === 'md' || extension === 'markdown' ? 'text/markdown' : 'text/plain'
+          blob = new Blob([this.redactedText], { type: `${mime};charset=utf-8` }); filename = `redacted_${this.file.name}`
+        } else if (this.fileType === 'image') {
+          blob = this.dataURLToBlob(this.$refs.canvas.toDataURL('image/png')); filename = `redacted_${this.file.name.replace(/\.[^.]+$/, '')}.png`
+        } else return
+        await saveHistoryFile({ id: historyId, blob, filename, mime: blob.type, size: blob.size, created_at: new Date().toISOString() })
+        const key = 'desens_history'; const list = JSON.parse(localStorage.getItem(key) || '[]')
+        const item = list.find(entry => entry.id === historyId)
+        if (item) { item.redacted_file_key = historyId; item.redacted_file_name = filename; item.redacted_file_size = blob.size; localStorage.setItem(key, JSON.stringify(list)) }
+      } catch (error) {
+        window.dispatchEvent(new CustomEvent('desens:status', { detail: { message: `历史文件保存失败：${error.message}` } }))
+      }
     },
     goToRestore() {
       this.showCompletionModal = false
       this.$router.push({ name: 'Restore' })
     },
     async downloadFromCompletion() {
-      await this.downloadRedactedFile()
-      this.showCompletionModal = false
+      const completed = await this.downloadRedactedFile()
+      if (completed) this.showCompletionModal = false
     },
     async downloadRedactedFile() {
       if (!this.confirmed) return
@@ -1108,17 +1181,29 @@ export default {
       let blob, filename
       if (this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
         try {
-          const result = await DesensitizationAPI.redactPreservingFormat(this.file, this.mapping)
-          blob = result.blob
-          const matched = result.filename?.match(/filename=\"?([^\";]+)\"?/i)
-          filename = matched?.[1] || `redacted_${this.file.name.replace(/\.(pdf|docx|xlsx|xls)$/i, this.fileType === 'excel' ? '.xlsx' : '.docx')}`
+          // Tauri 包内不依赖未打包的 FastAPI：DOCX 直接改写原始 ZIP 文档包。
+          if (this.fileType === 'docx') {
+            blob = await this.buildLocalDocxBlob()
+            filename = `redacted_${this.file.name}`
+          } else if (this.fileType === 'excel') {
+            blob = await this.buildLocalXlsxBlob()
+            filename = `redacted_${this.file.name.replace(/\.xls$/i, '.xlsx')}`
+          } else {
+            const result = await DesensitizationAPI.redactPreservingFormat(this.file, this.mapping)
+            blob = result.blob
+            const matched = result.filename?.match(/filename=\"?([^\";]+)\"?/i)
+            filename = matched?.[1] || `redacted_${this.file.name.replace(/\.(pdf|docx|xlsx|xls)$/i, this.fileType === 'excel' ? '.xlsx' : '.docx')}`
+          }
+          if (!(blob instanceof Blob) || blob.size < 1024) throw new Error('输出文件为空或不是有效文档，已阻止下载')
         } catch (error) {
-          alert(`下载失败：${error.message}`)
-          return
+          const stage = this.fileType === 'docx' ? '本地 DOCX 生成失败' : this.fileType === 'excel' ? '本地 XLSX 生成失败' : '格式化输出失败'
+          window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `${stage}：${error.message}`, filename: this.file?.name } }))
+          return false
         }
       } else if (this.fileType === 'text') {
-        const notice = '【处理与还原规则】本文件包含脱敏占位符（例如 {PHONE_001}）。请用户及任何 AI/Agent 在计算、分析、编辑、改写或排版时完整保留占位符的花括号、字段名与编号，不得删除、拆分、改写或替换；否则可能无法还原原始内容。'
-        blob = new Blob([`${notice}\n\n${this.redactedText}`], { type: 'text/plain;charset=utf-8' })
+        const extension = (this.file.name.split('.').pop() || 'txt').toLowerCase()
+        const mime = extension === 'json' ? 'application/json' : extension === 'csv' ? 'text/csv' : extension === 'md' || extension === 'markdown' ? 'text/markdown' : 'text/plain'
+        blob = new Blob([this.redactedText], { type: `${mime};charset=utf-8` })
         filename = 'redacted_' + this.file.name
       } else {
         const canvas = this.$refs.canvas
@@ -1127,7 +1212,62 @@ export default {
         filename = 'redacted_' + this.file.name.replace(/\.[^.]+$/, '') + '.png'
       }
       
-      this.triggerDownload(blob, filename)
+      if (this.fileType === 'text') {
+        this.triggerDownload(blob, filename, false)
+        const companionName = `${filename}.desens-meta`
+        const companion = new Blob([JSON.stringify({
+          schema_version: 1,
+          marker_type: 'companion',
+          file_name: filename,
+          source_file: this.file.name,
+          document_id: this.mapping?.document_id || null,
+          mapping_count: this.mapping?.mappings?.length || 0,
+          created_at: this.mapping?.created_at || new Date().toISOString()
+        }, null, 2)], { type: 'application/json' })
+        this.triggerDownload(companion, companionName, false)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: '脱敏文件及伴随标记已提交到系统下载目录。', filename: `${filename} + ${companionName}`, size: blob.size + companion.size } }))
+      } else this.triggerDownload(blob, filename)
+      return true
+    },
+    async buildLocalDocxBlob() {
+      const zip = await JSZip.loadAsync(await this.file.arrayBuffer())
+      const documentEntries = Object.keys(zip.files).filter(name => /^word\/(document|header\d+|footer\d+)\.xml$/.test(name))
+      if (!documentEntries.length) throw new Error('DOCX 缺少可写入的正文结构')
+      const replacements = [...(this.mapping?.mappings || [])].filter(item => item.placeholder && item.original).map(item => ({ value: item.original, placeholder: item.placeholder })).sort((a, b) => b.value.length - a.value.length)
+      let changed = 0
+      for (const name of documentEntries) {
+        let xml = await zip.file(name).async('text')
+        const before = xml
+        for (const item of replacements) {
+          const escaped = item.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          const expression = new RegExp(escaped, 'g')
+          xml = xml.replace(expression, item.placeholder)
+        }
+        if (xml !== before) { zip.file(name, xml); changed += 1 }
+      }
+      if (!changed) throw new Error('未能在 DOCX 文档结构中写入脱敏结果，已阻止下载')
+      const marker = `\n脱敏文档 ID：${this.mapping?.document_id || 'local'}\n映射项数量：${this.mapping?.mappings?.length || 0}\n`
+      const settings = zip.file('word/document.xml')
+      if (settings) {
+        let xml = await settings.async('text')
+        xml = xml.replace('</w:body>', `<w:p><w:r><w:t>${marker}</w:t></w:r></w:p></w:body>`)
+        zip.file('word/document.xml', xml)
+      }
+      return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+    },
+    async buildLocalXlsxBlob() {
+      const zip = await JSZip.loadAsync(await this.file.arrayBuffer())
+      const entries = Object.keys(zip.files).filter(name => /^(xl\/sharedStrings\.xml|xl\/worksheets\/sheet\d+\.xml)$/.test(name))
+      if (!entries.length) throw new Error('XLSX 缺少可写入的工作表结构')
+      const replacements = [...(this.mapping?.mappings || [])].filter(item => item.placeholder && item.original).map(item => ({ value: item.original, placeholder: item.placeholder })).sort((a, b) => b.value.length - a.value.length)
+      let changed = 0
+      for (const name of entries) {
+        let xml = await zip.file(name).async('text'); const before = xml
+        for (const item of replacements) xml = xml.split(item.value).join(item.placeholder)
+        if (xml !== before) { zip.file(name, xml); changed += 1 }
+      }
+      if (!changed) throw new Error('未能在 XLSX 工作表中写入脱敏结果，已阻止下载')
+      return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     },
     downloadMapping() {
       if (!this.mapping) return
@@ -1143,7 +1283,7 @@ export default {
         this.triggerDownload(blob, filename)
       } catch (error) {
         console.error('下载 Word 文档失败：', error)
-        alert('下载失败：' + error.message)
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: error.message, filename: this.file?.name } }))
       }
     },
     dataURLToBlob(dataUrl) {
@@ -1155,14 +1295,19 @@ export default {
       while (n--) u8arr[n] = bstr.charCodeAt(n)
       return new Blob([u8arr], { type: mime })
     },
-    triggerDownload(blob, filename) {
+    triggerDownload(blob, filename, notify = true) {
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: '下载内容为空，未生成文件', filename } }))
+        throw new Error('下载内容为空')
+      }
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove() }, 100)
+      if (notify) window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: '文件已生成并提交到系统下载目录。', filename, size: blob.size } }))
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove() }, 30_000)
     },
     formatSize(bytes) {
       if (bytes < 1024) return bytes + ' B'
@@ -1178,6 +1323,7 @@ export default {
       this.nextId = 1
       this.confirmed = false
       this.mapping = null
+      this.currentHistoryId = null
       this.showMapping = false
       this.showCompletionModal = false
       this.redactedText = ''
