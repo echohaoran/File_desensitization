@@ -64,7 +64,7 @@
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; width: 100%; height: 100%; }
 body {
   background: var(--bg);
   color: var(--fg);
@@ -74,7 +74,10 @@ body {
   letter-spacing: -0.01em;            /* negative tracking on body text */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 img, canvas, svg { display: block; max-width: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -139,6 +142,29 @@ ul, ol { list-style: none; }
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
+
+/* Fixed viewport shell: pages stay in the app viewport and cards own overflow. */
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+#app > main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#app > main > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.site-header { position: relative; flex: 0 0 64px; }
 .site-header__inner {
   display: flex;
   align-items: center;
@@ -359,7 +385,7 @@ ul, ol { list-style: none; }
 /* ============================================================
    INDEX PAGE
    ============================================================ */
-.index-main { padding-block: var(--section-y-desktop); }
+.index-main { padding-block: clamp(24px, 5vh, var(--section-y-desktop)); overflow: auto !important; }
 @media (max-width: 900px) { .index-main { padding-block: var(--section-y-tablet); } }
 @media (max-width: 600px) { .index-main { padding-block: var(--section-y-phone); } }
 
@@ -496,7 +522,7 @@ ul, ol { list-style: none; }
 /* ============================================================
    WORKFLOW PAGES (shared)
    ============================================================ */
-.workflow { padding-block: var(--space-8) var(--section-y-desktop); }
+.workflow { display: flex; flex-direction: column; padding-block: clamp(16px, 3vh, var(--space-8)) clamp(16px, 5vh, var(--section-y-desktop)); overflow: hidden; }
 @media (max-width: 900px) { .workflow { padding-block: var(--space-6) var(--section-y-tablet); } }
 
 /* Step indicator */
@@ -538,9 +564,11 @@ ul, ol { list-style: none; }
 /* Split layout */
 .split {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 2fr);
   gap: var(--space-6);
   align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 @media (max-width: 1024px) { .split { grid-template-columns: 1fr; } }
 
@@ -552,8 +580,13 @@ ul, ol { list-style: none; }
   position: sticky;
   top: 88px;
   max-height: calc(100vh - 120px);
+  min-height: 0;
 }
 @media (max-width: 1024px) { .aside { position: static; max-height: none; } }
+@media (max-width: 1024px) {
+  .workflow { overflow: auto; }
+  .split { flex: none; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.6fr); }
+}
 
 .panel {
   border: 1px solid var(--border);
@@ -787,10 +820,11 @@ ul, ol { list-style: none; }
   border-radius: var(--radius-lg);
   background: var(--surface);
   overflow: hidden;
-  height: calc(100vh - 120px);
-  min-height: 560px;
+  height: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .preview__head {
   display: flex;
@@ -1020,7 +1054,12 @@ ul, ol { list-style: none; }
 /* ============================================================
    RESTORE PAGE
    ============================================================ */
-.restore-main { padding-block: var(--space-8) var(--section-y-desktop); }
+.restore-main { padding-block: clamp(16px, 3vh, var(--space-8)) clamp(16px, 5vh, var(--section-y-desktop)); overflow: auto !important; }
+.restore-main > .history-panel,
+.restore-main > .restore-current-upload,
+.restore-main > .restore-result { min-width: 0; }
+.restore-main > .history-panel { max-height: 42vh; overflow: hidden; }
+.restore-main > .history-panel .history-list { overflow-y: auto; min-height: 0; }
 .restore-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1100,6 +1139,27 @@ ul, ol { list-style: none; }
 }
 .restore-result__body { padding: var(--space-6); }
 
+@media (min-width: 900px) {
+  .restore-main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: var(--space-5) var(--space-6); align-content: start; }
+  .restore-main > .index-eyebrow,
+  .restore-main > .index-hero,
+  .restore-main > .history-actions,
+  .restore-main > .validate-box,
+  .restore-main > .action-bar,
+  .restore-main > .restore-result,
+  .restore-main > .download-bar,
+  .restore-main > .restore-feedback { grid-column: 1 / -1; }
+  .restore-main > .history-panel { grid-column: 1; grid-row: 3; margin: 0; }
+  .restore-main > .history-panel { align-self: start; height: fit-content; }
+  .restore-main > .restore-current-upload { grid-column: 2; grid-row: 3; margin: 0; min-height: 320px; }
+  .restore-main > .history-actions { grid-row: 4; margin-block: 0; }
+}
+
+@media (min-width: 900px) {
+  .restore-main.has-selection > .history-panel { grid-column: 1; }
+  .restore-main.has-selection > .restore-current-upload { grid-column: 2; }
+}
+
 /* ============================================================
    MISC
    ============================================================ */
@@ -1110,6 +1170,36 @@ ul, ol { list-style: none; }
 .mt-6 { margin-top: var(--space-6); }
 .hidden { display: none !important; }
 [hidden] { display: none !important; }
+
+/* Secondary pages use compact cards and a two-column desktop rhythm. */
+.rules-page { max-width: 1200px; }
+.rules-page .rules-form,
+.rules-page .rules-list { min-width: 0; }
+.rules-page .form-grid { grid-template-columns: minmax(0, 1fr) minmax(150px, .42fr) !important; }
+.rules-page label, .rules-page input, .rules-page select { min-width: 0; max-width: 100%; }
+.rules-page .rules-form__heading h2 { overflow-wrap: anywhere; }
+.rules-page .rules-list { max-height: 58vh; overflow: auto; }
+.settings-page { max-width: 1200px !important; padding-top: clamp(20px, 4vh, 44px) !important; padding-bottom: 32px !important; overflow: auto !important; }
+.settings-page > section { padding: clamp(14px, 1.8vw, 22px) !important; margin-bottom: 12px !important; }
+.settings-page .settings-grid,
+.settings-page .model-grid,
+.settings-page .registered-models { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.settings-page .settings-card,
+.settings-page .model-card,
+.settings-page .registered-model { min-width: 0; padding: var(--space-4); }
+.settings-page .settings-card__head { gap: 12px !important; }
+.settings-page .settings-card__head h2 { font-size: var(--text-base) !important; }
+.settings-page .settings-card__head p { font-size: var(--text-xs) !important; }
+@media (min-width: 900px) {
+  .rules-page { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--space-5) var(--space-6); align-content: start; }
+  .rules-page > .page-heading { grid-column: 1 / -1; }
+  .rules-page .rules-form, .rules-page .rules-list { margin-top: 0; }
+}
+@media (max-width: 700px) {
+  .settings-page .settings-grid,
+  .settings-page .model-grid,
+  .settings-page .registered-models { grid-template-columns: 1fr; }
+}
 
 /* Visually hidden but accessible */
 .sr-only {

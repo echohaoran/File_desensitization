@@ -246,6 +246,22 @@
         </div>
       </section>
     </div>
+    <div v-if="aiResultModal" class="completion-modal" role="dialog" aria-modal="true" aria-labelledby="ai-result-title">
+      <div class="completion-modal__backdrop" @click="aiResultModal = null"></div>
+      <section class="completion-modal__card">
+        <p class="mono-label">AI DESENSITIZATION</p>
+        <h2 id="ai-result-title">{{ aiResultModal.success ? 'AI 脱敏检测完成' : 'AI 脱敏检测结束' }}</h2>
+        <p>{{ aiResultModal.message }}</p>
+        <div v-if="aiResultModal.success" class="ai-result-summary">
+          <span>新增敏感项 <strong>{{ aiResultModal.added }}</strong></span>
+          <span>取消错误项 <strong>{{ aiResultModal.rejected }}</strong></span>
+          <span>当前总计 <strong>{{ aiResultModal.total }}</strong></span>
+        </div>
+        <div class="completion-modal__actions">
+          <button class="btn btn--primary" @click="aiResultModal = null">知道了</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -293,6 +309,7 @@ export default {
       hoverDetectionId: null,
       aiDetecting: false,
       aiProgress: 0,
+      aiResultModal: null,
       aiEnabled: localStorage.getItem('desens_ai_enabled') === 'true',
       activeModelPath: localStorage.getItem('desens_active_model_path') || '',
       syncingScroll: false,
@@ -997,24 +1014,67 @@ export default {
       this.detections.sort((a, b) => a.start - b.start)
     },
     async runAiDetection() {
-      if (!this.activeModelPath || !this.aiEnabled || !isTauriRuntime() || !this.rawOriginalText || this.aiDetecting) return
+      if (!this.activeModelPath || !this.aiEnabled || !isTauriRuntime() || !this.rawOriginalText || this.aiDetecting) {
+        this.backendError = !this.activeModelPath ? '请先在设置中登记并应用一个可用的 GGUF 模型。' : 'AI 当前不可用，请检查开关、桌面运行环境和文档内容。'
+        this.aiResultModal = { success: false, message: this.backendError }
+        return
+      }
       this.aiDetecting = true
       this.aiProgress = 8
+      const beforeCount = this.detections.length
       const timer = window.setInterval(() => { this.aiProgress = Math.min(88, this.aiProgress + 7) }, 700)
       try {
         const rules = loadSensitiveRules().filter(rule => rule.enabled).map(rule => `${rule.name}: ${rule.value}`).join('\n').slice(0, 6000)
         const response = await aiDetectCandidates({ schema_version: 1, model_path: this.activeModelPath, rules_summary: rules, selected_text: this.rawOriginalText.slice(0, 1400) })
-        const parsed = JSON.parse(response.data || '{}')
-        const items = Array.isArray(parsed.items) ? parsed.items : []
-        items.filter(item => item.text && Number.isFinite(item.start) && Number.isFinite(item.end) && item.end > item.start).forEach(item => {
-          const start = item.start; const end = item.end
-          if (start < 0 || end > this.rawOriginalText.length || this.detections.some(d => d.start === start && d.end === end)) return
-          this.detections.push({ id: this.nextId++, type: item.type || 'ai', label: item.type || 'AI候选', value: this.rawOriginalText.slice(start, end), start, end, placeholder: '{AI_' + String(this.nextId).padStart(3, '0') + '}', active: true, manual: false, source: 'ai', confidence: item.confidence })
-        })
-        this.detections.sort((a, b) => a.start - b.start)
-        this.aiProgress = 100
-      } catch (error) { this.backendError = error.message || 'AI 检测失败，请检查模型和输出格式' }
-      finally { window.clearInterval(timer); window.setTimeout(() => { this.aiDetecting = false; this.aiProgress = 0 }, 450) }
+        const rawOutput = response.data || ''
+        const cleanedOutput = rawOutput.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim()
+        let parsed = null
+        const candidates = [cleanedOutput]
+        const objectStart = cleanedOutput.indexOf('{')
+        const objectEnd = cleanedOutput.lastIndexOf('}')
+        if (objectStart >= 0 && objectEnd >= objectStart) candidates.push(cleanedOutput.slice(objectStart, objectEnd + 1))
+        const arrayStart = cleanedOutput.indexOf('[')
+        const arrayEnd = cleanedOutput.lastIndexOf(']')
+        if (arrayStart >= 0 && arrayEnd >= arrayStart) candidates.push(`{"items":${cleanedOutput.slice(arrayStart, arrayEnd + 1)}}`)
+        for (const candidate of candidates) { try { const value = JSON.parse(candidate); if (Array.isArray(value)) parsed = { items: value }; else if (value && Array.isArray(value.items)) parsed = value; if (parsed) break } catch (_) {} }
+        if (!parsed) throw new Error('模型未返回有效 JSON 候选结果，请重试或使用规则检测')
+      const items = Array.isArray(parsed.items) ? parsed.items : []
+      let acceptedCount = 0
+      let rejectedCount = 0
+      items.forEach(item => {
+        if (!item.text || !Number.isFinite(item.start) || !Number.isFinite(item.end) || item.end <= item.start) {
+          rejectedCount++
+          return
+        }
+        const start = item.start; const end = item.end
+        if (start < 0 || end > this.rawOriginalText.length || this.detections.some(d => d.start === start && d.end === end)) {
+          rejectedCount++
+          return
+        }
+        this.detections.push({ id: this.nextId++, type: item.type || 'ai', label: item.type || 'AI候选', value: this.rawOriginalText.slice(start, end), start, end, placeholder: '{AI_' + String(this.nextId).padStart(3, '0') + '}', active: true, manual: false, source: 'ai', confidence: item.confidence })
+        acceptedCount++
+      })
+      this.detections.sort((a, b) => a.start - b.start)
+      this.aiProgress = 100
+      this.backendError = acceptedCount ? `AI 已生成 ${acceptedCount} 条候选，请人工复核。` : 'AI 已完成实际推理，未发现新的候选片段。'
+      this.aiResultModal = { success: true, message: 'AI 已完成全文检测，候选结果仍需人工确认。', added: this.detections.length - beforeCount, rejected: rejectedCount, total: this.detections.length }
+    } catch (error) {
+      this.backendError = error.message || 'AI 检测失败，请检查模型和输出格式'
+      // 小模型偶尔会输出非 JSON 文本；保留 AI 失败事实，同时用同一套本地规则生成可审核候选，避免按钮无实际作用。
+      const fallbackBefore = this.detections.length
+      const fallback = detectWithRules(this.rawOriginalText, loadSensitiveRules().filter(rule => rule.enabled))
+      fallback.forEach(item => {
+        if (!this.detections.some(d => d.start === item.start && d.end === item.end)) this.detections.push({ ...item, id: this.nextId++, source: 'rule-fallback', manual: false, active: true, placeholder: '{AI_' + String(this.nextId).padStart(3, '0') + '}' })
+      })
+      this.detections.sort((a, b) => a.start - b.start)
+      if (this.detections.length > fallbackBefore) {
+        this.backendError = 'AI 输出格式不规范，已使用本地规则生成候选，请人工复核。'
+        this.aiResultModal = { success: true, message: this.backendError, added: this.detections.length - beforeCount, rejected: 0, total: this.detections.length }
+      } else {
+        this.aiResultModal = { success: false, message: this.backendError }
+      }
+    }
+    finally { window.clearInterval(timer); this.aiProgress = 100; window.setTimeout(() => { this.aiDetecting = false; this.aiProgress = 0 }, 650) }
     },
     toggleDetection(item) {
       // 从检测列表中移除该项
@@ -1529,5 +1589,9 @@ export default {
 .ai-action small { display: block; margin-top: 6px; color: #64748b; font-size: 11px; }
 .ai-progress { height: 6px; margin-top: 8px; border-radius: 999px; overflow: hidden; background: #e2e8f0; }
 .ai-progress span { display: block; height: 100%; background: #111827; transition: width .35s ease; }
+.ai-result-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.ai-result-summary span { padding: 10px; border-radius: 8px; background: #f8fafc; color: #64748b; font-size: 12px; text-align: center; }
+.ai-result-summary strong { display: block; margin-top: 4px; color: #111827; font-size: 20px; }
+@media (max-width: 540px) { .ai-result-summary { grid-template-columns: 1fr; } }
 @media (max-width: 1100px) { .comparison-preview { grid-template-columns: 1fr; min-height: auto; } .comparison-pane { min-height: 360px; } }
 </style>

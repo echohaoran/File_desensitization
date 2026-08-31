@@ -1,5 +1,5 @@
 <template>
-  <div class="container restore-main">
+  <div class="container restore-main" :class="{ 'has-selection': selectedHistory }">
     <div class="index-eyebrow">
       <span class="index-eyebrow__line" aria-hidden="true"></span>
       <span class="mono-label">RESTORE / v0.1 PROTOTYPE</span>

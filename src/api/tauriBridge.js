@@ -12,6 +12,7 @@ export const redactApprovedText = (request) => invokeDesktop('redact_approved_te
 export const restoreMappedText = (redactedText, mappings) => invokeDesktop('restore_mapped_text', { redactedText, mappings })
 export const listModels = () => invokeDesktop('list_models')
 export const registerLocalModel = (request) => invokeDesktop('register_local_model', { request })
+export const unregisterModel = (request) => invokeDesktop('unregister_model', { request })
 export const downloadModel = (request) => invokeDesktop('download_model', { request })
 export const aiDetectCandidates = (request) => invokeDesktop('ai_detect_candidates', { request })
 export const createTask = (request) => invokeDesktop('create_task', { request })

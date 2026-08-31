@@ -24,7 +24,7 @@ pub fn run_inference_cli() -> i32 {
     let request: commands::AiDetectRequest = match serde_json::from_slice(&input) { Ok(value) => value, Err(_) => return 2 };
     match inference::run_candidate_inference(&request.model_path, &request.rules_summary, &request.selected_text) {
         Ok(output) => { let _ = std::io::stdout().write_all(output.as_bytes()); 0 }
-        Err(_) => 3,
+        Err(error) => { let _ = writeln!(std::io::stderr(), "{error}"); 3 }
     }
 }
 
@@ -69,6 +69,7 @@ pub fn run() {
             commands::list_settings,
             commands::list_models,
             commands::register_local_model,
+            commands::unregister_model,
             commands::download_model,
             commands::ai_detect_candidates
         ])

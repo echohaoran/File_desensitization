@@ -3,7 +3,7 @@ use candle_transformers::{generation::LogitsProcessor, models::quantized_qwen2::
 use std::{fs::File, path::PathBuf};
 use tokenizers::Tokenizer;
 
-pub fn run_candidate_inference(model_path: &str, _rules: &str, _selected_text: &str) -> Result<String, String> {
+pub fn run_candidate_inference(model_path: &str, rules: &str, selected_text: &str) -> Result<String, String> {
     let model_path = PathBuf::from(model_path);
     let tokenizer_path = model_path.parent().unwrap_or_else(|| std::path::Path::new(".")).join("tokenizer.json");
     let tokenizer = Tokenizer::from_file(&tokenizer_path).map_err(|error| format!("缺少或无法读取 tokenizer.json：{error}"))?;
@@ -11,7 +11,7 @@ pub fn run_candidate_inference(model_path: &str, _rules: &str, _selected_text: &
     let mut file = File::open(&model_path).map_err(|error| format!("模型文件读取失败：{error}"))?;
     let content = candle_core::quantized::gguf_file::Content::read(&mut file).map_err(|error| format!("Candle GGUF 解析失败：{error:?}"))?;
     let mut model = ModelWeights::from_gguf(content, &mut file, &device).map_err(|error| format!("Qwen2 GGUF 架构不兼容：{error:?}"))?;
-    let prompt = format!("你是敏感信息检测器，只输出 JSON。待检测文本：{}\n输出：{{\"items\":[]}}", _selected_text.chars().take(1200).collect::<String>());
+    let prompt = format!("你是敏感信息检测器。请依据敏感规则识别待检测文本中的敏感片段，只输出一个 JSON 对象，不要解释。items 数组中的每项必须包含 text、start、end、type、confidence；start 和 end 是待检测文本的字符索引，end 不包含。没有结果才输出空数组。敏感规则：{}\n待检测文本：{}\nJSON：", rules.chars().take(6000).collect::<String>(), selected_text.chars().take(1200).collect::<String>());
     let encoding = tokenizer.encode(prompt, true).map_err(|error| format!("tokenizer 编码失败：{error}"))?;
     let mut ids = encoding.get_ids().to_vec();
     if ids.len() > 1400 { ids.truncate(1400); }

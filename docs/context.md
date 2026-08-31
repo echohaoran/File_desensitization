@@ -606,3 +606,43 @@
 - GitHub Release 包名已移除实际文件名中的 `系统_架构` 占位字样。
 - 新命名为 `local_desens_macos_arm64.dmg`、`local_desens_macos_x64.dmg`、`local_desens_windows_x64.msi`、`local_desens_linux_amd64.deb`。
 - 本轮版本推进至 v0.1.5，待提交并触发新的 tag 发布。
+# 2026-08-31：更换应用图标
+
+- 已将用户提供的蓝紫盾牌锁图标接入前端 Logo 与 Tauri 安装包。
+- Tauri bundle 改用 `src-tauri/icons/icon.png`，保留 RGBA 透明通道；前端使用 `public/assets/desens-shield.png`。
+- 顶部版本号改为读取 `package.json`，与 tag 发布版本同步显示。
+
+## 2026-08-31 固定视口布局
+
+- 为应用根节点、主内容区和页面根节点建立固定视口弹性约束，隐藏全局页面溢出。
+- 脱敏工作区、预览区和检测面板继续由自身面板承载滚动；窄屏工作流保留页面内可访问滚动，避免内容被截断。
+- 还原页与敏感字段页增加桌面左右分栏，设置页预留紧凑卡片网格样式。
+- ego-browser 烟测改用不等待本地页面 load 事件、短暂稳定后读取状态；四个主要路由均访问成功且文档无全局溢出。
+- 本轮逐页核对概览、脱敏、还原、敏感字段、设置五个页面的卡片尺寸与溢出；桌面端分栏和设置紧凑卡片均生效。
+
+## 2026-08-31 AI 全文脱敏反馈
+
+- AI 全文检测继续使用模拟进度条，任务结束前保持处理中状态，结束时再平滑收起。
+- 无论实际推理成功或失败，均显示应用内结果弹窗；成功时报告新增敏感项、拒绝的无效/重复候选和当前总数。
+- 前端构建、Rust cargo check、ego-browser 五路由烟测均通过；已重新生成并启动最新 Tauri `.app`，并生成 Apple Silicon DMG。
+
+## 2026-08-31 模型登记与本地 AI 验证
+
+- 设置页仅保留 Qwen1.5 0.5B Chat 与 Qwen3 0.6B 两个真实下载入口。
+- 已登记模型支持取消登记；取消登记只移除本地清单记录，不删除模型文件，应用中的模型会同步解除。
+- 使用本机已应用的 Qwen1.5 GGUF 做隔离 Candle 烟测，确认失败原因是模型目录缺少配套 `tokenizer.json`，已保留结构化失败提示，不会导致主进程崩溃。
+- 变更后的前端、Rust 检查和 ego-browser 五页面烟测通过，已重新生成最新 Tauri `.app` 与 Apple Silicon DMG。
+
+## 2026-08-31 模型入口收敛
+
+- 清除当前本地模型清单配置，保留原始 GGUF 文件以便用户自行重新登记。
+- 设置页仅展示一个小于 1B 且匹配 Candle `quantized_qwen2` 的 Qwen2.5 0.5B Instruct GGUF 下载入口。
+- 已核验 `hf-mirror.cn` 不可访问，`hf-mirror.com` 会发生地区跳转；魔搭社区 Qwen2.5 0.5B Instruct `qwen2.5-0.5b-instruct-q4_0.gguf` 返回 200，设置页已按来源使用魔搭直链。
+- 刷新清单时若应用模型已不存在，会同步清理失效的应用配置。
+# 2026-08-31 模型推理依赖修复
+
+- 定位到“下载、登记成功但 AI 不可用”的直接原因：Candle 推理从 GGUF 同目录读取 `tokenizer.json`，原下载流程只保存 GGUF。
+- 设置页推荐模型已绑定 ModelScope 基础模型的真实 tokenizer 地址；Rust 下载命令在登记前下载并校验 tokenizer JSON，手工登记也拒绝缺少 tokenizer 的模型。
+- 已为当前 Qwen2.5 0.5B 模型目录补齐 tokenizer，并通过前端构建与 Rust `cargo check`。
+- 针对小模型非严格 JSON 输出，检测页增加了 JSON 清理、对象/数组提取及本地规则候选兜底；已重新生成并启动最新 Tauri 应用包验证入口不再使用旧前端资源。
+- 发布准备：前端与 Tauri 版本标记统一更新为 `0.1.6`，对应 tag 为 `v0.1.6`。

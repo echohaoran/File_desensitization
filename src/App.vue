@@ -66,13 +66,14 @@
 
 <script>
 import { apiUrl } from '@/api/desensitization'
+import packageInfo from '../package.json'
 
 export default {
   name: 'App',
   data() {
     return {
       statusMessage: '',
-      currentVersion: 'v0.1.1',
+      currentVersion: `v${packageInfo.version}`,
       updateAvailable: false,
       checkingUpdate: false,
       showVersionDialog: false,
