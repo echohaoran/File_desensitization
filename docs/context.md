@@ -664,3 +664,4 @@
 - GitHub Actions `v0.1.8` 的 Apple Silicon 作业确认 Tauri 与 DMG 均构建成功；失败原因是作业仅请求 `dmg` bundle，Tauri 不会因此产生 updater 所需的 `.app.tar.gz`。
 - macOS ARM64/Intel 矩阵均改为 `--bundles dmg,app`，确保每次发布同时有可手动安装的 DMG 与签名更新归档。
 - 用户确认后将发布版本推进至 `0.1.9`，以新的 `v0.1.9` tag 重新触发完整跨平台构建；失败的 `v0.1.8` tag 保留为历史记录。
+- 本地 `0.1.9` 打包后同步更新 `Cargo.lock` 中根 Rust 包版本，作为独立锁文件一致性提交保留在 `main`；不移动已触发发布构建的 `v0.1.9` 标签。
