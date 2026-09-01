@@ -1,6 +1,6 @@
 {
   "name": "desens-vue",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "本地优先的文件脱敏与还原工具",
   "author": "DESENS",
   "private": true,

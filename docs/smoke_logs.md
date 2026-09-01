@@ -366,6 +366,11 @@
 - 结果：通过。初始和上传后均为左侧 661px 历史列表、右侧 489px 上传卡片，坐标保持 40px / 725px。上传含 `{AUTO_MATCH_PHONE}` 的文件后自动选择“自动匹配原始.txt”并进入“文件已就绪”；上传无标记文件后显示“未匹配到历史记录”，文件仍保留，随后手动选择历史可直接进入“文件已就绪”。
 - 打包：签名 `npm run tauri:build -- --bundles dmg,app` 通过；已启动最新 `.app`。应用可执行文件、`文件脱敏与还原工具_0.1.11_aarch64.dmg`、`.app.tar.gz` 与 `.sig` 均为非空。
 
+## 2026-09-01 v0.1.12 Beta 发布前烟测
+
+- 环境：Vite `http://127.0.0.1:5174`、ego-browser 隔离任务空间、macOS 本地 Rust 工具链。
+- 结果：通过。`npm run build` 与 `cargo check --manifest-path src-tauri/Cargo.toml` 均通过；浏览器首页左上角显示 `v0.1.12 Beta`，五个主导航入口均存在。Rust 仅报告现有未使用类型警告。
+
 ## 2026-09-01 敏感字段编辑模态窗口烟测
 
 - 环境：Vite `http://127.0.0.1:5174`、ego-browser 隔离任务空间；仅注入虚构规则“编辑验证字段”。
