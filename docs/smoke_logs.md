@@ -305,3 +305,8 @@
 
 - 环境：macOS Apple Silicon、本地签名密钥、Tauri release 包、ego-browser。
 - 结果：通过。`npm run tauri:build -- --bundles dmg,app` 生成非空 `0.1.9` ARM64 DMG、`.app.tar.gz` 与 `.sig`；启动新应用后，浏览器确认标题版本为 `v0.1.9`，版本弹窗显示 GitHub Release 签名验证来源及“当前已是最新版本”。
+
+## 2026-09-01 Beta 标识烟测
+
+- 范围：前端版本标记、GitHub Release 包命名、macOS 签名打包。
+- 结果：通过。ego-browser 打开首页确认左上角显示 `v0.1.9 Beta`；前端构建和工作流 YAML 校验通过。重新执行签名 `dmg,app` 打包后，DMG、`.app.tar.gz` 与 `.sig` 均为非空。CI 发布名与 updater manifest 已统一改为 `local_desens_beta_<平台>_<架构>`。

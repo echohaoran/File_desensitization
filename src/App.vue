@@ -87,7 +87,7 @@ export default {
   data() {
     return {
       statusMessage: '',
-      currentVersion: `v${packageInfo.version}`,
+      currentVersion: `v${packageInfo.version} Beta`,
       updateAvailable: false,
       checkingUpdate: false,
       showVersionDialog: false,
