@@ -79,6 +79,7 @@
 </template>
 
 <script>
+import { markRaw } from 'vue'
 import { isTauriRuntime } from '@/api/tauriBridge'
 import packageInfo from '../package.json'
 
@@ -216,7 +217,9 @@ export default {
             const { check } = await import('@tauri-apps/plugin-updater')
             const update = await check({ timeout: 15000 })
             if (requestId !== this.updateRequestId) { await update?.close?.(); return }
-            this.updateResource = update
+            // Tauri Update is a Resource with private fields. Vue must not proxy it,
+            // otherwise method calls such as download() lose the native private slot.
+            this.updateResource = update ? markRaw(update) : null
             this.versionInfo = update ? { version: update.version, notes: update.body || '', date: update.date || '' } : null
             this.updateAvailable = Boolean(update)
             this.announce(update ? `发现更新 v${update.version}` : '当前已是最新版本')

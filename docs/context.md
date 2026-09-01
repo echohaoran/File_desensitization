@@ -732,3 +732,9 @@
 - `v0.1.12` 的 Windows x64 作业在应用编译完成后，Tauri 临时下载 WiX 3.14 时遭遇 GitHub 远端连接重置（`os error 10054`），因此没有产生 MSI，发布作业被跳过。
 - Windows 作业新增 WiX 3.14 预置步骤：复用已存在的 Tauri WiX 缓存，否则最多五次下载、验证归档大小并解压校验 `candle.exe`/`light.exe` 后才开始 Tauri MSI 打包，避免 Tauri 内置单次下载成为发布阻断点。
 - 发布版本推进至 `0.1.13`，将使用 `v0.1.13` tag 重新触发 Windows MSI 和完整三平台 Release。
+
+## 2026-09-01 Windows 自动更新资源代理修复
+
+- Windows `v0.1.11 Beta` 已能读取 GitHub Release，但点击更新时触发 `Cannot read private member from an object whose class did not declare it`。
+- 根因是 Vue 将 Tauri updater 的 `Update` Resource 存入响应式 `data` 后生成 Proxy；该 Resource 的 `download()` / `install()` 依赖 JavaScript 私有字段，Proxy 作为调用方会失去私有字段槽。
+- 使用 Vue `markRaw()` 保存 `Update` 实例，保持资源对象原样，再调用下载、签名校验和安装流程；版本推进至 `0.1.14`，将以 `v0.1.14` 发布供旧 Windows 安装包更新。

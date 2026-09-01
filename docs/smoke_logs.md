@@ -381,3 +381,9 @@
 - 环境：Vite `http://127.0.0.1:5174`、ego-browser 隔离任务空间；仅注入虚构规则“编辑验证字段”。
 - 结果：通过。点击编辑打开含“取消”和“保存修改”的应用内模态窗口，左侧卡片保持“新增敏感字段”。取消后本地存储与列表保留原名称；保存后两处同步更新为“保存后字段”。
 - 打包：签名 `dmg,app` 打包通过，最新 macOS 应用已启动，DMG、更新归档及签名文件均为非空。
+
+## 2026-09-01 Windows 自动更新私有字段烟测
+
+- 范围：Tauri updater `Update` Resource 的 Vue 保存行为、更新入口构建与版本标记。
+- 结果：通过。`npm run build` 与 `cargo check --manifest-path src-tauri/Cargo.toml` 均通过；Node 最小复现确认 `markRaw()` 后的 Resource 在 Vue `reactive()` 容器中仍能调用私有字段方法；ego-browser 确认首页显示 `v0.1.14 Beta`、五个主导航入口完整，并能打开“版本更新”弹窗。
+- 打包：本地环境未注入 `TAURI_SIGNING_PRIVATE_KEY`，无法生成可用于更新验证的签名归档；发布将由 GitHub Actions 的受保护签名密钥构建 Windows MSI、签名和 `latest.json`，并以 Release 产物为准。
