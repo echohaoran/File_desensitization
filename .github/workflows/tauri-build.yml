@@ -76,6 +76,42 @@ jobs:
             libssl-dev \
             patchelf
 
+      - name: Provision WiX toolset for Windows MSI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $wixDirectory = Join-Path $env:LOCALAPPDATA 'tauri\WixTools314'
+          $candle = Join-Path $wixDirectory 'candle.exe'
+          $light = Join-Path $wixDirectory 'light.exe'
+          if ((Test-Path $candle) -and (Test-Path $light)) {
+            Write-Host "Using cached WiX tools from $wixDirectory"
+            exit 0
+          }
+
+          $archive = Join-Path $env:RUNNER_TEMP 'wix314-binaries.zip'
+          Remove-Item -Force -ErrorAction SilentlyContinue $archive
+          for ($attempt = 1; $attempt -le 5; $attempt++) {
+            try {
+              Write-Host "Downloading WiX 3.14 (attempt $attempt of 5)"
+              Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $archive -UseBasicParsing
+              if ((Get-Item $archive).Length -gt 1MB) { break }
+              Remove-Item -Force $archive
+            } catch {
+              if ($attempt -eq 5) { throw }
+              Start-Sleep -Seconds (3 * $attempt)
+            }
+          }
+          if (!(Test-Path $archive) -or (Get-Item $archive).Length -le 1MB) {
+            throw 'WiX archive was not downloaded completely.'
+          }
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $wixDirectory
+          New-Item -ItemType Directory -Force -Path $wixDirectory | Out-Null
+          Expand-Archive -Path $archive -DestinationPath $wixDirectory -Force
+          if (!(Test-Path $candle) -or !(Test-Path $light)) {
+            throw "WiX extraction did not produce candle.exe and light.exe in $wixDirectory."
+          }
+
       - name: Build Tauri package
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}

@@ -371,6 +371,11 @@
 - 环境：Vite `http://127.0.0.1:5174`、ego-browser 隔离任务空间、macOS 本地 Rust 工具链。
 - 结果：通过。`npm run build` 与 `cargo check --manifest-path src-tauri/Cargo.toml` 均通过；浏览器首页左上角显示 `v0.1.12 Beta`，五个主导航入口均存在。Rust 仅报告现有未使用类型警告。
 
+## 2026-09-01 v0.1.13 Windows WiX 重试发布前烟测
+
+- 范围：Windows GitHub Actions WiX 预置步骤、工作流 YAML、版本标记与本地构建检查。
+- 结果：通过。GitHub Actions `v0.1.12` 日志确认失败仅发生在下载 `wix314-binaries.zip` 时的 `os error 10054`，而非应用编译；更新后的 workflow YAML 可解析。`npm run build`、`cargo check --manifest-path src-tauri/Cargo.toml` 和 `git diff --check` 均通过；ego-browser 确认首页显示 `v0.1.13 Beta` 与五项主导航。
+
 ## 2026-09-01 敏感字段编辑模态窗口烟测
 
 - 环境：Vite `http://127.0.0.1:5174`、ego-browser 隔离任务空间；仅注入虚构规则“编辑验证字段”。

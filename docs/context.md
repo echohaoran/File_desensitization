@@ -726,3 +726,9 @@
 ## 2026-09-01 v0.1.12 Beta 发布
 
 - 用户确认还原页自动匹配功能测试通过。前端、Tauri 和 Rust 包版本统一推进至 `0.1.12`，将创建并推送 `v0.1.12` tag 触发三平台 Beta Release。
+
+## 2026-09-01 Windows WiX 打包网络修复
+
+- `v0.1.12` 的 Windows x64 作业在应用编译完成后，Tauri 临时下载 WiX 3.14 时遭遇 GitHub 远端连接重置（`os error 10054`），因此没有产生 MSI，发布作业被跳过。
+- Windows 作业新增 WiX 3.14 预置步骤：复用已存在的 Tauri WiX 缓存，否则最多五次下载、验证归档大小并解压校验 `candle.exe`/`light.exe` 后才开始 Tauri MSI 打包，避免 Tauri 内置单次下载成为发布阻断点。
+- 发布版本推进至 `0.1.13`，将使用 `v0.1.13` tag 重新触发 Windows MSI 和完整三平台 Release。
