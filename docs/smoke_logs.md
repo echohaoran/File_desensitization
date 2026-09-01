@@ -328,3 +328,10 @@
 - 结果：通过。工作流 YAML 可解析；Linux `updater_name`、签名读取路径和 `linux-x86_64` 下载 URL 均为 `local_desens_beta_linux_amd64.AppImage`，不再残留错误的 `linux_x64` AppImage 名称。`npm run build` 与 `cargo check` 均通过。
 - 打包：执行签名 `npm run tauri:build -- --bundles dmg,app`，生成非空 `0.1.11` ARM64 DMG、`.app.tar.gz` 与 `.sig`，并启动最新 `.app`。
 - 浏览器：ego-browser 确认首页显示 `v0.1.11 Beta`；概览、脱敏、还原、敏感字段、设置五个路由均可进入且存在主内容区域。
+
+## 2026-09-01 还原历史映射兼容烟测
+
+- 环境：Vite `http://127.0.0.1:5174`、ego-browser；样本位于 `trash/smoke-ui/restore-v011-fake.md`，仅含虚构手机号和占位符。
+- 范围：还原页历史选择、上传二次确认、开始还原二次确认、旧映射数字 ID 兼容与文本恢复。
+- 结果：通过。注入含数字 ID 的虚构历史映射后，上传 `{SMOKE_PHONE}` 文本并确认还原，页面显示恢复后的 `13800138000`、完成反馈和下载入口；页面未出现 `Rust 还原失败：undefined`。
+- 同步验证：`npm run build`、`cargo test --manifest-path src-tauri/Cargo.toml`（4 passed）和 `git diff --check` 均通过。

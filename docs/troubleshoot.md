@@ -263,3 +263,8 @@ Windows MSI 后续在 WiX `light.exe` 阶段失败，改用 `tauri.windows.conf.
 - 现象：三个构建矩阵均已成功，但 `Publish signed release` 在读取 `release/*.AppImage.sig` 时失败，Release 没有创建。
 - 原因：Linux 打包步骤统一命名产物为 `local_desens_beta_linux_amd64.AppImage`，而 updater 清单仍使用旧的 `linux_x64` 文件名。
 - 处理：发布清单中的 `--rawfile linux_sig` 和 `linux-x86_64` 下载 URL 必须与 `updater_name` 保持逐字符一致，并在发布前静态检查两处命名。
+
+## 文本还原显示“Rust 还原失败：undefined”
+
+- 原因：部分历史映射的 ID 类型不符合 Rust DTO，Tauri 会以非 `Error` 形式返回拒绝信息；前端只读取 `error.message`，因此丢失了真实原因。
+- 处理：还原前标准化 `mapping_id`、`marker`、`kind`、`original` 和区间字段；调用失败时使用 `String(error)` 保留诊断信息。纯文本映射仍可替换时，允许用相同映射表完成本地回退；无匹配标记时明确失败。

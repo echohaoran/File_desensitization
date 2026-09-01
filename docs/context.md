@@ -681,3 +681,9 @@
 - 已定位到 `Publish signed release` 的 Linux updater 清单命名不一致：构建上传 `local_desens_beta_linux_amd64.AppImage`，`latest.json` 生成步骤却读取并发布 `linux_x64` 文件名，导致签名文件不存在。
 - 统一 Release 清单的 Linux 签名路径和下载 URL 为 `local_desens_beta_linux_amd64.AppImage`，与构建产物完全一致。
 - 发布版本推进至 `0.1.11`，待完成本地签名包和浏览器烟测后使用 `v0.1.11` tag 触发新的三平台 Release。
+
+## 2026-09-01 还原页桌面调用兼容修复
+
+- 修复文本还原在 Tauri 调用失败时仅显示 `undefined`、无法继续的缺陷。
+- 发送给 Rust 的映射条目统一转换为字符串 ID、标记、类型和原文，并过滤无效历史记录；兼容旧版映射中的数字 ID。
+- 原生调用未返回有效正文时，文本还原使用同一映射表进行受控本地回退；若无任何标记可替换，保留真实桌面错误原因，不再显示 `undefined`。

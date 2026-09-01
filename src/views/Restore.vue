@@ -539,21 +539,37 @@ export default {
     },
     async restoreText() {
       if (isTauriRuntime() && this.redactedFileType === 'text') {
-        try {
-          const text = await this.redactedFile.text()
-          const mappings = (this.mapping.mappings || []).map(item => ({
-            mapping_id: item.id || item.mapping_id || `map_${item.placeholder}`,
-            marker: item.placeholder || item.marker,
-            kind: item.type || item.kind || 'manual',
-            original: item.original,
-            start: item.start || 0,
-            end: item.end || 0
+        const text = await this.redactedFile.text()
+        const mappings = (this.mapping.mappings || [])
+          .filter(item => (item.placeholder || item.marker) && item.original !== undefined && item.original !== null)
+          .map((item, index) => ({
+            mapping_id: String(item.id ?? item.mapping_id ?? `map_${index + 1}`),
+            marker: String(item.placeholder ?? item.marker),
+            kind: String(item.type ?? item.kind ?? 'manual'),
+            original: String(item.original),
+            start: Number.isInteger(item.start) ? item.start : 0,
+            end: Number.isInteger(item.end) ? item.end : 0
           }))
+        if (!mappings.length) throw new Error('映射表中没有可用于还原的有效标记')
+        try {
           const response = await restoreMappedText(text, mappings)
-          this.restoredText = response.data.restored_text
+          const restoredText = response?.data?.restored_text
+          if (typeof restoredText !== 'string') throw new Error('桌面还原服务未返回有效正文')
+          this.restoredText = restoredText
           this.restored = true
           return
-        } catch (error) { throw new Error(`Rust 还原失败：${error.message}`) }
+        } catch (error) {
+          const reason = error?.message || error?.error || String(error) || '未知错误'
+          const fallback = this.performRestore(text)
+          if (fallback !== text) {
+            this.restoredText = fallback
+            this.restored = true
+            this.feedback = '桌面还原服务暂不可用，已使用映射表完成本地还原。'
+            console.warn('Rust 还原失败，已使用本地映射回退：', reason)
+            return
+          }
+          throw new Error(`桌面还原服务失败：${reason}`)
+        }
       }
       if (this.redactedFileType === 'pdf') {
         try {
