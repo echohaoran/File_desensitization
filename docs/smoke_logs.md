@@ -387,3 +387,4 @@
 - 范围：Tauri updater `Update` Resource 的 Vue 保存行为、更新入口构建与版本标记。
 - 结果：通过。`npm run build` 与 `cargo check --manifest-path src-tauri/Cargo.toml` 均通过；Node 最小复现确认 `markRaw()` 后的 Resource 在 Vue `reactive()` 容器中仍能调用私有字段方法；ego-browser 确认首页显示 `v0.1.14 Beta`、五个主导航入口完整，并能打开“版本更新”弹窗。
 - 打包：本地环境未注入 `TAURI_SIGNING_PRIVATE_KEY`，无法生成可用于更新验证的签名归档；发布将由 GitHub Actions 的受保护签名密钥构建 Windows MSI、签名和 `latest.json`，并以 Release 产物为准。
+- 发布验证：通过。GitHub Actions run `33490641367` 的 Windows x64 构建、签名清单生成和 Release 发布均成功；已重新下载 `latest.json` 并确认 `version = 0.1.14`、`windows-x86_64` 指向 `.msi` 且携带非空签名。

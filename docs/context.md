@@ -738,3 +738,4 @@
 - Windows `v0.1.11 Beta` 已能读取 GitHub Release，但点击更新时触发 `Cannot read private member from an object whose class did not declare it`。
 - 根因是 Vue 将 Tauri updater 的 `Update` Resource 存入响应式 `data` 后生成 Proxy；该 Resource 的 `download()` / `install()` 依赖 JavaScript 私有字段，Proxy 作为调用方会失去私有字段槽。
 - 使用 Vue `markRaw()` 保存 `Update` 实例，保持资源对象原样，再调用下载、签名校验和安装流程；版本推进至 `0.1.14`，将以 `v0.1.14` 发布供旧 Windows 安装包更新。
+- `v0.1.14` GitHub Actions 已成功构建 macOS ARM64、Windows x64 与 Linux x64；发布已上传 `local_desens_beta_windows_x64.msi`、对应 `.sig` 和版本为 `0.1.14` 的 `latest.json`。更新清单的 Windows URL 和签名字段已重新拉取校验。
