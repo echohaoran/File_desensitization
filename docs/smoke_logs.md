@@ -310,3 +310,13 @@
 
 - 范围：前端版本标记、GitHub Release 包命名、macOS 签名打包。
 - 结果：通过。ego-browser 打开首页确认左上角显示 `v0.1.9 Beta`；前端构建和工作流 YAML 校验通过。重新执行签名 `dmg,app` 打包后，DMG、`.app.tar.gz` 与 `.sig` 均为非空。CI 发布名与 updater manifest 已统一改为 `local_desens_beta_<平台>_<架构>`。
+
+## 2026-09-01 三平台 Release 矩阵烟测
+
+- 范围：GitHub Actions 发布矩阵、签名更新清单、首页可访问性。
+- 结果：通过。工作流 YAML 解析成功；矩阵与 `latest.json` 仅包含 macOS ARM64、Windows x64、Linux x64，未残留 macOS Intel 或 `darwin-x86_64` 条目。ego-browser 确认首页、五个导航入口与 `v0.1.9 Beta` 版本标记正常。随后完成本地签名 `dmg,app` 打包并启动最新应用，DMG、更新归档和签名文件均非空。
+
+## 2026-09-01 v0.1.10 三平台发布前烟测
+
+- 环境：macOS Apple Silicon、本地签名密钥、Tauri release 包、ego-browser。
+- 结果：通过。前端构建、工作流 YAML 和三平台清单校验通过；签名 `dmg,app` 打包生成非空 `0.1.10` ARM64 DMG、`.app.tar.gz` 与 `.sig`。启动新应用后，ego-browser 确认左上角显示 `v0.1.10 Beta`，五项主导航均存在。

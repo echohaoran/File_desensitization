@@ -9,7 +9,6 @@
 版本 tag 使用 `v*` 格式时，GitHub Actions 会自动构建并发布：
 
 - macOS Apple Silicon：DMG
-- macOS Intel：DMG
 - Windows x64：MSI
 
 构建产物会上传到对应的 GitHub Release。源码仓库：[echohaoran/File_desensitization](https://github.com/echohaoran/File_desensitization)。

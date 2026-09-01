@@ -108,9 +108,9 @@
 - 用户要求重新打包时必须执行 `npm run tauri:build`，并启动新生成的 `.app` 做烟测；不得只复用旧 bundle。
 # 2026-08-28 GitHub Actions 打包
 
-- Tauri 自动打包工作流必须覆盖 macOS ARM64、macOS Intel 和 Windows x64，并使用锁文件安装依赖。
+- Tauri 自动打包工作流必须覆盖 macOS ARM64、Windows x64 和 Linux x64，并使用锁文件安装依赖。
 - CI 产物仅上传构建包，不上传历史数据、模型文件、映射表或证书材料。
-- 桌面发布由 `v*` tag 触发；Windows MSI、macOS ARM64 DMG、macOS Intel DMG 必须同时上传到同名 GitHub Release。
+- 桌面发布由 `v*` tag 触发；Windows MSI、macOS ARM64 DMG、Linux x64 DEB 必须同时上传到同名 GitHub Release。macOS Intel 不参与发布，也不得阻塞 Release。
 - Windows CI 默认生成 NSIS 安装包；若 MSI/WiX 在托管 runner 失败，不得将该失败误判为前端或 Rust 编译失败。
 - 模型下载入口点击后必须在对应卡片内显示独立进度条和状态。
 - 多格式烟测必须使用 `trash/` 中虚构样本，并区分上传/预览验证与结构化脱敏端到端验证结果。
@@ -132,7 +132,7 @@
 - 所有下载入口必须在系统接收下载后显示成功弹窗，并在生成、校验或提交失败时显示失败弹窗，不得静默结束。
 - 原始预览与脱敏预览中同一检测项必须同时使用红色双波浪线标识，且不得影响现有 hover 联动、定位或选区操作。
 - 所有用户文件上传、开始执行和“重新开始”操作必须先显示统一的应用内二次确认；取消确认不得读取文件、启动任务或清空当前状态，不得依赖 WebView 原生 `window.confirm`。
-- GitHub Release 由 `v*` tag 触发，必须同时构建 macOS ARM64 DMG、macOS Intel DMG、Windows x64 MSI 与 Linux x64 DEB；发布文件以 `local_desens_<平台>.<格式>` 命名，架构后缀用于避免同一 Release 的双 DMG 覆盖，不得把“系统_架构”等模板字样写入实际包名。
+- GitHub Release 由 `v*` tag 触发，必须同时构建 macOS ARM64 DMG、Windows x64 MSI 与 Linux x64 DEB；发布文件以 `local_desens_beta_<平台>_<架构>.<格式>` 命名，不得把“系统_架构”等模板字样写入实际包名。
 - DOCX/XLSX 脱敏与还原必须直接改写原始 OOXML ZIP 包并校验确有替换；浏览器兼容模式也不得回退到未打包的服务生成占位文件。
 - JSON、TXT、CSV、Markdown 下载不得向业务正文插入说明文字；脱敏关联信息使用同名 `.desens-meta` 伴随文件。
 - 日期规则的月、日多位分支必须优先于单数字分支，避免将 `14` 截断为 `1`。

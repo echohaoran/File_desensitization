@@ -27,17 +27,6 @@ jobs:
             updater_glob: src-tauri/target/release/bundle/macos/*.app.tar.gz
             updater_name: local_desens_beta_macos_arm64.app.tar.gz
             platform_key: darwin-aarch64
-          - name: macOS Intel
-            os: macos-13
-            artifact: local_desens_beta_macos_x64
-            # The updater archive is emitted only when the app bundle is built.
-            # Keep the DMG for manual installation and build the app alongside it.
-            build_args: -- --bundles dmg,app
-            installer_glob: src-tauri/target/release/bundle/dmg/*.dmg
-            installer_name: local_desens_beta_macos_x64.dmg
-            updater_glob: src-tauri/target/release/bundle/macos/*.app.tar.gz
-            updater_name: local_desens_beta_macos_x64.app.tar.gz
-            platform_key: darwin-x86_64
           - name: Windows x64
             os: windows-2022
             artifact: local_desens_beta_windows_x64
@@ -153,10 +142,9 @@ jobs:
             --arg date "$(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
             --arg base "$base" \
             --rawfile mac_arm_sig release/local_desens_beta_macos_arm64.app.tar.gz.sig \
-            --rawfile mac_x64_sig release/local_desens_beta_macos_x64.app.tar.gz.sig \
             --rawfile windows_sig release/local_desens_beta_windows_x64.msi.sig \
             --rawfile linux_sig release/local_desens_beta_linux_x64.AppImage.sig \
-            '{version: $version, notes: "GitHub Release update", pub_date: $date, platforms: {"darwin-aarch64": {url: ($base + "/local_desens_beta_macos_arm64.app.tar.gz"), signature: ($mac_arm_sig | rtrimstr("\n"))}, "darwin-x86_64": {url: ($base + "/local_desens_beta_macos_x64.app.tar.gz"), signature: ($mac_x64_sig | rtrimstr("\n"))}, "windows-x86_64": {url: ($base + "/local_desens_beta_windows_x64.msi"), signature: ($windows_sig | rtrimstr("\n"))}, "linux-x86_64": {url: ($base + "/local_desens_beta_linux_x64.AppImage"), signature: ($linux_sig | rtrimstr("\n"))}}}' \
+            '{version: $version, notes: "GitHub Release update", pub_date: $date, platforms: {"darwin-aarch64": {url: ($base + "/local_desens_beta_macos_arm64.app.tar.gz"), signature: ($mac_arm_sig | rtrimstr("\n"))}, "windows-x86_64": {url: ($base + "/local_desens_beta_windows_x64.msi"), signature: ($windows_sig | rtrimstr("\n"))}, "linux-x86_64": {url: ($base + "/local_desens_beta_linux_x64.AppImage"), signature: ($linux_sig | rtrimstr("\n"))}}}' \
             > release/latest.json
 
       - name: Publish packages to GitHub Release

@@ -371,3 +371,9 @@ GGUF 文件不自带 Candle 所需的 tokenizer 资源。为避免“已登记�
 - 决定采用 Tauri 官方 Updater，而非通过比较 Git 分支提交或打开下载页实现“更新”。该协议要求每个更新工件用专用私钥签名，并由内置公钥验证。
 - GitHub Release 的 `latest.json` 是平台映射清单：macOS ARM64/Intel、Windows x64、Linux x64 分别指向对应已签名更新工件；签名正文写入清单，私钥只保存在本机受限路径和 GitHub Actions Secret。
 - 前端先调用 `check`，再调用 `download` 获取真实字节进度；下载并签名校验完成后，用户明确确认才调用 `install` 和重启。Windows 使用 passive 安装模式，macOS/Linux 在安装后由应用重启。
+
+## 2026-09-01：取消 macOS Intel 发布矩阵
+
+- 决定：GitHub Release 仅构建 macOS ARM64、Windows x64 与 Linux x64；不再构建或发布 macOS Intel DMG。
+- 原因：macOS Intel runner 长时间排队会阻塞依赖全部矩阵的 Release 发布，而当前交付范围不需要 Intel 安装包。
+- 影响：签名 `latest.json` 移除 `darwin-x86_64`，Intel macOS 客户端不再接收应用内更新。

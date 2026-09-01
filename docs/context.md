@@ -670,3 +670,8 @@
 
 - 前端左上角版本标记固定追加 `Beta`，明确当前分发渠道为测试版；程序更新比较仍读取不带标识的语义版本号。
 - GitHub Release 的 DMG、MSI、DEB 及更新归档统一使用 `local_desens_beta_<平台>_<架构>` 前缀，避免测试包与未来正式包混淆。
+
+## 2026-09-01 发布矩阵移除 macOS Intel
+
+- 用户确认不需要 macOS Intel DMG。GitHub Actions 从构建矩阵和 updater manifest 中移除 Intel 条目，Release 只等待 macOS ARM64、Windows x64 和 Linux x64。
+- 已有 `v0.1.8`、`v0.1.9` 工作流仍使用旧提交，无法因本次配置修改自动解除排队；用户确认后版本推进至 `0.1.10`，将以 `v0.1.10` tag 采用三平台发布矩阵。
