@@ -20,26 +20,38 @@ jobs:
             os: macos-14
             artifact: local_desens_macos_arm64
             build_args: -- --bundles dmg
-            source_glob: src-tauri/target/release/bundle/dmg/*.dmg
-            release_name: local_desens_macos_arm64.dmg
+            installer_glob: src-tauri/target/release/bundle/dmg/*.dmg
+            installer_name: local_desens_macos_arm64.dmg
+            updater_glob: src-tauri/target/release/bundle/macos/*.app.tar.gz
+            updater_name: local_desens_macos_arm64.app.tar.gz
+            platform_key: darwin-aarch64
           - name: macOS Intel
             os: macos-13
             artifact: local_desens_macos_x64
             build_args: -- --bundles dmg
-            source_glob: src-tauri/target/release/bundle/dmg/*.dmg
-            release_name: local_desens_macos_x64.dmg
+            installer_glob: src-tauri/target/release/bundle/dmg/*.dmg
+            installer_name: local_desens_macos_x64.dmg
+            updater_glob: src-tauri/target/release/bundle/macos/*.app.tar.gz
+            updater_name: local_desens_macos_x64.app.tar.gz
+            platform_key: darwin-x86_64
           - name: Windows x64
             os: windows-2022
             artifact: local_desens_windows_x64
             build_args: -- --bundles msi
-            source_glob: src-tauri/target/release/bundle/msi/*.msi
-            release_name: local_desens_windows_x64.msi
+            installer_glob: src-tauri/target/release/bundle/msi/*.msi
+            installer_name: local_desens_windows_x64.msi
+            updater_glob: src-tauri/target/release/bundle/msi/*.msi
+            updater_name: local_desens_windows_x64.msi
+            platform_key: windows-x86_64
           - name: Linux x64
             os: ubuntu-24.04
             artifact: local_desens_linux_x64
-            build_args: -- --bundles deb
-            source_glob: src-tauri/target/release/bundle/deb/*.deb
-            release_name: local_desens_linux_amd64.deb
+            build_args: -- --bundles deb,appimage
+            installer_glob: src-tauri/target/release/bundle/deb/*.deb
+            installer_name: local_desens_linux_amd64.deb
+            updater_glob: src-tauri/target/release/bundle/appimage/*.AppImage
+            updater_name: local_desens_linux_amd64.AppImage
+            platform_key: linux-x86_64
 
     steps:
       - name: Checkout
@@ -72,6 +84,9 @@ jobs:
             patchelf
 
       - name: Build Tauri package
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri:build ${{ matrix.build_args }}
 
       - name: Prepare named package
@@ -80,31 +95,69 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          source_file="$(find ${{ matrix.source_glob }} -type f -print -quit)"
-          test -n "$source_file"
-          cp "$source_file" "release/${{ matrix.release_name }}"
+          installer_file="$(find ${{ matrix.installer_glob }} -type f -print -quit)"
+          updater_file="$(find ${{ matrix.updater_glob }} -type f -print -quit)"
+          test -n "$installer_file"
+          test -n "$updater_file"
+          test -f "${updater_file}.sig"
+          cp "$installer_file" "release/${{ matrix.installer_name }}"
+          cp "$updater_file" "release/${{ matrix.updater_name }}"
+          cp "${updater_file}.sig" "release/${{ matrix.updater_name }}.sig"
 
       - name: Prepare named Windows package
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          $sourceFile = Get-ChildItem -Path '${{ matrix.source_glob }}' -File | Select-Object -First 1
-          if ($null -eq $sourceFile) { throw 'No MSI package was produced.' }
-          Copy-Item $sourceFile.FullName "release/${{ matrix.release_name }}"
+          $installerFile = Get-ChildItem -Path '${{ matrix.installer_glob }}' -File | Where-Object { $_.Extension -eq '.msi' } | Select-Object -First 1
+          if ($null -eq $installerFile) { throw 'No MSI package was produced.' }
+          $signatureFile = Get-Item "$($installerFile.FullName).sig" -ErrorAction SilentlyContinue
+          if ($null -eq $signatureFile) { throw 'No signed MSI updater artifact was produced.' }
+          Copy-Item $installerFile.FullName "release/${{ matrix.installer_name }}"
+          Copy-Item $installerFile.FullName "release/${{ matrix.updater_name }}"
+          Copy-Item $signatureFile.FullName "release/${{ matrix.updater_name }}.sig"
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: release/${{ matrix.release_name }}
+          path: release/
           if-no-files-found: error
           retention-days: 14
 
+  release:
+    name: Publish signed release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Create signed updater manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          version="${tag#v}"
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}"
+          jq -n \
+            --arg version "$version" \
+            --arg date "$(date --utc +'%Y-%m-%dT%H:%M:%SZ')" \
+            --arg base "$base" \
+            --rawfile mac_arm_sig release/local_desens_macos_arm64.app.tar.gz.sig \
+            --rawfile mac_x64_sig release/local_desens_macos_x64.app.tar.gz.sig \
+            --rawfile windows_sig release/local_desens_windows_x64.msi.sig \
+            --rawfile linux_sig release/local_desens_linux_x64.AppImage.sig \
+            '{version: $version, notes: "GitHub Release update", pub_date: $date, platforms: {"darwin-aarch64": {url: ($base + "/local_desens_macos_arm64.app.tar.gz"), signature: ($mac_arm_sig | rtrimstr("\n"))}, "darwin-x86_64": {url: ($base + "/local_desens_macos_x64.app.tar.gz"), signature: ($mac_x64_sig | rtrimstr("\n"))}, "windows-x86_64": {url: ($base + "/local_desens_windows_x64.msi"), signature: ($windows_sig | rtrimstr("\n"))}, "linux-x86_64": {url: ($base + "/local_desens_linux_x64.AppImage"), signature: ($linux_sig | rtrimstr("\n"))}}}' \
+            > release/latest.json
+
       - name: Publish packages to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: release/${{ matrix.release_name }}
+          files: release/*

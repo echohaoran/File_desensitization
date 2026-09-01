@@ -30,6 +30,8 @@ pub fn run_inference_cli() -> i32 {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
             storage: Mutex::new(None),
             tasks: task::TaskManager::default(),

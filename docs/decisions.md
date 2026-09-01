@@ -365,3 +365,9 @@
 # 模型登记必须包含 tokenizer
 
 GGUF 文件不自带 Candle 所需的 tokenizer 资源。为避免“已登记但不可推理”，模型下载和本地登记均要求同目录存在有效 `tokenizer.json`；下载入口使用已核验的 Qwen2.5 基础模型 tokenizer 地址，并在写入模型清单前完成 JSON 校验。
+
+## 2026-09-01：采用签名 GitHub Release 更新协议
+
+- 决定采用 Tauri 官方 Updater，而非通过比较 Git 分支提交或打开下载页实现“更新”。该协议要求每个更新工件用专用私钥签名，并由内置公钥验证。
+- GitHub Release 的 `latest.json` 是平台映射清单：macOS ARM64/Intel、Windows x64、Linux x64 分别指向对应已签名更新工件；签名正文写入清单，私钥只保存在本机受限路径和 GitHub Actions Secret。
+- 前端先调用 `check`，再调用 `download` 获取真实字节进度；下载并签名校验完成后，用户明确确认才调用 `install` 和重启。Windows 使用 passive 安装模式，macOS/Linux 在安装后由应用重启。

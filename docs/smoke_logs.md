@@ -285,3 +285,12 @@
 - 下载栏 5 个按钮（Word/Excel/CSV/TXT/Markdown）全部成功弹窗；落盘校验：docx/xlsx 为 PK 签名真实 OOXML 且含还原值、无残留占位符，csv 带 UTF-8 BOM，txt/md 为真实正文，均非 index.html 占位内容。
 - Tauri 打包：`npm run tauri:build` 生成最新 `.app`（bundle/macos）；DMG 因本机 hdiutil 自动容量估算失败，改用 `bundle_dmg.sh --skip-jenkins --disk-image-size 128` 手动生成 17MB DMG（bundle/dmg）。
 - 待用户验证：桌面 `.app` 内各格式下载、历史搜索/排序、导航已无格式转换入口、图片还原 PNG 出口。
+
+## 2026-09-01 GitHub Release 更新入口烟测
+
+- 环境：Vite `http://127.0.0.1:5173`，ego-browser 隔离任务空间。
+- 打开顶部版本标记后，应用内版本弹窗可正常显示；浏览器兼容模式从 GitHub Releases API 获取真实最新版本，并在当前 `v0.1.7` 与远端相同时显示“当前已是最新版本”，更新按钮保持禁用。
+- 构建验证：`npm run build`、`cargo check`、工作流 YAML 解析和 `git diff --check` 均通过。
+- 待发布验证：需要在 `v0.1.8` tag 的 GitHub Actions 完成跨平台签名构建并发布 `latest.json` 后，再由已安装的 `v0.1.8` 应用检查下一版本的真实下载与重启流程。
+- 本地签名打包：显式提供受限私钥和空密码变量后，`npm run tauri:build` 成功生成 `bundle/macos/文件脱敏与还原工具.app.tar.gz` 及同名 `.sig`；最新 `v0.1.8` `.app` 已启动。
+- 回退验证：线上 `releases/latest/download/latest.json` 当前重定向到无清单的 `v0.1.7` Release；修复后使用 ego-browser 打开版本窗口，真实 Release API 返回 `v0.1.7`，本机 `v0.1.8` 显示“当前已是最新版本”，不再显示网络错误。

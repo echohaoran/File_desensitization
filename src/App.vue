@@ -25,12 +25,26 @@
 
     <div v-if="showVersionDialog" class="version-modal" role="dialog" aria-modal="true" aria-label="版本更新" @click.self="showVersionDialog = false">
       <section class="version-modal__card">
-        <header class="version-modal__head"><div><span class="mono-label">{{ sourceLabel.toUpperCase() }} UPDATE</span><h2>版本更新</h2></div><button class="icon-btn" @click="showVersionDialog = false" aria-label="关闭版本更新窗口">×</button></header>
+        <header class="version-modal__head"><div><span class="mono-label">GITHUB RELEASE UPDATE</span><h2>版本更新</h2></div><button class="icon-btn" :disabled="updating" @click="showVersionDialog = false" aria-label="关闭版本更新窗口">×</button></header>
         <p class="version-modal__status" :class="{ 'is-update': updateAvailable }">{{ versionStatus }}</p>
-        <dl class="version-modal__meta"><div><dt>当前版本</dt><dd>{{ currentVersion }} · {{ shortRevision(versionInfo?.current_revision) }}</dd></div><div><dt>更新来源</dt><dd><select v-model="updateSource" class="version-modal__source-select" @change="changeUpdateSource"><option v-for="item in updateSources" :key="item.key" :value="item.key">{{ item.label }} / main</option></select></dd></div></dl>
-        <section class="version-modal__commits"><h3>最近提交</h3><p v-if="checkingUpdate">正在从 {{ sourceLabel }} 获取版本信息…</p><p v-else-if="!versionInfo?.commits?.length">暂未取得提交摘要，可前往 {{ sourceLabel }} 仓库查看。</p><ol v-else><li v-for="commit in versionInfo.commits" :key="commit.id"><code>{{ commit.short_id }}</code><span>{{ commit.message }}</span><time>{{ formatCommitDate(commit.created_at) }}</time></li></ol></section>
-        <p class="version-modal__hint">更新版本将通过 {{ sourceLabel }} 部署流程获取；请勿直接覆盖本机脱敏历史。</p>
-        <footer class="version-modal__actions"><button class="btn btn--secondary" @click="checkForUpdates" :disabled="checkingUpdate">{{ checkingUpdate ? '检查中…' : '检查更新' }}</button><a class="btn btn--primary" :href="updateUrl" target="_blank" rel="noopener" @click="requestUpdate">{{ updateAvailable ? '更新版本' : '查看最新版本' }}</a><a class="btn btn--ghost" :href="repositoryUrl" target="_blank" rel="noopener" @click="showToast('正在打开代码仓库')">前往仓库</a></footer>
+        <dl class="version-modal__meta"><div><dt>当前版本</dt><dd>{{ currentVersion }}</dd></div><div><dt>更新来源</dt><dd>GitHub Release · 签名验证</dd></div></dl>
+        <section class="version-modal__commits"><h3>发布说明</h3><p v-if="checkingUpdate">正在检查 GitHub Release…</p><p v-else-if="!versionInfo?.notes">{{ updateAvailable ? '该版本未提供更新说明。' : '当前已是最新版本。' }}</p><p v-else class="version-modal__notes">{{ versionInfo.notes }}</p></section>
+        <div v-if="updateProgress.active" class="version-modal__progress" role="progressbar" :aria-valuenow="updateProgress.percent" aria-valuemin="0" aria-valuemax="100">
+          <div class="version-modal__progress-head"><span>{{ updateProgress.label }}</span><strong>{{ updateProgress.percent }}%</strong></div>
+          <div class="version-modal__progress-track"><i :style="{ width: `${updateProgress.percent}%` }"></i></div>
+          <small>{{ formatBytes(updateProgress.downloaded) }}<template v-if="updateProgress.total"> / {{ formatBytes(updateProgress.total) }}</template></small>
+        </div>
+        <p class="version-modal__hint">更新包来自 GitHub Release，并在安装前由应用验证签名；不会覆盖本机脱敏历史。</p>
+        <footer class="version-modal__actions"><button class="btn btn--secondary" @click="checkForUpdates" :disabled="checkingUpdate || updating">{{ checkingUpdate ? '检查中…' : '检查更新' }}</button><button class="btn btn--primary" @click="requestUpdate" :disabled="!updateAvailable || updating">{{ updating ? '正在下载…' : '更新版本' }}</button><a class="btn btn--ghost" :href="repositoryUrl" target="_blank" rel="noopener" @click="showToast('正在打开代码仓库')">前往仓库</a></footer>
+      </section>
+    </div>
+
+    <div v-if="showRestartDialog" class="action-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="restart-update-title">
+      <section class="action-confirm-modal__card">
+        <div class="action-confirm-modal__icon">✓</div>
+        <h2 id="restart-update-title">更新已下载</h2>
+        <p>版本 {{ versionInfo?.version }} 已通过签名校验并准备安装。重启应用后将完成更新。</p>
+        <div class="action-confirm-modal__actions"><button class="btn btn--secondary" :disabled="installingUpdate" @click="showRestartDialog = false">稍后重启</button><button class="btn btn--primary" :disabled="installingUpdate" @click="installAndRestart">{{ installingUpdate ? '正在重启…' : '立即重启' }}</button></div>
       </section>
     </div>
 
@@ -65,7 +79,7 @@
 </template>
 
 <script>
-import { apiUrl } from '@/api/desensitization'
+import { isTauriRuntime } from '@/api/tauriBridge'
 import packageInfo from '../package.json'
 
 export default {
@@ -80,41 +94,27 @@ export default {
       versionInfo: null,
       versionError: '',
       updateRequestId: 0,
+      updateResource: null,
+      updateProgress: { active: false, downloaded: 0, total: 0, percent: 0, label: '正在下载更新包' },
+      updating: false,
+      installingUpdate: false,
+      showRestartDialog: false,
       toastMessage: '',
       toastTimer: null,
       downloadDialog: null,
       actionConfirm: null,
-      updateSource: localStorage.getItem('desens:update-source') || 'github',
-      updateSources: [
-        { key: 'github', label: 'GitHub' },
-        { key: 'gitee', label: 'Gitee' },
-        { key: 'cnb', label: 'CNB' }
-      ]
+      desktopRuntime: isTauriRuntime()
     }
   },
   computed: {
     repositoryUrl() {
-      return this.versionInfo?.repository || ({
-        github: 'https://github.com/echohaoran/File_desensitization',
-        gitee: 'https://gitee.com/echohaoran/file_desensitization',
-        cnb: 'https://cnb.cool/echohaoran/File_desensitization'
-      }[this.updateSource])
-    },
-    updateUrl() {
-      if (this.versionInfo?.latest_release) return this.versionInfo.latest_release
-      return ({
-        github: 'https://github.com/echohaoran/File_desensitization/releases/latest',
-        gitee: 'https://gitee.com/echohaoran/file_desensitization/releases',
-        cnb: 'https://cnb.cool/echohaoran/File_desensitization/-/releases'
-      }[this.updateSource])
-    },
-    sourceLabel() {
-      return this.updateSources.find(item => item.key === this.updateSource)?.label || 'GitHub'
+      return 'https://github.com/echohaoran/File_desensitization'
     },
     versionStatus() {
-      if (this.checkingUpdate) return `正在从 ${this.sourceLabel} 检查最新版本…`
+      if (this.checkingUpdate) return '正在检查 GitHub Release…'
+      if (this.updating) return this.updateProgress.label
       if (this.versionError) return this.versionError
-      return this.updateAvailable ? `${this.sourceLabel} main 有新的可用提交。` : `已从 ${this.sourceLabel} 检查：当前已是最新版本。`
+      return this.updateAvailable ? `发现可用更新：v${this.versionInfo?.version}。` : '当前已是最新版本。'
     }
   },
   methods: {
@@ -144,49 +144,106 @@ export default {
       this.showVersionDialog = true
       this.checkForUpdates()
     },
-    changeUpdateSource() {
-      localStorage.setItem('desens:update-source', this.updateSource)
-      this.versionInfo = null
-      this.versionError = ''
-      this.updateAvailable = false
-      this.checkForUpdates()
+    isNewerVersion(version) {
+      const parse = value => String(value || '').replace(/^v/, '').split('.').map(part => Number(part.replace(/\D.*$/, '')) || 0)
+      const [nextMajor, nextMinor, nextPatch] = parse(version)
+      const [currentMajor, currentMinor, currentPatch] = parse(packageInfo.version)
+      return nextMajor > currentMajor || (nextMajor === currentMajor && (nextMinor > currentMinor || (nextMinor === currentMinor && nextPatch > currentPatch)))
     },
-    shortRevision(value) {
-      return value ? String(value).slice(0, 7) : '本机部署'
+    async fetchLatestRelease() {
+      const response = await fetch('https://api.github.com/repos/echohaoran/File_desensitization/releases/latest', { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' })
+      if (!response.ok) throw new Error(`GitHub Release 返回 ${response.status}`)
+      const release = await response.json()
+      return { version: String(release.tag_name || '').replace(/^v/, ''), notes: release.body || '', date: release.published_at || '' }
     },
-    formatCommitDate(value) {
-      return value ? new Date(value).toLocaleDateString('zh-CN') : ''
+    async requestUpdate() {
+      if (!this.updateAvailable || this.updating) return
+      if (!this.desktopRuntime || !this.updateResource) {
+        this.versionError = '自动更新仅在已签名的桌面安装包中可用。'
+        return
+      }
+      this.updating = true
+      this.updateProgress = { active: true, downloaded: 0, total: 0, percent: 0, label: '正在下载更新包' }
+      try {
+        await this.updateResource.download((event) => {
+          if (event.event === 'Started') {
+            this.updateProgress.total = event.data.contentLength || 0
+            this.updateProgress.label = '正在下载并验证更新包'
+          } else if (event.event === 'Progress') {
+            this.updateProgress.downloaded += event.data.chunkLength
+            this.updateProgress.percent = this.updateProgress.total ? Math.min(99, Math.round(this.updateProgress.downloaded / this.updateProgress.total * 100)) : 0
+          } else if (event.event === 'Finished') {
+            this.updateProgress.percent = 100
+            this.updateProgress.label = '更新包已下载，正在完成签名校验'
+          }
+        })
+        this.updateProgress.percent = 100
+        this.updateProgress.label = '更新已准备就绪'
+        this.showRestartDialog = true
+        this.announce(`更新 v${this.versionInfo?.version} 下载完成，等待确认重启`)
+      } catch (error) {
+        this.versionError = `更新下载或签名校验失败：${error?.message || '未知错误'}`
+        this.updateProgress.active = false
+      } finally {
+        this.updating = false
+      }
     },
-    requestUpdate() { this.showToast(this.updateAvailable ? `已打开 ${this.sourceLabel} 最新版本页面` : `已打开 ${this.sourceLabel} 发布页面`); this.announce(this.updateAvailable ? `已打开 ${this.sourceLabel} 最新版本页面，请下载对应平台安装包` : `已打开 ${this.sourceLabel} 发布页面`) },
+    async installAndRestart() {
+      if (!this.updateResource || this.installingUpdate) return
+      this.installingUpdate = true
+      try {
+        await this.updateResource.install({ restartAfterInstall: true })
+        if (!/Windows/i.test(navigator.userAgent)) {
+          const { relaunch } = await import('@tauri-apps/plugin-process')
+          await relaunch()
+        }
+      } catch (error) {
+        this.installingUpdate = false
+        this.showRestartDialog = false
+        this.versionError = `更新安装失败：${error?.message || '未知错误'}`
+      }
+    },
     async checkForUpdates() {
       const requestId = ++this.updateRequestId
-      const source = this.updateSource
       this.checkingUpdate = true
+      this.versionError = ''
+      this.updateAvailable = false
+      if (this.updateResource) this.updateResource.close().catch(() => {})
+      this.updateResource = null
       try {
-        const response = await fetch(apiUrl(`/api/version/check?source=${encodeURIComponent(source)}&ts=${Date.now()}`), { cache: 'no-store' })
-        if (!response.ok) throw new Error('update endpoint unavailable')
-        const data = await response.json()
-        if (requestId !== this.updateRequestId) return
-        this.versionInfo = data
-        this.versionError = ''
-        this.updateAvailable = Boolean(data.update_available)
-        this.announce(this.updateAvailable ? `${this.sourceLabel} main 有新的可用提交` : `已从 ${this.sourceLabel} 检查：当前已是最新版本`)
-      } catch (_) {
-        try {
-          const response = await fetch('/version.json?ts=' + Date.now(), { cache: 'no-store' })
-          if (!response.ok) throw new Error('fallback endpoint unavailable')
-          const data = await response.json()
-          if (requestId !== this.updateRequestId) return
-          const latest = String(data.version || '').replace(/^v/, '')
-          const current = this.currentVersion.replace(/^v/, '')
-          this.updateAvailable = Boolean(latest && latest !== current)
-          this.announce(this.updateAvailable ? `检测到备用更新 v${latest}` : `${this.sourceLabel} 暂不可用；本机版本无更新`)
-        } catch (_) {
-          if (requestId !== this.updateRequestId) return
-          this.versionInfo = null
-          this.versionError = `暂时无法连接 ${this.sourceLabel} 更新源`
-          this.announce(`暂时无法检查 ${this.sourceLabel} 更新`)
+        if (this.desktopRuntime) {
+          try {
+            const { check } = await import('@tauri-apps/plugin-updater')
+            const update = await check({ timeout: 15000 })
+            if (requestId !== this.updateRequestId) { await update?.close?.(); return }
+            this.updateResource = update
+            this.versionInfo = update ? { version: update.version, notes: update.body || '', date: update.date || '' } : null
+            this.updateAvailable = Boolean(update)
+            this.announce(update ? `发现更新 v${update.version}` : '当前已是最新版本')
+          } catch (updaterError) {
+            const release = await this.fetchLatestRelease()
+            if (requestId !== this.updateRequestId) return
+            this.versionInfo = release
+            if (this.isNewerVersion(release.version)) {
+              this.versionError = `发现 v${release.version}，但签名更新清单尚未发布，请稍后重试。`
+              this.announce('更新清单尚未发布')
+            } else {
+              this.versionError = ''
+              this.announce('当前已是最新版本；签名更新清单将在下次发布后启用')
+            }
+          }
+          return
         }
+        const release = await this.fetchLatestRelease()
+        if (requestId !== this.updateRequestId) return
+        this.versionInfo = release
+        this.updateAvailable = this.isNewerVersion(this.versionInfo.version)
+        this.announce(this.updateAvailable ? `发现 GitHub Release 更新 v${this.versionInfo.version}` : '当前已是最新版本')
+      } catch (error) {
+        if (requestId !== this.updateRequestId) return
+        this.versionInfo = null
+        this.versionError = `暂时无法检查 GitHub Release：${error?.message || '网络错误'}`
+        this.announce('暂时无法检查 GitHub Release')
       } finally {
         if (requestId === this.updateRequestId) this.checkingUpdate = false
       }
@@ -226,4 +283,5 @@ export default {
 .app-toast{position:fixed;z-index:3000;left:50%;bottom:28px;transform:translateX(-50%);padding:11px 18px;border-radius:999px;background:#111827;color:#fff;font-size:13px;box-shadow:0 8px 24px rgba(15,23,42,.2);pointer-events:none}.toast-enter-active,.toast-leave-active{transition:opacity .18s,transform .18s}.toast-enter-from,.toast-leave-to{opacity:0;transform:translate(-50%,8px)}
 .download-result-modal{position:fixed;z-index:3200;inset:0;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}.download-result-modal__card{width:min(420px,100%);padding:30px;border-radius:18px;background:#fff;text-align:center;box-shadow:0 22px 60px rgba(15,23,42,.28)}.download-result-modal__icon{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 14px;border-radius:50%;font-size:28px;font-weight:700}.download-result-modal__icon.is-success{color:#166534;background:#dcfce7}.download-result-modal__icon.is-error{color:#b91c1c;background:#fee2e2}.download-result-modal__card h2{margin:0 0 10px}.download-result-modal__card p{margin:0;color:#475569}.download-result-modal__card small{display:block;margin:12px 0 18px;color:#64748b;word-break:break-all}.download-result-modal__card .btn{margin-top:18px;min-width:120px}
 .action-confirm-modal{position:fixed;z-index:3300;inset:0;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.action-confirm-modal__card{width:min(460px,100%);padding:30px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 80px rgba(15,23,42,.28)}.action-confirm-modal__icon{display:grid;place-items:center;width:60px;height:60px;margin:0 auto 16px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-size:28px;font-weight:700}.action-confirm-modal__icon.is-warning{background:#fef3c7;color:#92400e}.action-confirm-modal__card h2{margin:0;font-size:26px}.action-confirm-modal__card p{margin:16px 0 24px;color:#475569;line-height:1.75;white-space:pre-line}.action-confirm-modal__actions{display:flex;justify-content:center;gap:12px}.action-confirm-modal__actions .btn{min-width:120px}
+.version-modal__progress{margin:18px 0;padding:14px 16px;border:1px solid #dbe4f0;border-radius:12px;background:#f8fafc}.version-modal__progress-head{display:flex;justify-content:space-between;gap:16px;color:#334155;font-size:13px}.version-modal__progress-head strong{color:#0f172a}.version-modal__progress-track{height:8px;margin:10px 0 7px;overflow:hidden;border-radius:999px;background:#e2e8f0}.version-modal__progress-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#2563eb,#7c3aed);transition:width .2s ease}.version-modal__progress small{color:#64748b;font-variant-numeric:tabular-nums}.version-modal__notes{max-height:120px;overflow:auto;white-space:pre-wrap}
 </style>

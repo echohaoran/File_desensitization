@@ -649,3 +649,12 @@
 - Windows Actions #18 失败原因为 Tauri 编译阶段缺少 `src-tauri/icons/icon.ico`，已从当前 PNG 图标生成 ICO 并加入打包配置。
 - 发布版本更新为 `0.1.7`，将通过 `v0.1.7` tag 触发桌面包构建。
 - 敏感字段页右侧“已配置字段”列表改为固定最大高度并始终保留独立纵向滚动条，避免父级 `overflow:hidden` 覆盖列表滚动。
+
+## 2026-09-01 GitHub Release 应用内更新
+
+- 更新入口不再比较 `main` 提交；桌面端通过 Tauri Updater 读取 GitHub Release 的已签名 `latest.json`，仅将版本化 Release 识别为可更新版本。
+- 点击“更新版本”开始真实下载，并按插件报告的已接收字节显示进度；下载和签名校验成功后才显示“立即重启”，确认后调用安装并重启流程。
+- 添加 `@tauri-apps/plugin-updater`、`@tauri-apps/plugin-process` 及对应 Rust 插件；版本统一推进至 `0.1.8`，等待用户确认后再提交、打 tag 与推送。
+- GitHub Actions 已改为构建并上传签名 updater 工件、签名文件及跨平台 `latest.json`，普通 DMG/MSI/DEB 发布资产继续保留。
+- 本地 Tauri release 打包已验证 macOS updater 归档和 `.sig` 均非空；应用启动正常。签名私钥未进入工作区或 Git 变更。
+- 修复已安装但尚未发布 `latest.json` 时被插件笼统报告为网络错误的问题：桌面端失败后读取 GitHub Release API；若远端版本不高于本机则正常显示“当前已是最新版本”，若有新版本但清单未发布则明确提示等待签名清单。

@@ -1,6 +1,6 @@
 {
   "name": "desens-vue",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "本地优先的文件脱敏与还原工具",
   "author": "DESENS",
   "private": true,
@@ -21,6 +21,8 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.11.0",
     "jszip": "^3.10.1",
     "pdfjs-dist": "^3.11.174",
     "vue": "^3.4.0",

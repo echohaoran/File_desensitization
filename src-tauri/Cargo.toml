@@ -1,6 +1,6 @@
 [package]
 name = "desens-tauri"
-version = "0.1.5"
+version = "0.1.8"
 description = "本地优先的文件脱敏与还原工具桌面核心"
 authors = ["DESENS"]
 edition = "2021"
@@ -29,6 +29,10 @@ candle-core = { version = "0.11.0", default-features = false }
 candle-transformers = { version = "0.11.0", default-features = false }
 tokenizers = { version = "0.21.4", default-features = false, features = ["fancy-regex"] }
 tokio = { version = "1", features = ["rt", "sync"] }
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-process = "2.3.1"
+tauri-plugin-updater = "2.11.0"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
