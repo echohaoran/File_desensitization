@@ -1,5 +1,5 @@
 <template>
-  <div class="container restore-main" :class="{ 'has-selection': selectedHistory }">
+  <div class="container restore-main">
     <div class="index-eyebrow">
       <span class="index-eyebrow__line" aria-hidden="true"></span>
       <span class="mono-label">RESTORE / v0.1 PROTOTYPE</span>
@@ -34,11 +34,10 @@
       </div>
     </section>
 
-    <div v-if="selectedHistory" class="history-actions" aria-label="已选历史记录操作">
-      <span>已选择：{{ selectedHistory.file_name }}</span>
+    <div class="history-actions" :class="{ 'is-pending': !selectedHistory }" aria-label="历史记录操作">
+      <span>{{ selectedHistory ? `${historyMatchMode === 'auto' ? '已自动匹配' : '已选择'}：${selectedHistory.file_name}` : '上传待还原文件后，系统会自动匹配本机历史记录。' }}</span>
       <div>
-        <button class="btn btn--secondary" @click="downloadHistoryMapping">下载对照表</button>
-        <button class="btn btn--primary" @click="downloadHistoryRedacted">下载脱敏后文件</button>
+        <template v-if="selectedHistory"><button class="btn btn--secondary" @click="downloadHistoryMapping">下载对照表</button><button class="btn btn--primary" @click="downloadHistoryRedacted">下载脱敏后文件</button></template>
       </div>
     </div>
 
@@ -105,9 +104,9 @@
     </div>
     </details>
 
-    <section v-if="selectedHistory" class="restore-card restore-current-upload" aria-label="上传待还原文件">
+    <section class="restore-card restore-current-upload" aria-label="上传待还原文件">
       <div class="restore-card__head"><span class="num">02</span><h3>上传待还原的脱敏文件</h3></div>
-      <p class="restore-current-upload__hint">请上传基于“{{ selectedHistory.file_name }}”处理后的文件；系统会按该历史记录中的本机映射进行还原。</p>
+      <p class="restore-current-upload__hint">{{ selectedHistory ? `${historyMatchMode === 'auto' ? '已自动匹配' : '已选择'}“${selectedHistory.file_name}”，将使用其本机映射进行还原。` : '上传后，系统将依据脱敏标记自动匹配本机历史记录。' }}</p>
       <label v-if="!redactedFile" class="upload-zone" :class="{ 'is-dragover': isDraggingRedacted }" tabindex="0" role="button" aria-label="选择或拖入待还原文件" @dragover.prevent="isDraggingRedacted = true" @dragleave="isDraggingRedacted = false" @drop.prevent="handleRedactedDrop" @keydown.enter="$refs.historyRedactedInput.click()" @keydown.space.prevent="$refs.historyRedactedInput.click()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span class="upload-zone__title">点击选择或拖入待还原文件</span><span class="upload-zone__hint">支持 TXT / PDF / DOCX / XLSX / PNG / JPG</span>
@@ -237,7 +236,8 @@ export default {
       restoredImageDataUrl: null,
       restoredBlob: null,
       history: [],
-      selectedHistory: null
+      selectedHistory: null,
+      historyMatchMode: ''
       ,working: false
       ,feedback: ''
       ,confirmDialog: null
@@ -299,10 +299,9 @@ export default {
     selectHistory(item) {
       this.selectedHistory = item
       this.mapping = item.mapping
-      this.redactedFile = null
-      this.redactedFileType = null
-      this.validation = { type: 'wait', title: '历史记录已选择', message: `已加载 ${item.file_name}。请上传当前需要还原的脱敏文件。` }
+      this.historyMatchMode = 'manual'
       this.restored = false; this.restoredText = ''; this.restoredImageDataUrl = null
+      this.validateFiles()
     },
     requestRemoveHistory(item) {
       this.confirmDialog = { action: 'remove', id: item.id, title: '删除历史记录', message: `确定删除“${item.file_name}”吗？对应的脱敏文件也会删除，此操作无法撤销。`, confirmText: '确认删除' }
@@ -369,7 +368,7 @@ export default {
     async handleRedactedSelect(e) {
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0]
-        if (await this.confirmUpload(file, '待还原的脱敏文件')) this.setRedactedFile(file)
+        if (await this.confirmUpload(file, '待还原的脱敏文件')) await this.setRedactedFile(file)
         else e.target.value = ''
       }
     },
@@ -377,7 +376,7 @@ export default {
       this.isDraggingRedacted = false
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         const file = e.dataTransfer.files[0]
-        if (await this.confirmUpload(file, '待还原的脱敏文件')) this.setRedactedFile(file)
+        if (await this.confirmUpload(file, '待还原的脱敏文件')) await this.setRedactedFile(file)
       }
     },
     async handleMappingSelect(e) {
@@ -406,14 +405,74 @@ export default {
       const accepted = await requestAppConfirm({ title: '重新开始当前流程', message: '已选择的历史记录、上传文件和当前还原结果将被清除。确认重新开始吗？', confirmText: '确认重新开始', tone: 'warning' })
       if (accepted) this.reset()
     },
-    setRedactedFile(file) {
+    async setRedactedFile(file) {
       this.redactedFile = file
       this.redactedFileType = this.inferFileType(file)
       this.restored = false
       this.restoredText = ''
       this.restoredImageDataUrl = null
       this.restoredBlob = null
+      await this.autoMatchHistory(file)
       this.validateFiles()
+    },
+    historyMarkers(item) {
+      return [...(item?.mapping?.mappings || [])]
+        .map(entry => entry.placeholder || entry.marker)
+        .filter(marker => typeof marker === 'string' && marker.length > 2)
+    },
+    async readableFileText(file) {
+      const type = this.inferFileType(file)
+      if (type === 'text') return file.text()
+      if (type === 'docx' || type === 'excel') {
+        const zip = await JSZip.loadAsync(await file.arrayBuffer())
+        const entries = type === 'docx'
+          ? Object.keys(zip.files).filter(name => /^word\/(document|header\d+|footer\d+)\.xml$/.test(name))
+          : Object.keys(zip.files).filter(name => /^(xl\/sharedStrings\.xml|xl\/worksheets\/sheet\d+\.xml)$/.test(name))
+        return (await Promise.all(entries.map(name => zip.file(name).async('text')))).join('\n')
+      }
+      if (type === 'pdf') {
+        const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
+        const pages = await Promise.all(Array.from({ length: pdf.numPages }, async (_, index) => {
+          const page = await pdf.getPage(index + 1)
+          const content = await page.getTextContent()
+          return content.items.map(item => item.str).join(' ')
+        }))
+        return pages.join('\n')
+      }
+      return ''
+    },
+    async autoMatchHistory(file) {
+      if (!this.history.length) {
+        this.selectedHistory = null
+        this.mapping = null
+        this.historyMatchMode = ''
+        this.validation = { type: 'err', title: '未找到本机历史', message: '当前设备没有可用于匹配的脱敏历史记录。' }
+        return
+      }
+      let content = ''
+      try { content = await this.readableFileText(file) } catch (_) { /* 图片等文件使用文件名匹配 */ }
+      const stem = file.name.replace(/^redacted[_-]/i, '').replace(/\.[^.]+$/, '').toLowerCase()
+      const candidates = this.history.map(item => {
+        const markers = this.historyMarkers(item)
+        const markerScore = content ? markers.filter(marker => content.includes(marker)).length : 0
+        const historyStem = String(item.file_name || '').replace(/\.[^.]+$/, '').toLowerCase()
+        const filenameScore = stem && historyStem && (stem === historyStem || stem.includes(historyStem) || historyStem.includes(stem)) ? 1 : 0
+        return { item, score: markerScore * 100 + filenameScore, markerScore }
+      }).filter(candidate => candidate.score > 0).sort((a, b) => b.score - a.score)
+      const best = candidates[0]
+      const isUnique = best && (!candidates[1] || best.score > candidates[1].score)
+      if (isUnique) {
+        this.selectedHistory = best.item
+        this.mapping = best.item.mapping
+        this.historyMatchMode = 'auto'
+        this.validation = { type: 'ok', title: '已自动匹配历史', message: `已匹配“${best.item.file_name}”，识别到 ${best.markerScore || 1} 个关联标记。` }
+        this.notify(`已自动匹配历史：${best.item.file_name}`)
+      } else {
+        this.selectedHistory = null
+        this.mapping = null
+        this.historyMatchMode = ''
+        this.validation = { type: 'err', title: best ? '历史记录匹配不唯一' : '未匹配到历史记录', message: best ? '该文件同时匹配多条历史记录，请从左侧手动选择正确记录。' : '未在文件中识别到本机历史标记，请从左侧手动选择正确记录。' }
+      }
     },
     inferFileType(file) {
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -472,9 +531,11 @@ export default {
         this.validation = null
         return
       }
+
+      if (this.redactedFile && !this.mappingFile && this.validation?.type === 'err') return
       
       if (!this.redactedFile || !this.mappingFile) {
-        this.validation = { type: 'wait', title: '等待文件', message: '请同时上传脱敏文件与映射表。' }
+        this.validation = { type: 'wait', title: '等待匹配', message: '正在等待本机历史记录匹配；也可以从左侧手动选择正确记录。' }
         return
       }
       
@@ -868,6 +929,7 @@ export default {
       this.restoredText = ''
       this.restoredImageDataUrl = null
       this.selectedHistory = null
+      this.historyMatchMode = ''
       
       if (this.$refs.redactedInput) this.$refs.redactedInput.value = ''
       if (this.$refs.historyRedactedInput) this.$refs.historyRedactedInput.value = ''
@@ -882,6 +944,6 @@ export default {
 .history-panel { margin: 28px 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: #fff; overflow: hidden; }
 .history-panel__head { display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid var(--border-soft); }.history-panel__head h2{font-size:var(--text-lg);margin:0}.history-panel__tools{display:flex;align-items:center;gap:12px}.history-panel__tools>span{font:12px var(--font-mono);color:var(--muted)}.history-panel__tools .btn--xs{padding:5px 10px;font-size:12px}
 .history-panel__empty{padding:18px 22px;color:var(--muted);margin:0}.history-item{display:flex;align-items:center;border-bottom:1px solid var(--border-soft)}.history-item:last-child{border-bottom:0}.history-item.is-selected{background:#f8fafc}.history-item__select{flex:1;text-align:left;padding:14px 22px;border:0;background:transparent;cursor:pointer;display:grid;gap:5px}.history-item__select span{font-size:var(--text-sm);color:var(--muted)}.history-item .icon-btn{margin-right:14px;font-size:22px}.restore-upload{margin:24px 0}.restore-upload summary{cursor:pointer;font-weight:600;margin-bottom:16px}
-.history-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 24px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--radius-lg);background:#f8fafc}.history-actions>span{font-size:var(--text-sm);font-weight:600}.history-actions>div{display:flex;gap:8px}.restore-current-upload__hint{margin:8px 0 16px;color:var(--muted)}.restore-current-upload__file{flex:1;align-self:stretch;margin:0;min-height:0}.restore-current-upload__file .file-meta__info{align-self:center}
+.history-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 24px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--radius-lg);background:#f8fafc}.history-actions>span{font-size:var(--text-sm);font-weight:600}.history-actions>div{display:flex;gap:8px}.history-actions.is-pending{color:var(--muted);background:#fff}.restore-current-upload__hint{margin:8px 0 16px;color:var(--muted)}.restore-current-upload.is-pending{background:#fcfcfc}.restore-current-upload__pending{display:grid;place-items:center;flex:1;min-height:150px;padding:24px;border:1px dashed var(--border);border-radius:var(--radius-md);color:var(--muted);text-align:center;font-size:var(--text-sm)}.restore-current-upload__file{flex:1;align-self:stretch;margin:0;min-height:0}.restore-current-upload__file .file-meta__info{align-self:center}
 .restore-result-overlay{position:fixed;inset:0;z-index:950;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.restore-result-modal{display:flex;flex-direction:column;width:min(900px,100%);max-height:calc(100vh - 48px);overflow:hidden;border-radius:20px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,.24)}.restore-result-modal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:26px 30px 20px;border-bottom:1px solid var(--border-soft)}.restore-result-modal__head h2{margin:7px 0 0;font-size:28px}.restore-result-modal .restore-result{border:0;border-radius:0;overflow:auto}.restore-result-modal .restore-result__body{max-height:min(46vh,460px);overflow:auto}.restore-result-modal .download-bar{width:100%;border:0;border-top:1px solid var(--border-soft);border-radius:0;flex-shrink:0}.restore-result-modal .restore-feedback{margin:0;padding:0 var(--space-6) var(--space-4);color:var(--success)}.confirm-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.confirm-dialog{width:min(460px,100%);padding:30px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 80px rgba(15,23,42,.24)}.confirm-dialog__icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:30px;font-weight:700}.confirm-dialog h2{margin:0;font-size:26px}.confirm-dialog p{margin:16px 0 24px;color:var(--muted);line-height:1.7}.confirm-dialog__actions{display:flex;justify-content:center;gap:12px}
 </style>

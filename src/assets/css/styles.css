@@ -1054,7 +1054,7 @@ ul, ol { list-style: none; }
 /* ============================================================
    RESTORE PAGE
    ============================================================ */
-.restore-main { padding-block: clamp(16px, 3vh, var(--space-8)) clamp(16px, 5vh, var(--section-y-desktop)); overflow: auto !important; }
+.restore-main { width: 100%; max-width: none; padding-block: clamp(16px, 3vh, var(--space-8)) clamp(16px, 5vh, var(--section-y-desktop)); overflow: auto !important; }
 .restore-main > .history-panel,
 .restore-main > .restore-current-upload,
 .restore-main > .restore-result { min-width: 0; }
@@ -1153,11 +1153,6 @@ ul, ol { list-style: none; }
   .restore-main > .history-panel { align-self: start; height: fit-content; }
   .restore-main > .restore-current-upload { grid-column: 2; grid-row: 3; margin: 0; min-height: 320px; }
   .restore-main > .history-actions { grid-row: 4; margin-block: 0; }
-}
-
-@media (min-width: 900px) {
-  .restore-main.has-selection > .history-panel { grid-column: 1; }
-  .restore-main.has-selection > .restore-current-upload { grid-column: 2; }
 }
 
 /* ============================================================
