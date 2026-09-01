@@ -336,3 +336,8 @@
 - 结果：通过。注入含数字 ID 的虚构历史映射后，上传 `{SMOKE_PHONE}` 文本并确认还原，页面显示恢复后的 `13800138000`、完成反馈和下载入口；页面未出现 `Rust 还原失败：undefined`。
 - 同步验证：`npm run build`、`cargo test --manifest-path src-tauri/Cargo.toml`（4 passed）和 `git diff --check` 均通过。
 - 测试包：签名 `dmg,app` 打包通过；`bundle/macos/文件脱敏与还原工具.app`、`bundle/dmg/文件脱敏与还原工具_0.1.11_aarch64.dmg`、`.app.tar.gz` 与 `.sig` 均为非空，最新 `.app` 已启动。
+
+## 2026-09-01 还原上传卡片布局烟测
+
+- 环境：Vite `http://127.0.0.1:5174`、ego-browser；虚构历史和 `trash/smoke-ui/restore-v011-fake.md`。
+- 结果：通过。确认上传后，上传区已从 DOM 移除并由文件卡片替换；文件卡片边界完全位于右侧“上传待还原的脱敏文件”卡片内，且与“已选择历史记录”横幅的边界无重叠。
