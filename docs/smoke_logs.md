@@ -335,3 +335,4 @@
 - 范围：还原页历史选择、上传二次确认、开始还原二次确认、旧映射数字 ID 兼容与文本恢复。
 - 结果：通过。注入含数字 ID 的虚构历史映射后，上传 `{SMOKE_PHONE}` 文本并确认还原，页面显示恢复后的 `13800138000`、完成反馈和下载入口；页面未出现 `Rust 还原失败：undefined`。
 - 同步验证：`npm run build`、`cargo test --manifest-path src-tauri/Cargo.toml`（4 passed）和 `git diff --check` 均通过。
+- 测试包：签名 `dmg,app` 打包通过；`bundle/macos/文件脱敏与还原工具.app`、`bundle/dmg/文件脱敏与还原工具_0.1.11_aarch64.dmg`、`.app.tar.gz` 与 `.sig` 均为非空，最新 `.app` 已启动。
