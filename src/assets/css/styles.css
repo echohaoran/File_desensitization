@@ -1172,13 +1172,13 @@ ul, ol { list-style: none; }
 [hidden] { display: none !important; }
 
 /* Secondary pages use compact cards and a two-column desktop rhythm. */
-.rules-page { max-width: 1200px; }
+.rules-page { max-width: 1720px; padding-top: clamp(36px, 5vh, 64px); }
 .rules-page .rules-form,
 .rules-page .rules-list { min-width: 0; }
 .rules-page .form-grid { grid-template-columns: minmax(0, 1fr) minmax(150px, .42fr) !important; }
 .rules-page label, .rules-page input, .rules-page select { min-width: 0; max-width: 100%; }
 .rules-page .rules-form__heading h2 { overflow-wrap: anywhere; }
-.rules-page .rules-list { max-height: 58vh; overflow: auto; }
+.rules-page .rules-list { max-height: min(66vh, 760px); overflow: auto; }
 .settings-page { max-width: 1200px !important; padding-top: clamp(20px, 4vh, 44px) !important; padding-bottom: 32px !important; overflow: auto !important; }
 .settings-page > section { padding: clamp(14px, 1.8vw, 22px) !important; margin-bottom: 12px !important; }
 .settings-page .settings-grid,
@@ -1191,7 +1191,7 @@ ul, ol { list-style: none; }
 .settings-page .settings-card__head h2 { font-size: var(--text-base) !important; }
 .settings-page .settings-card__head p { font-size: var(--text-xs) !important; }
 @media (min-width: 900px) {
-  .rules-page { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--space-5) var(--space-6); align-content: start; }
+  .rules-page { display: grid; grid-template-columns: minmax(380px, .72fr) minmax(0, 1.78fr); gap: var(--space-5) clamp(28px, 3vw, 56px); align-content: start; }
   .rules-page > .page-heading { grid-column: 1 / -1; }
   .rules-page .rules-form, .rules-page .rules-list { margin-top: 0; }
 }
