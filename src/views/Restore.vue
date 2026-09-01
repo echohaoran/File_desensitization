@@ -137,7 +137,13 @@
       </button>
     </div>
 
-    <div class="restore-result" v-if="restored">
+    <div v-if="restored" class="restore-result-overlay" role="presentation" @click.self="closeRestoreResult">
+      <section class="restore-result-modal" role="dialog" aria-modal="true" aria-labelledby="restore-result-title">
+        <header class="restore-result-modal__head">
+          <div><span class="mono-label">RESTORE COMPLETE</span><h2 id="restore-result-title">还原完成</h2></div>
+          <button class="icon-btn" type="button" aria-label="关闭还原结果" @click="closeRestoreResult">×</button>
+        </header>
+    <div class="restore-result">
       <div class="restore-result__head">
         <h3>还原结果</h3>
       </div>
@@ -155,7 +161,7 @@
     </div>
     <p v-if="feedback" class="restore-feedback" role="status">{{ feedback }}</p>
 
-    <div class="download-bar" v-if="restored">
+    <div class="download-bar">
       <span class="download-bar__label">还原完成</span>
       <div class="download-bar__formats" v-if="redactedFileType === 'image'">
         <button class="btn btn--primary" @click="downloadRestoredImage">
@@ -185,6 +191,8 @@
           Markdown
         </button>
       </div>
+    </div>
+      </section>
     </div>
 
     <div v-if="confirmDialog" class="confirm-overlay" role="presentation" @click.self="cancelConfirm">
@@ -284,6 +292,7 @@ export default {
   },
   methods: {
     notify(message) { window.dispatchEvent(new CustomEvent('desens:status', { detail: { message } })) },
+    closeRestoreResult() { this.restored = false; this.feedback = '' },
     loadHistory() {
       try { this.history = JSON.parse(localStorage.getItem('desens_history') || '[]') } catch (_) { this.history = [] }
     },
@@ -874,5 +883,5 @@ export default {
 .history-panel__head { display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid var(--border-soft); }.history-panel__head h2{font-size:var(--text-lg);margin:0}.history-panel__tools{display:flex;align-items:center;gap:12px}.history-panel__tools>span{font:12px var(--font-mono);color:var(--muted)}.history-panel__tools .btn--xs{padding:5px 10px;font-size:12px}
 .history-panel__empty{padding:18px 22px;color:var(--muted);margin:0}.history-item{display:flex;align-items:center;border-bottom:1px solid var(--border-soft)}.history-item:last-child{border-bottom:0}.history-item.is-selected{background:#f8fafc}.history-item__select{flex:1;text-align:left;padding:14px 22px;border:0;background:transparent;cursor:pointer;display:grid;gap:5px}.history-item__select span{font-size:var(--text-sm);color:var(--muted)}.history-item .icon-btn{margin-right:14px;font-size:22px}.restore-upload{margin:24px 0}.restore-upload summary{cursor:pointer;font-weight:600;margin-bottom:16px}
 .history-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:16px 0 24px;padding:14px 18px;border:1px solid var(--border);border-radius:var(--radius-lg);background:#f8fafc}.history-actions>span{font-size:var(--text-sm);font-weight:600}.history-actions>div{display:flex;gap:8px}.restore-current-upload__hint{margin:8px 0 16px;color:var(--muted)}.restore-current-upload__file{flex:1;align-self:stretch;margin:0;min-height:0}.restore-current-upload__file .file-meta__info{align-self:center}
-.confirm-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.confirm-dialog{width:min(460px,100%);padding:30px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 80px rgba(15,23,42,.24)}.confirm-dialog__icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:30px;font-weight:700}.confirm-dialog h2{margin:0;font-size:26px}.confirm-dialog p{margin:16px 0 24px;color:var(--muted);line-height:1.7}.confirm-dialog__actions{display:flex;justify-content:center;gap:12px}
+.restore-result-overlay{position:fixed;inset:0;z-index:950;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.restore-result-modal{display:flex;flex-direction:column;width:min(900px,100%);max-height:calc(100vh - 48px);overflow:hidden;border-radius:20px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,.24)}.restore-result-modal__head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:26px 30px 20px;border-bottom:1px solid var(--border-soft)}.restore-result-modal__head h2{margin:7px 0 0;font-size:28px}.restore-result-modal .restore-result{border:0;border-radius:0;overflow:auto}.restore-result-modal .restore-result__body{max-height:min(46vh,460px);overflow:auto}.restore-result-modal .download-bar{width:100%;border:0;border-top:1px solid var(--border-soft);border-radius:0;flex-shrink:0}.restore-result-modal .restore-feedback{margin:0;padding:0 var(--space-6) var(--space-4);color:var(--success)}.confirm-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(5px)}.confirm-dialog{width:min(460px,100%);padding:30px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 80px rgba(15,23,42,.24)}.confirm-dialog__icon{display:grid;place-items:center;width:64px;height:64px;margin:0 auto 18px;border-radius:50%;background:#fee2e2;color:#dc2626;font-size:30px;font-weight:700}.confirm-dialog h2{margin:0;font-size:26px}.confirm-dialog p{margin:16px 0 24px;color:var(--muted);line-height:1.7}.confirm-dialog__actions{display:flex;justify-content:center;gap:12px}
 </style>
