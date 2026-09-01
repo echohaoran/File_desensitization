@@ -675,3 +675,9 @@
 
 - 用户确认不需要 macOS Intel DMG。GitHub Actions 从构建矩阵和 updater manifest 中移除 Intel 条目，Release 只等待 macOS ARM64、Windows x64 和 Linux x64。
 - 已有 `v0.1.8`、`v0.1.9` 工作流仍使用旧提交，无法因本次配置修改自动解除排队；用户确认后版本推进至 `0.1.10`，将以 `v0.1.10` tag 采用三平台发布矩阵。
+
+## 2026-09-01 v0.1.10 Release 创建失败修复
+
+- 已定位到 `Publish signed release` 的 Linux updater 清单命名不一致：构建上传 `local_desens_beta_linux_amd64.AppImage`，`latest.json` 生成步骤却读取并发布 `linux_x64` 文件名，导致签名文件不存在。
+- 统一 Release 清单的 Linux 签名路径和下载 URL 为 `local_desens_beta_linux_amd64.AppImage`，与构建产物完全一致。
+- 发布版本推进至 `0.1.11`，待完成本地签名包和浏览器烟测后使用 `v0.1.11` tag 触发新的三平台 Release。

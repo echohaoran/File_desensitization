@@ -143,8 +143,8 @@ jobs:
             --arg base "$base" \
             --rawfile mac_arm_sig release/local_desens_beta_macos_arm64.app.tar.gz.sig \
             --rawfile windows_sig release/local_desens_beta_windows_x64.msi.sig \
-            --rawfile linux_sig release/local_desens_beta_linux_x64.AppImage.sig \
-            '{version: $version, notes: "GitHub Release update", pub_date: $date, platforms: {"darwin-aarch64": {url: ($base + "/local_desens_beta_macos_arm64.app.tar.gz"), signature: ($mac_arm_sig | rtrimstr("\n"))}, "windows-x86_64": {url: ($base + "/local_desens_beta_windows_x64.msi"), signature: ($windows_sig | rtrimstr("\n"))}, "linux-x86_64": {url: ($base + "/local_desens_beta_linux_x64.AppImage"), signature: ($linux_sig | rtrimstr("\n"))}}}' \
+            --rawfile linux_sig release/local_desens_beta_linux_amd64.AppImage.sig \
+            '{version: $version, notes: "GitHub Release update", pub_date: $date, platforms: {"darwin-aarch64": {url: ($base + "/local_desens_beta_macos_arm64.app.tar.gz"), signature: ($mac_arm_sig | rtrimstr("\n"))}, "windows-x86_64": {url: ($base + "/local_desens_beta_windows_x64.msi"), signature: ($windows_sig | rtrimstr("\n"))}, "linux-x86_64": {url: ($base + "/local_desens_beta_linux_amd64.AppImage"), signature: ($linux_sig | rtrimstr("\n"))}}}' \
             > release/latest.json
 
       - name: Publish packages to GitHub Release

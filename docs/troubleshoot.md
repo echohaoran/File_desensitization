@@ -257,3 +257,9 @@ Windows MSI 后续在 WiX `light.exe` 阶段失败，改用 `tauri.windows.conf.
 - 现象：GitHub Actions Linux DEB 构建在 `gdk-sys` 阶段失败，提示找不到 `gdk-3.0.pc`。
 - 原因：Ubuntu Runner 默认不提供 Tauri WebView/GTK 的编译开发包。
 - 修复：使用 Ubuntu 24.04，并在构建前安装 `libgtk-3-dev`、`libwebkit2gtk-4.1-dev`、`libayatana-appindicator3-dev`、`librsvg2-dev`、`libssl-dev` 和 `patchelf`。
+
+## GitHub Release 创建时找不到 Linux updater 签名
+
+- 现象：三个构建矩阵均已成功，但 `Publish signed release` 在读取 `release/*.AppImage.sig` 时失败，Release 没有创建。
+- 原因：Linux 打包步骤统一命名产物为 `local_desens_beta_linux_amd64.AppImage`，而 updater 清单仍使用旧的 `linux_x64` 文件名。
+- 处理：发布清单中的 `--rawfile linux_sig` 和 `linux-x86_64` 下载 URL 必须与 `updater_name` 保持逐字符一致，并在发布前静态检查两处命名。

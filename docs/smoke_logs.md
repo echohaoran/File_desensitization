@@ -320,3 +320,11 @@
 
 - 环境：macOS Apple Silicon、本地签名密钥、Tauri release 包、ego-browser。
 - 结果：通过。前端构建、工作流 YAML 和三平台清单校验通过；签名 `dmg,app` 打包生成非空 `0.1.10` ARM64 DMG、`.app.tar.gz` 与 `.sig`。启动新应用后，ego-browser 确认左上角显示 `v0.1.10 Beta`，五项主导航均存在。
+
+## 2026-09-01 v0.1.11 Release 清单修复烟测
+
+- 环境：macOS Apple Silicon、本地签名密钥、Vite `http://127.0.0.1:5174`、ego-browser。
+- 范围：GitHub Actions Release 清单、前端版本标记、五项主导航、本地更新包。
+- 结果：通过。工作流 YAML 可解析；Linux `updater_name`、签名读取路径和 `linux-x86_64` 下载 URL 均为 `local_desens_beta_linux_amd64.AppImage`，不再残留错误的 `linux_x64` AppImage 名称。`npm run build` 与 `cargo check` 均通过。
+- 打包：执行签名 `npm run tauri:build -- --bundles dmg,app`，生成非空 `0.1.11` ARM64 DMG、`.app.tar.gz` 与 `.sig`，并启动最新 `.app`。
+- 浏览器：ego-browser 确认首页显示 `v0.1.11 Beta`；概览、脱敏、还原、敏感字段、设置五个路由均可进入且存在主内容区域。

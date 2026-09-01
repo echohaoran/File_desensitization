@@ -1,6 +1,6 @@
 [package]
 name = "desens-tauri"
-version = "0.1.10"
+version = "0.1.11"
 description = "本地优先的文件脱敏与还原工具桌面核心"
 authors = ["DESENS"]
 edition = "2021"
