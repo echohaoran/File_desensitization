@@ -294,3 +294,14 @@
 - 待发布验证：需要在 `v0.1.8` tag 的 GitHub Actions 完成跨平台签名构建并发布 `latest.json` 后，再由已安装的 `v0.1.8` 应用检查下一版本的真实下载与重启流程。
 - 本地签名打包：显式提供受限私钥和空密码变量后，`npm run tauri:build` 成功生成 `bundle/macos/文件脱敏与还原工具.app.tar.gz` 及同名 `.sig`；最新 `v0.1.8` `.app` 已启动。
 - 回退验证：线上 `releases/latest/download/latest.json` 当前重定向到无清单的 `v0.1.7` Release；修复后使用 ego-browser 打开版本窗口，真实 Release API 返回 `v0.1.7`，本机 `v0.1.8` 显示“当前已是最新版本”，不再显示网络错误。
+
+## 2026-09-01 macOS updater 工件发布修复烟测
+
+- 范围：GitHub Actions macOS 发布参数、最新本地 Tauri macOS 包、版本更新入口。
+- 结果：通过。按 CI 同样的 `npm run tauri:build -- --bundles dmg,app` 重新打包，生成非空 ARM64 DMG、`.app.tar.gz` 及对应 `.sig`。启动该 `.app` 后，ego-browser 打开本地页面并检查版本弹窗，显示 `v0.1.8`、GitHub Release 签名验证来源和“当前已是最新版本”。
+- 发布状态：`v0.1.8` 的既有 GitHub Actions run 已因旧工作流失败；修复尚待用户确认提交后使用新 tag 重新触发跨平台发布。
+
+## 2026-09-01 v0.1.9 发布前复验
+
+- 环境：macOS Apple Silicon、本地签名密钥、Tauri release 包、ego-browser。
+- 结果：通过。`npm run tauri:build -- --bundles dmg,app` 生成非空 `0.1.9` ARM64 DMG、`.app.tar.gz` 与 `.sig`；启动新应用后，浏览器确认标题版本为 `v0.1.9`，版本弹窗显示 GitHub Release 签名验证来源及“当前已是最新版本”。

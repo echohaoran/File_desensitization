@@ -246,6 +246,12 @@ Windows MSI 后续在 WiX `light.exe` 阶段失败，改用 `tauri.windows.conf.
 - 现象：`npm run tauri:build` 在 `bundle_dmg.sh` 阶段失败，手动 `hdiutil create` 报“设备上无剩余空间”，但磁盘空间充足。
 - 根因：macOS 新版 hdiutil 对 `-srcfolder` 自动容量估算失败（deprecated 调用路径）。
 - 处理：`.app` 打包不受影响；DMG 可进入 `src-tauri/target/release/bundle/dmg` 手动执行 `bash bundle_dmg.sh --volname "..." --volicon "..." --skip-jenkins --disk-image-size 128 <输出.dmg> ../macos` 生成。发布 DMG 仍以 GitHub Actions 产物为准。
+
+## 2026-09-01 GitHub Actions macOS 发布缺少 updater 归档
+
+- 现象：macOS Tauri 构建和 DMG 均成功，但“Prepare named package”找不到 `bundle/macos/*.app.tar.gz` 并失败。
+- 根因：工作流仅传入 `--bundles dmg`。Tauri 仅在构建 `app`、`appimage`、`msi` 或 `nsis` 目标时生成 updater 归档；DMG 本身不是 updater target。
+- 处理：macOS 构建参数固定为 `--bundles dmg,app`，同时产出面向人工安装的 DMG 及签名 `.app.tar.gz` 更新工件。
 ## Linux Tauri CI 缺少 GDK/GTK 开发依赖
 
 - 现象：GitHub Actions Linux DEB 构建在 `gdk-sys` 阶段失败，提示找不到 `gdk-3.0.pc`。

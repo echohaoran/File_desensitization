@@ -19,7 +19,9 @@ jobs:
           - name: macOS Apple Silicon
             os: macos-14
             artifact: local_desens_macos_arm64
-            build_args: -- --bundles dmg
+            # The updater archive is emitted only when the app bundle is built.
+            # Keep the DMG for manual installation and build the app alongside it.
+            build_args: -- --bundles dmg,app
             installer_glob: src-tauri/target/release/bundle/dmg/*.dmg
             installer_name: local_desens_macos_arm64.dmg
             updater_glob: src-tauri/target/release/bundle/macos/*.app.tar.gz
@@ -28,7 +30,9 @@ jobs:
           - name: macOS Intel
             os: macos-13
             artifact: local_desens_macos_x64
-            build_args: -- --bundles dmg
+            # The updater archive is emitted only when the app bundle is built.
+            # Keep the DMG for manual installation and build the app alongside it.
+            build_args: -- --bundles dmg,app
             installer_glob: src-tauri/target/release/bundle/dmg/*.dmg
             installer_name: local_desens_macos_x64.dmg
             updater_glob: src-tauri/target/release/bundle/macos/*.app.tar.gz

@@ -658,3 +658,9 @@
 - GitHub Actions 已改为构建并上传签名 updater 工件、签名文件及跨平台 `latest.json`，普通 DMG/MSI/DEB 发布资产继续保留。
 - 本地 Tauri release 打包已验证 macOS updater 归档和 `.sig` 均非空；应用启动正常。签名私钥未进入工作区或 Git 变更。
 - 修复已安装但尚未发布 `latest.json` 时被插件笼统报告为网络错误的问题：桌面端失败后读取 GitHub Release API；若远端版本不高于本机则正常显示“当前已是最新版本”，若有新版本但清单未发布则明确提示等待签名清单。
+
+## 2026-09-01 macOS Release 更新工件修复
+
+- GitHub Actions `v0.1.8` 的 Apple Silicon 作业确认 Tauri 与 DMG 均构建成功；失败原因是作业仅请求 `dmg` bundle，Tauri 不会因此产生 updater 所需的 `.app.tar.gz`。
+- macOS ARM64/Intel 矩阵均改为 `--bundles dmg,app`，确保每次发布同时有可手动安装的 DMG 与签名更新归档。
+- 用户确认后将发布版本推进至 `0.1.9`，以新的 `v0.1.9` tag 重新触发完整跨平台构建；失败的 `v0.1.8` tag 保留为历史记录。
