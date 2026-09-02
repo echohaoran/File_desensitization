@@ -28,6 +28,17 @@ pub fn run_inference_cli() -> i32 {
     }
 }
 
+pub fn run_regex_conversion_cli() -> i32 {
+    use std::io::{Read, Write};
+    let mut input = Vec::new();
+    if std::io::stdin().read_to_end(&mut input).is_err() { return 2; }
+    let request: commands::AiRegexConvertRequest = match serde_json::from_slice(&input) { Ok(value) => value, Err(_) => return 2 };
+    match inference::run_regex_conversion(&request.model_path, &request.rules) {
+        Ok(output) => { let _ = std::io::stdout().write_all(output.as_bytes()); 0 }
+        Err(error) => { let _ = writeln!(std::io::stderr(), "{error}"); 3 }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -73,7 +84,8 @@ pub fn run() {
             commands::register_local_model,
             commands::unregister_model,
             commands::download_model,
-            commands::ai_detect_candidates
+            commands::ai_detect_candidates,
+            commands::ai_convert_rules_to_regex
         ])
         .run(tauri::generate_context!())
         .expect("error while running DESENS Tauri application");

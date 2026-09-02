@@ -99,6 +99,28 @@ pub struct AiDetectRequest {
     pub selected_text: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AiRegexConvertRequest {
+    pub schema_version: u32,
+    pub model_path: String,
+    pub rules: Vec<AiRegexSourceRule>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AiRegexSourceRule {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub value: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AiRegexCandidate {
+    pub id: String,
+    pub regex: String,
+    pub confidence: Option<f32>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateTaskRequest {
     pub schema_version: u32,
@@ -676,4 +698,48 @@ pub async fn ai_detect_candidates(request: AiDetectRequest) -> Result<ApiRespons
         .await.map_err(|_| CommandError { code: "AI_TASK_FAILED", message: "AI 推理任务异常", retryable: true })?
         .map_err(|detail| { let _ = detail; CommandError { code: "AI_INFERENCE_FAILED", message: "AI 推理失败，请检查模型目录中的 tokenizer.json 与 GGUF 是否匹配", retryable: true } })?;
     Ok(ApiResponse { schema_version: SCHEMA_VERSION, success: true, request_id: request_id(), data: output })
+}
+
+#[tauri::command]
+pub async fn ai_convert_rules_to_regex(request: AiRegexConvertRequest) -> Result<ApiResponse<Vec<AiRegexCandidate>>, CommandError> {
+    if request.schema_version != SCHEMA_VERSION || request.model_path.is_empty() || request.rules.is_empty() {
+        return Err(CommandError { code: "INVALID_AI_REGEX_REQUEST", message: "正则转换参数不完整", retryable: false });
+    }
+    if request.rules.len() > 64 || request.rules.iter().any(|rule| rule.id.is_empty() || rule.name.is_empty() || rule.value.len() > 1_200) {
+        return Err(CommandError { code: "INVALID_AI_REGEX_REQUEST", message: "正则转换规则不符合限制", retryable: false });
+    }
+
+    let requested_ids: std::collections::HashSet<String> = request.rules.iter().map(|rule| rule.id.clone()).collect();
+    let output = tokio::task::spawn_blocking(move || {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let executable = std::env::current_exe().map_err(|_| "无法定位推理进程".to_string())?;
+        let mut child = Command::new(executable).arg("--candle-regex-convert").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|_| "无法启动 Candle 隔离推理进程".to_string())?;
+        let payload = serde_json::to_vec(&request).map_err(|_| "正则转换请求序列化失败".to_string())?;
+        child.stdin.take().ok_or("推理进程输入不可用".to_string())?.write_all(&payload).map_err(|_| "正则转换请求发送失败".to_string())?;
+        let result = child.wait_with_output().map_err(|_| "推理进程未正常结束".to_string())?;
+        if !result.status.success() { return Err(String::from_utf8_lossy(&result.stderr).trim().to_string()); }
+        String::from_utf8(result.stdout).map_err(|_| "AI 输出编码无效".to_string())
+    })
+        .await.map_err(|_| CommandError { code: "AI_TASK_FAILED", message: "正则转换任务异常", retryable: true })?
+        .map_err(|_| CommandError { code: "AI_INFERENCE_FAILED", message: "正则转换失败，请检查模型目录中的 tokenizer.json 与 GGUF 是否匹配", retryable: true })?;
+
+    let cleaned = output.replace("```json", "").replace("```JSON", "").replace("```", "").trim().to_string();
+    let parsed = serde_json::from_str::<serde_json::Value>(&cleaned).or_else(|_| {
+        let start = cleaned.find('{').ok_or(serde_json::Error::io(std::io::Error::other("missing json")))?;
+        let end = cleaned.rfind('}').ok_or(serde_json::Error::io(std::io::Error::other("missing json")))?;
+        serde_json::from_str::<serde_json::Value>(&cleaned[start..=end])
+    }).map_err(|_| CommandError { code: "AI_INVALID_REGEX_RESULT", message: "模型未返回有效的正则候选，请重试或缩小选择范围", retryable: true })?;
+    let items = parsed.get("items").and_then(serde_json::Value::as_array).ok_or(CommandError { code: "AI_INVALID_REGEX_RESULT", message: "模型未返回有效的正则候选，请重试或缩小选择范围", retryable: true })?;
+    let candidates = items.iter().filter_map(|item| serde_json::from_value::<AiRegexCandidate>(item.clone()).ok()).filter(|item| {
+        requested_ids.contains(&item.id)
+            && !item.regex.is_empty()
+            && item.regex.len() <= 1_200
+            && !item.regex.contains('\n')
+            && !item.regex.contains('\r')
+    }).collect::<Vec<_>>();
+    if candidates.is_empty() {
+        return Err(CommandError { code: "AI_INVALID_REGEX_RESULT", message: "模型没有生成可用的正则候选，请调整规则后重试", retryable: true });
+    }
+    Ok(ApiResponse { schema_version: SCHEMA_VERSION, success: true, request_id: request_id(), data: candidates })
 }

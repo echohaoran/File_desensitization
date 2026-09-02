@@ -1,5 +1,22 @@
 # 烟测日志
 
+## 2026-09-02：规则管理与 AI 正则转换构建烟测
+
+- 环境：macOS 本地 Node/Vite、Rust Cargo；开发服务 `http://127.0.0.1:5173`。
+- 操作：执行 `npm run build`，执行 `cargo check --manifest-path src-tauri/Cargo.toml`；检查敏感字段页新编译产物和 Tauri command 注册。
+- 结果：通过。前端构建完成；Rust 新增 `ai_convert_rules_to_regex`、隔离 CLI 分支和版本化 DTO 均通过类型检查。Cargo 仅保留既有未使用类型警告。
+- 备注：当前自动化环境未暴露可交互的 ego-browser connector，未使用浏览器替代工具；实际模型转换需要已登记的本地 GGUF 和 tokenizer，因此保留为桌面人工验收项。
+
+## 2026-09-02：规则维护功能桌面打包启动烟测
+
+- 操作：执行 `npm run tauri:build`，启动新生成的 `src-tauri/target/release/bundle/macos/文件脱敏与还原工具.app`，并检查桌面进程。
+- 结果：应用包、ARM64 DMG 和 updater tarball 均已生成，`desens-tauri` 进程成功运行。打包命令在 updater 签名阶段以退出码 1 结束，原因是本机未设置 `TAURI_SIGNING_PRIVATE_KEY`；该限制不影响未签名的本地 `.app`/DMG 功能验收。
+
+## 2026-09-02：规则页操作按钮布局调整
+
+- 操作：将“正则转换”移至已配置字段卡片上方的右侧独立操作区；将正则转换、导出、导入统一调整为带边框和圆角的矩形按钮。执行 `npm run build` 后重新运行 `npm run tauri:build` 并启动新 `.app`。
+- 结果：前端构建通过，最新 ARM64 `.app` 已启动。DMG 已更新；本机 updater 签名仍仅因缺失 `TAURI_SIGNING_PRIVATE_KEY` 结束，应用包不受影响。
+
 ## 2026-08-17：扩展敏感信息 DOCX 渲染校验
 
 - 环境：开发服务器 `192.168.10.203`，LibreOffice 与 `fonts-noto-cjk`。
@@ -388,3 +405,40 @@
 - 结果：通过。`npm run build` 与 `cargo check --manifest-path src-tauri/Cargo.toml` 均通过；Node 最小复现确认 `markRaw()` 后的 Resource 在 Vue `reactive()` 容器中仍能调用私有字段方法；ego-browser 确认首页显示 `v0.1.14 Beta`、五个主导航入口完整，并能打开“版本更新”弹窗。
 - 打包：本地环境未注入 `TAURI_SIGNING_PRIVATE_KEY`，无法生成可用于更新验证的签名归档；发布将由 GitHub Actions 的受保护签名密钥构建 Windows MSI、签名和 `latest.json`，并以 Release 产物为准。
 - 发布验证：通过。GitHub Actions run `33490641367` 的 Windows x64 构建、签名清单生成和 Release 发布均成功；已重新下载 `latest.json` 并确认 `version = 0.1.14`、`windows-x86_64` 指向 `.msi` 且携带非空签名。
+
+## 2026-09-02 正则转换模型缺失引导烟测
+
+- 范围：正则转换按钮、模型缺失拦截、设置页路由与 macOS 安装包。
+- 结果：通过。`npm run build` 与 `git diff --check` 均通过；无已应用模型时入口逻辑改为显示“无法进行正则转换”应用内错误弹窗，弹窗提供“前往设置”并调用 `Settings` 路由。按钮不再渲染“需大模型”常驻注释。
+- 打包：`npm run tauri:build` 成功生成并验证非空的 `.app` 与 ARM64 DMG；已使用 `open -n` 启动最新 `.app`（进程 PID 20414）。Rust 仅报告既有未使用类型警告。
+- 浏览器自动化：首次连接 Chrome 时被系统远程调试授权拦截，尚未完成可视化点击复核；需要在 Chrome 授权后补测。
+
+## 2026-09-02 检测联动点击锁定烟测
+
+- 范围：检测卡片 hover 联动、点击后 2 秒锁定，以及取消脱敏按钮的事件隔离。
+- 结果：静态行为检查通过。hover 仅即时定位和高亮，不再创建计时锁；点击检测卡片才设置 2 秒高亮与定位锁，锁定期间其他 hover 不会改变焦点。取消脱敏按钮使用事件隔离，不会意外触发卡片锁定。Chrome 自动化仍等待远程调试授权后补做可视化点击复核。
+- 打包：`npm run build`、`git diff --check` 通过；`npm run tauri:build` 已重新生成并验证非空 ARM64 DMG，且以新实例启动最新 `.app`（进程 PID 22175）。Rust 仅报告既有未使用类型警告。
+
+## 2026-09-02 正则转换精确匹配兜底烟测
+
+- 范围：模型未返回有效 JSON 候选时的关键词/姓名转换兜底，以及候选正则可执行性。
+- 结果：通过。`npm run build` 与 `git diff --check` 通过；以“上海市徐汇区漕溪北路 100 弄 5 号 602 室”验证本地转义后的候选可由 JavaScript `RegExp` 精确匹配原值。兜底候选显式标为“本地精确匹配候选”，并保持人工勾选保存。
+- 打包：`npm run tauri:build` 重新生成并验证非空 ARM64 DMG；最新 `.app` 已作为新实例启动（进程 PID 23753）。Rust 仅报告既有未使用类型警告。
+
+## 2026-09-02 敏感字段紧凑视口布局烟测
+
+- 范围：敏感字段页标题区、规则工作区及右侧规则列表的可视高度。
+- 结果：通过。标题上方留白从最高 64px 压缩为最高 32px，标题和说明间距同步收紧；规则列表最大高度从 `min(66vh, 760px)` 调整为 `min(54vh, 650px)`，长内容继续在卡片内部滚动，页面底部不会再被列表卡片撑出视口。
+- 打包：`npm run build`、`git diff --check` 通过；`npm run tauri:build` 成功生成非空 ARM64 DMG（9,328,454 bytes），并已启动最新 `.app`（进程 PID 24966）。Rust 仅报告既有未使用类型警告。
+
+## 2026-09-02 正则转换结构化兜底烟测
+
+- 范围：已登记 Qwen2.5 0.5B GGUF 的隔离正则转换、地址关键词的本地结构化候选。
+- 结果：模型实测未生成 JSON，输出无关训练语料；command 因此不会返回或保存该结果。地址样例“88 号院 3 号楼 1201 室”“100 弄 5 号 602 室”“T3 栋 18 层”分别生成受限数字与可变空白的 JavaScript 正则，并对不同虚构门牌/楼栋/房间号样例匹配通过。候选仍必须由用户勾选确认后保存。
+- 打包：`npm run build`、`cargo check --manifest-path src-tauri/Cargo.toml` 与 `git diff --check` 通过；`npm run tauri:build` 重新生成非空 ARM64 DMG（9,328,958 bytes），最新 `.app` 已作为新实例启动（进程 PID 33340）。Rust 仅报告既有未使用类型警告。
+
+## 2026-09-02 高敏默认规则精简烟测
+
+- 范围：默认规则目录、旧版本内置规则迁移与脱敏页快速检测基线。
+- 结果：通过。默认规则仅保留手机号、固定电话、身份证、银行卡、护照、港澳通行证和统一社会信用代码。以虚构旧缓存验证，旧内置“邮箱”被从持久化规则中清除；高敏“手机号”和自定义“合同编号”均被保留。快速检测基线已移除邮箱、金额、地址和姓名。
+- 打包：`npm run build`、`git diff --check` 与 `npm run tauri:build` 通过；重新生成非空 ARM64 DMG（9,327,129 bytes），最新 `.app` 已作为新实例启动（进程 PID 35066）。Rust 仅报告既有未使用类型警告。

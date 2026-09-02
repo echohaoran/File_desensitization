@@ -15,6 +15,7 @@ export const registerLocalModel = (request) => invokeDesktop('register_local_mod
 export const unregisterModel = (request) => invokeDesktop('unregister_model', { request })
 export const downloadModel = (request) => invokeDesktop('download_model', { request })
 export const aiDetectCandidates = (request) => invokeDesktop('ai_detect_candidates', { request })
+export const aiConvertRulesToRegex = (request) => invokeDesktop('ai_convert_rules_to_regex', { request })
 export const createTask = (request) => invokeDesktop('create_task', { request })
 export const getTask = (taskId) => invokeDesktop('get_task', { taskId })
 export const updateTask = (request) => invokeDesktop('update_task', { request })

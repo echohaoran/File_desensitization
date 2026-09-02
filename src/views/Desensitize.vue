@@ -103,7 +103,7 @@
           </div>
           <div class="panel__body" ref="detectionScroll">
             <div class="detect-list">
-              <div v-for="item in detections" :key="item.id" class="detect-item" :data-detection-id="item.id" :class="{ 'is-linked-hover': hoverDetectionId === item.id }" @mouseenter="setHoverDetection(item.id)" @mouseleave="hoverDetectionId = null">
+              <div v-for="item in detections" :key="item.id" class="detect-item" :data-detection-id="item.id" :class="{ 'is-linked-hover': hoverDetectionId === item.id }" @mouseenter="setHoverDetection(item.id)" @mouseleave="clearHoverDetection" @click="lockHoverDetection(item.id)">
                 <div class="detect-item__main">
                   <div class="detect-item__info">
                     <div class="detect-item__header">
@@ -112,7 +112,7 @@
                     </div>
                     <div class="detect-item__value">{{ item.placeholder }}</div>
                   </div>
-                  <button class="detect-item__delete" @click="toggleDetection(item)" title="取消脱敏" aria-label="取消脱敏">
+                  <button class="detect-item__delete" @click.stop="toggleDetection(item)" title="取消脱敏" aria-label="取消脱敏">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
@@ -168,7 +168,7 @@
               <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
                   <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
               <table v-else class="document-preview__table">
@@ -177,7 +177,7 @@
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
                         <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
                   </tr>
@@ -188,11 +188,11 @@
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
             <article class="comparison-pane comparison-pane--original">
               <header class="comparison-pane__head"><span>原始文件</span><small>只读对照</small></header>
-              <pre class="comparison-pane__body" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
             </article>
             <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
               <header class="comparison-pane__head"><span>脱敏文件</span><small>仅可选区操作</small></header>
-              <pre class="comparison-pane__body" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="hoverDetectionId = null">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
             </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
@@ -280,11 +280,8 @@ import { requestAppConfirm } from '@/utils/appConfirm'
 const PATTERNS = [
   { id: 'phone', label: '手机号', regex: /1[3-9]\d{9}/g },
   { id: 'idcard', label: '身份证', regex: /\d{17}[\dXx]/g },
-  { id: 'email', label: '邮箱', regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
   { id: 'bankcard', label: '银行卡', regex: /\d{16,19}/g },
-  { id: 'amount', label: '金额', regex: /(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?\s*(?:万元|元|美元|USD|CNY|￥|\$)/g },
-  { id: 'address', label: '地址', regex: /(?:北京市|天津市|上海市|重庆市|[\u4e00-\u9fa5]{2,8}省[\u4e00-\u9fa5]{2,8}市)(?:[\u4e00-\u9fa5]{2,12}(?:区|县|镇|街道)[\u4e00-\u9fa5A-Za-z0-9#\-]{0,30}(?:号|室|栋|单元|楼|路|街|巷|道)[\u4e00-\u9fa5A-Za-z0-9#\-]{0,12})/g },
-  { id: 'name', label: '姓名', regex: /[\u4e00-\u9fa5]{2,4}(?=(?:先生|女士|总|经理|董事|合伙人|投资|基金|LP|GP))/g }
+  { id: 'unified_social_credit_code', label: '统一社会信用代码', regex: /[0-9A-HJ-NPQRTUWXY]{18}/g }
 ]
 
 const TYPE_NAMES = {
@@ -307,6 +304,8 @@ export default {
       isDragging: false,
       uploadCollapsed: false,
       hoverDetectionId: null,
+      hoverLockUntil: 0,
+      hoverLockTimer: null,
       aiDetecting: false,
       aiProgress: 0,
       aiResultModal: null,
@@ -400,6 +399,7 @@ export default {
   },
   methods: {
     setHoverDetection(id) {
+      if (this.hoverLockUntil > Date.now()) return
       this.hoverDetectionId = id
       this.$nextTick(() => {
         const targets = this.$el.querySelectorAll(`[data-detection-id="${id}"]`)
@@ -407,6 +407,18 @@ export default {
         const card = this.$el.querySelector(`.detect-item[data-detection-id="${id}"]`)
         if (card && !this.isElementVisible(card)) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
       })
+    },
+    lockHoverDetection(id) {
+      this.hoverDetectionId = id
+      this.hoverLockUntil = Date.now() + 2000
+      window.clearTimeout(this.hoverLockTimer)
+      this.hoverLockTimer = window.setTimeout(() => {
+        this.hoverLockUntil = 0
+        this.hoverDetectionId = null
+      }, 2000)
+    },
+    clearHoverDetection() {
+      if (Date.now() >= this.hoverLockUntil) this.hoverDetectionId = null
     },
     isElementVisible(element) {
       const rect = element.getBoundingClientRect(); const parent = element.closest('.panel__body, .comparison-pane__body')
@@ -1077,6 +1089,11 @@ export default {
     finally { window.clearInterval(timer); this.aiProgress = 100; window.setTimeout(() => { this.aiDetecting = false; this.aiProgress = 0 }, 650) }
     },
     toggleDetection(item) {
+      if (this.hoverDetectionId === item.id) {
+        window.clearTimeout(this.hoverLockTimer)
+        this.hoverLockUntil = 0
+        this.hoverDetectionId = null
+      }
       // 从检测列表中移除该项
       this.detections = this.detections.filter(d => d.id !== item.id)
       
@@ -1415,6 +1432,7 @@ export default {
   beforeUnmount() {
     document.removeEventListener('mouseup', this.selectionListener)
     document.removeEventListener('mousedown', this.selectionDismissListener)
+    window.clearTimeout(this.hoverLockTimer)
   }
 }
 </script>
