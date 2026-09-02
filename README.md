@@ -6,12 +6,13 @@
 
 ## 下载与发布
 
-版本 tag 使用 `v*` 格式时，GitHub Actions 会自动构建并发布：
+版本 tag 使用 `v*` 格式时，会触发以下自动打包：
 
-- macOS Apple Silicon：DMG
-- Windows x64：MSI
+- **GitHub Actions**：发布 macOS Apple Silicon DMG、Windows x64 MSI 和 Linux x64 DEB/AppImage，并生成应用内更新清单。
+- **CNB**：使用 `.cnb.yml` 自动构建 Linux x64 DEB/AppImage，并作为同名 CNB Release 附件发布。
+- **Gitee Go**：使用 `.gitee-ci.yml` 自动构建 Linux x64 DEB/AppImage，并作为流水线制品保存；需在 Gitee Go 控制台启用仓库 YAML 流水线。
 
-构建产物会上传到对应的 GitHub Release。源码仓库：[echohaoran/File_desensitization](https://github.com/echohaoran/File_desensitization)。
+Gitee 与 CNB 如需独立构建 macOS/Windows 包，必须在各自控制台绑定对应平台构建节点，并配置 Tauri 签名密钥；仓库不会保存任何私钥。源码仓库：[echohaoran/File_desensitization](https://github.com/echohaoran/File_desensitization)。
 
 ---
 
