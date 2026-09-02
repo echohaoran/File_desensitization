@@ -771,3 +771,9 @@
 - 新增 `.gitee-ci.yml`：标签流水线构建 Linux x64 Tauri DEB/AppImage 并保留为制品；Gitee Go 的 YAML 流水线和跨平台节点仍需在平台控制台启用。
 - README 说明 GitHub、CNB、Gitee 的发布范围，并明确平台签名密钥仅能存放于各 CI 的密钥配置中。
 - 发布版本提升至 `0.1.16`，对应标签 `v0.1.16` 用于同时触发 GitHub、CNB 与 Gitee 的标签流水线。
+
+## 2026-09-02 撤销 CNB 与 Gitee 自动打包
+
+- 按用户要求删除 `.cnb.yml` 与 `.gitee-ci.yml`，后续标签只通过 GitHub Actions 打包和发布。
+- README 改为仅说明 GitHub 的多平台桌面发布；移除 CNB Release 待办，并在决策记录中说明收敛原因。
+- 已核验 `v0.1.16` GitHub Actions 完成 macOS ARM64、Windows x64、Linux x64 构建及签名发布；CNB 的 `v0.1.16` 空 Release 不作为下载渠道。

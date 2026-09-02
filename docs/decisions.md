@@ -396,3 +396,8 @@ GGUF 文件不自带 Candle 所需的 tokenizer 资源。为避免“已登记�
 - 决定：GitHub Release 仅构建 macOS ARM64、Windows x64 与 Linux x64；不再构建或发布 macOS Intel DMG。
 - 原因：macOS Intel runner 长时间排队会阻塞依赖全部矩阵的 Release 发布，而当前交付范围不需要 Intel 安装包。
 - 影响：签名 `latest.json` 移除 `darwin-x86_64`，Intel macOS 客户端不再接收应用内更新。
+## 2026-09-02：桌面发布统一使用 GitHub Actions
+
+- 决定：撤销 CNB 与 Gitee Go 的桌面打包配置；未来 `v*` 标签仅触发 GitHub Actions。
+- 原因：GitHub 已验证可生成并发布 macOS ARM64、Windows x64、Linux x64 安装包、签名文件与更新清单；额外平台会增加重复构建和运维成本，且 Gitee Go 需要单独开通服务。
+- 兼容：既有 `v0.1.16` 的 GitHub Release 保持有效；CNB 的同名空 Release 不作为发布渠道。
