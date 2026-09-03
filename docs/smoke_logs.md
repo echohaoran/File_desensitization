@@ -452,3 +452,9 @@
 
 - 范围：新增 CNB/Gitee 标签构建配置后，检查桌面版本字段与前端生产构建。
 - 结果：通过。`npm run build`、`.cnb.yml`/`.gitee-ci.yml` YAML 解析、版本字段一致性与 `git diff --check` 均通过；使用新标签 `v0.1.16` 触发三处远程构建。
+
+## 2026-09-03 AI 功能统一门控烟测
+
+- 范围：脱敏页 AI 全文检测、敏感字段页正则转换、正则转换弹窗执行按钮，以及 AI 开关与已应用模型状态的即时刷新。
+- 结果：通过。ego-browser 实测 AI 关闭时入口状态为 `ai-disabled`、按钮禁用且 hover 显示“AI 功能未开启，请前往设置开启。”；AI 开启但无模型时状态为 `model-missing`、按钮禁用且 hover 显示下载应用模型提示，点击禁用入口不会打开转换窗口。模拟桌面运行时且模型已应用后，顶部正则转换和弹窗“开始转换”恢复可用。
+- 构建：`npm run build` 与 Rust release 编译通过。`npm run tauri:build` 生成最新 `.app`（21,256,384 bytes）和 ARM64 DMG（9,330,911 bytes）并启动应用（PID 51958）；命令仅在 updater 签名阶段因本机未注入 `TAURI_SIGNING_PRIVATE_KEY` 以退出码 1 结束，不影响本地包验收。

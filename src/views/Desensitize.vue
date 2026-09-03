@@ -90,10 +90,9 @@
             <h3>检测结果</h3>
             <span class="panel__count">{{ detections.length }} 项</span>
           </div>
-          <div class="ai-action" v-if="aiEnabled">
-            <button class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !activeModelPath || !rawOriginalText" @click="requestAiDetection">{{ aiDetecting ? 'AI 脱敏检测中…' : 'AI 智能脱敏全文' }}</button>
+          <div class="ai-action">
+            <AiFeatureButton block button-class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !rawOriginalText" @click="requestAiDetection">{{ aiDetecting ? 'AI 脱敏检测中…' : 'AI 智能脱敏全文' }}</AiFeatureButton>
             <div v-if="aiDetecting" class="ai-progress"><span :style="{ width: `${aiProgress}%` }"></span></div>
-            <small v-if="!activeModelPath">请先在设置中应用一个 GGUF 模型</small>
           </div>
           <div class="panel__stats" v-if="detections.length > 0">
             <div class="stat-item" v-for="(count, type) in detectionsByType" :key="type">
@@ -274,6 +273,8 @@ import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
 import { saveHistoryFile } from '@/utils/historyFiles'
 import { isTauriRuntime, redactApprovedText, aiDetectCandidates } from '@/api/tauriBridge'
 import { requestAppConfirm } from '@/utils/appConfirm'
+import AiFeatureButton from '@/components/AiFeatureButton.vue'
+import { AI_AVAILABILITY_EVENT, readAiAvailability } from '@/utils/aiAvailability'
 
 // Worker is configured via the import above
 
@@ -292,6 +293,7 @@ const TYPE_NAMES = {
 
 export default {
   name: 'Desensitize',
+  components: { AiFeatureButton },
   data() {
     return {
       step: 0,
@@ -452,6 +454,8 @@ export default {
       return requestAppConfirm({ title: '确认上传文件', message: `即将读取并检测以下文件：\n${file.name} · ${this.formatSize(file.size)}\n确认后才会开始本地解析。`, confirmText: '确认上传' })
     },
     async requestAiDetection() {
+      this.syncAiAvailability()
+      if (!this.aiEnabled || !this.activeModelPath) return
       const accepted = await requestAppConfirm({ title: '开始 AI 全文检测', message: `模型将基于敏感库检测“${this.file?.name || '当前文档'}”，结果仍需人工确认。`, confirmText: '开始检测' })
       if (accepted) await this.runAiDetection()
     },
@@ -1416,6 +1420,11 @@ export default {
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = ''
       }
+    },
+    syncAiAvailability() {
+      const availability = readAiAvailability({ requireDesktop: false })
+      this.aiEnabled = availability.enabled
+      this.activeModelPath = availability.modelPath
     }
   },
   mounted() {
@@ -1428,10 +1437,16 @@ export default {
     }
     document.addEventListener('mouseup', this.selectionListener)
     document.addEventListener('mousedown', this.selectionDismissListener)
+    this.aiAvailabilityListener = () => this.syncAiAvailability()
+    window.addEventListener(AI_AVAILABILITY_EVENT, this.aiAvailabilityListener)
+    window.addEventListener('storage', this.aiAvailabilityListener)
+    this.syncAiAvailability()
   },
   beforeUnmount() {
     document.removeEventListener('mouseup', this.selectionListener)
     document.removeEventListener('mousedown', this.selectionDismissListener)
+    window.removeEventListener(AI_AVAILABILITY_EVENT, this.aiAvailabilityListener)
+    window.removeEventListener('storage', this.aiAvailabilityListener)
     window.clearTimeout(this.hoverLockTimer)
   }
 }
