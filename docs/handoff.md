@@ -1,5 +1,18 @@
 # 开发交接记录
 
+## 2026-09-07：当前交接快照（优先于以下历史记录）
+
+- 主架构：Vue 3 + Rust + Tauri；当前版本 `0.1.17 Beta`。
+- 接手时工作区干净，分支 `main`，HEAD 和 `v0.1.17` 均指向 `3af8f88`；功能提交为 `fd32ec7`。分支与标签已推送 GitHub。
+- `origin` 有多个推送地址，且 fetch 地址并非 GitHub；本地 `origin/main` 停在 `aaa8b57` 不代表 GitHub 未更新。发布推送使用显式 GitHub 地址，保留现有远端配置。
+- 已完成：三个 AI 执行入口统一检查 AI 开关与已应用模型；条件不足时置灰禁用，通过 hover/键盘聚焦引导设置。核心文件为 `src/components/AiFeatureButton.vue`、`src/utils/aiAvailability.js` 和三个相关视图。
+- 已验证：前端构建、Rust 检查、浏览器禁用交互；可用状态的浏览器测试使用模拟桌面运行时，不代表实际模型推理验收。
+- 本轮远端核验：GitHub Actions run `34000518320` 已 completed/success；`v0.1.17` Release 非草稿，包含 macOS ARM64 DMG、Windows x64 MSI、Linux DEB/AppImage、更新归档、签名及 `latest.json`。
+- Release：https://github.com/echohaoran/File_desensitization/releases/tag/v0.1.17
+- 本地上轮实际打包版本仍为 `0.1.16`，签名阶段缺少私钥；不要把该本地产物称为 `0.1.17` 或已签名更新包。正式测试请使用上述 Release。
+- 待验证：各平台安装/更新及真实模型推理；尚无本次 Release 的用户真机反馈。当前无待实施功能请求。
+- 本轮仅整理文档，不修改业务代码、不创建新标签或触发打包。历史记录中的未来时态、旧矩阵和未完成状态以本节为准。
+
 ## 2026-09-06：v0.1.17 AI 门控发布
 
 - `fd32ec7` 已完成 AI 功能入口统一门控：AI 关闭或未应用模型时，AI 全文检测、正则转换及转换执行按钮置灰禁用，并提供对应 hover/键盘聚焦提示。
