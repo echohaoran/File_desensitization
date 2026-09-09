@@ -1,6 +1,6 @@
 {
   "name": "desens-vue",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "本地优先的文件脱敏与还原工具",
   "author": "DESENS",
   "private": true,
@@ -19,7 +19,7 @@
     "desktop:pack": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder --dir",
     "desktop:dist": "npm run build:desktop:frontend && npm run build:desktop:backend && electron-builder",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "node scripts/build-tauri.mjs"
   },
   "dependencies": {
     "@tauri-apps/plugin-process": "^2.3.1",

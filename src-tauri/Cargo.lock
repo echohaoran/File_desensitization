@@ -954,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "desens-tauri"
-version = "0.1.17"
+version = "0.1.18"
 dependencies = [
  "calamine",
  "candle-core",

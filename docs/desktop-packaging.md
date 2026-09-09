@@ -1,4 +1,14 @@
-# Electron + PyInstaller 桌面打包（历史方案）
+# 桌面打包
+
+## 当前 Tauri 签名流程（2026-09-09）
+
+运行 `npm run tauri:build`：CI 优先使用已有 `TAURI_SIGNING_PRIVATE_KEY`，也支持 `TAURI_SIGNING_PRIVATE_KEY_PATH`；本地未显式配置时自动读取用户目录 `.tauri/desens-updater.key`。本地密钥权限须为 600，配对 `.pub` 必须与应用配置公钥匹配。加密密钥密码由 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 提供；无密码本地密钥自动使用空密码。
+
+密钥不存在时构建提前返回明确错误。应恢复与已发布应用匹配的原密钥，不应直接生成替代密钥或改动更新公钥。密钥内容仅传给构建子进程，不写入仓库或输出到日志。
+
+更新包生成后，可运行 `node scripts/verify-updater-signature.mjs <更新包路径>`，使用应用内公钥验证真实归档及其 `.sig`。macOS 更新包为 `.app.tar.gz`；DMG 为手动安装包。GitHub 仍通过标签构建三平台安装包。
+
+## 以下为 Electron + PyInstaller 历史方案
 
 更新时间：2026-08-17
 

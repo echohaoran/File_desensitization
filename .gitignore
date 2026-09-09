@@ -41,6 +41,11 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Private signing materials must remain outside version control.
+*.key
+*.p12
+*.pfx
+
 # Temporary files
 *.tmp
 *.temp
