@@ -59,13 +59,39 @@ export function replaceSensitiveRules(rules, deletedBuiltinIds = []) {
 export function deleteSensitiveRule(rule) { if (rule.builtIn) { const removed = deletedBuiltIns(); removed.add(rule.id); localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...removed])) } }
 export function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
 
+const ALGORITHMS = {
+  bank_card: { pattern: '\\d{16,19}', validate(value) {
+    return [...value].reverse().reduce((sum, digit, i) => { let n = Number(digit) * (i % 2 ? 2 : 1); return sum + (n > 9 ? n - 9 : n) }, 0) % 10 === 0
+  } },
+  id_card: { pattern: '\\d{17}[\\dXx]', validate(value) {
+    if (value.startsWith('00')) return false
+    const year = Number(value.slice(6, 10)), month = Number(value.slice(10, 12)), day = Number(value.slice(12, 14))
+    const date = new Date(0); date.setUTCFullYear(year, month - 1, day)
+    if (year < 1 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return false
+    const weights = [7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2]
+    return '10X98765432'[weights.reduce((sum,w,i) => sum + w * Number(value[i]), 0) % 11] === value[17].toUpperCase()
+  } },
+  unified_social_credit_code: { pattern: '[0-9A-HJ-NPQRTUWXY]{18}', validate(value) {
+    const chars = '0123456789ABCDEFGHJKLMNPQRTUWXY'
+    if ([...value].some(char => !chars.includes(char))) return false
+    const weights = [1,3,9,27,19,26,16,17,20,29,25,13,8,24,10,30,28]
+    return chars[(31 - weights.reduce((sum,w,i) => sum + w * chars.indexOf(value[i]), 0) % 31) % 31] === value[17]
+  } }
+}
+
 export function detectWithRules(text, rules) {
   const results = []
-  rules.filter(rule => rule.enabled && rule.value && ['regex', 'name', 'keyword'].includes(rule.kind)).forEach(rule => {
+  rules.filter(rule => rule.enabled && rule.value).forEach(rule => {
     try {
-      const regex = new RegExp(rule.kind === 'regex' ? rule.value : escapeRegExp(rule.value), 'g')
+      const algorithm = rule.kind === 'algorithm' ? ALGORITHMS[rule.id] : null
+      if (!algorithm && !['regex', 'name', 'keyword'].includes(rule.kind)) return
+      const regex = new RegExp(algorithm ? algorithm.pattern : rule.kind === 'regex' ? rule.value : escapeRegExp(rule.value), 'g')
       let match
-      while ((match = regex.exec(text)) !== null) { if (!match[0]) break; results.push({ type: rule.id, label: rule.name, value: match[0], start: match.index, end: match.index + match[0].length, source: 'local_rule' }) }
+      while ((match = regex.exec(text)) !== null) {
+        if (!match[0]) break
+        if (algorithm && (/[0-9A-Za-z]/.test(text[match.index - 1] || '') || /[0-9A-Za-z]/.test(text[regex.lastIndex] || '') || !algorithm.validate(match[0]))) continue
+        results.push({ type: rule.id, label: rule.name, value: match[0], start: match.index, end: match.index + match[0].length, source: 'local_rule' })
+      }
     } catch (_) { /* 管理面板会阻止保存无效正则 */ }
   })
   return results

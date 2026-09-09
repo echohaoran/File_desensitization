@@ -641,7 +641,7 @@ async def redact_file_with_conversion(
 
 
 @app.post("/api/detect")
-async def detect_sensitive_content(file: UploadFile = File(...)):
+async def detect_sensitive_content(file: UploadFile = File(...), custom_rules: str = Form("[]")):
     """
     检测文件中的敏感信息（不执行脱敏）
     
@@ -681,7 +681,7 @@ async def detect_sensitive_content(file: UploadFile = File(...)):
             )
         
         # 检测敏感信息
-        detections = desensitization_service.detect_sensitive_info(text_content)
+        detections = desensitization_service.detect_sensitive_info(text_content, parse_custom_rules(custom_rules))
         
         return {
             "success": True,

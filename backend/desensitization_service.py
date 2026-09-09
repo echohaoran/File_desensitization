@@ -284,19 +284,7 @@ class DesensitizationService:
         """
         detections = []
         
-        # 1. 使用正则表达式检测
-        regex_detections = self._detect_with_regex(text)
-        detections.extend(regex_detections)
-        
-        # 2. 使用 Microsoft Presidio 检测（英文 PII）
-        presidio_detections = self._detect_with_presidio(text)
-        detections.extend(presidio_detections)
-        
-        # 3. 使用百家姓库检测中文姓名
-        name_detections = self._detect_chinese_names(text)
-        detections.extend(name_detections)
-
-        # 4. 应用桌面客户端传入的本地规则（姓名、关键词或正则）
+        # Client configuration is authoritative, including an empty rule list.
         detections.extend(self._detect_with_custom_rules(text, custom_rules or []))
         
         # 去重和合并
@@ -314,19 +302,30 @@ class DesensitizationService:
     def _detect_with_custom_rules(self, text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """检测用户在本机规则面板中维护的敏感字段。"""
         detections = []
-        for rule in rules[:100]:
+        for rule in rules:
             if not isinstance(rule, dict) or not rule.get("enabled", True):
                 continue
             value = str(rule.get("value", "")).strip()
-            if not value or len(value) > 500:
+            if not value or len(value) > 1200:
                 continue
-            rule_id = re.sub(r'[^A-Za-z0-9_]', '_', str(rule.get("id", "custom")))[:40] or "custom"
+            rule_id = str(rule.get("id", ""))
+            if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', rule_id):
+                continue
+            kind = rule.get("kind")
+            algorithm = kind == "algorithm" and rule_id in {"id_card", "bank_card", "unified_social_credit_code"}
+            if not algorithm and kind not in {"regex", "keyword", "name"}:
+                continue
             try:
-                pattern = re.compile(value if rule.get("kind") == "regex" else re.escape(value))
+                algorithm_patterns = {"bank_card": r'\d{16,19}', "id_card": r'\d{17}[\dXx]', "unified_social_credit_code": r'[0-9A-HJ-NPQRTUWXY]{18}'}
+                pattern = re.compile(algorithm_patterns[rule_id]) if algorithm else re.compile(value if kind == "regex" else re.escape(value))
+                if pattern is None:
+                    continue
             except re.error:
                 continue
             for match in pattern.finditer(text):
                 if not match.group():
+                    continue
+                if algorithm and (re.search(r'[0-9A-Za-z]', text[max(0, match.start()-1):match.start()]) or re.match(r'[0-9A-Za-z]', text[match.end():match.end()+1]) or not self._is_valid_sensitive_value(rule_id, match.group())):
                     continue
                 detections.append({
                     "type": rule_id,

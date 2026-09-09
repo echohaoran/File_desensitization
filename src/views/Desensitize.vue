@@ -279,13 +279,6 @@ import { AI_AVAILABILITY_EVENT, readAiAvailability } from '@/utils/aiAvailabilit
 
 // Worker is configured via the import above
 
-const PATTERNS = [
-  { id: 'phone', label: '手机号', regex: /1[3-9]\d{9}/g },
-  { id: 'idcard', label: '身份证', regex: /\d{17}[\dXx]/g },
-  { id: 'bankcard', label: '银行卡', regex: /\d{16,19}/g },
-  { id: 'unified_social_credit_code', label: '统一社会信用代码', regex: /[0-9A-HJ-NPQRTUWXY]{18}/g }
-]
-
 const TYPE_NAMES = {
   phone: '手机号', idcard: '身份证', email: '邮箱', bankcard: '银行卡',
   amount: '金额', name: '姓名', ip_address: 'IP地址', ipv6_address: 'IPv6地址', mac_address: 'MAC地址',
@@ -794,13 +787,6 @@ export default {
       const text = this.originalText
       const raw = []
       
-      PATTERNS.forEach(p => {
-        let m
-        p.regex.lastIndex = 0
-        while ((m = p.regex.exec(text)) !== null) {
-          raw.push({ type: p.id, label: p.label, value: m[0], start: m.index, end: m.index + m[0].length })
-        }
-      })
       const rules = loadSensitiveRules()
       raw.push(...detectWithRules(text, rules).map(item => ({
         ...item,
@@ -837,7 +823,7 @@ export default {
         this.image.width = img.naturalWidth
         this.image.height = img.naturalHeight
         
-        this.simulateImageDetections()
+        this.image.rects = []
         this.step = 2
         
         this.$nextTick(() => {
@@ -845,29 +831,6 @@ export default {
         })
       }
       img.src = dataUrl
-    },
-    simulateImageDetections() {
-      const w = this.image.width
-      const h = this.image.height
-      const rects = []
-      const count = Math.min(4, Math.max(2, Math.floor((w * h) / 200000)))
-      
-      for (let i = 0; i < count; i++) {
-        const rw = Math.max(80, Math.min(240, w * 0.22))
-        const rh = Math.max(24, Math.min(80, h * 0.08))
-        const x = Math.floor((w - rw) * (0.12 + i * 0.22))
-        const y = Math.floor((h - rh) * (0.25 + (i % 2) * 0.35))
-        
-        rects.push({
-          id: this.nextId++,
-          x, y, w: rw, h: rh,
-          placeholder: '掩码-区域-' + String(i + 1).padStart(3, '0'),
-          active: true,
-          manual: false
-        })
-      }
-      
-      this.image.rects = rects
     },
     drawImageCanvas() {
       const canvas = this.$refs.canvas

@@ -61,9 +61,10 @@ class DesensitizationAPI {
    * @param {File} file - 要检测的文件
    * @returns {Promise<Object>} 检测结果
    */
-  static async detectSensitiveInfo(file) {
+  static async detectSensitiveInfo(file, rules = []) {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('custom_rules', JSON.stringify(rules))
 
     const response = await fetch(`${API_BASE_URL}/api/detect`, {
       method: 'POST',
