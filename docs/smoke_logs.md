@@ -1,5 +1,12 @@
 # 烟测日志
 
+## 2026-09-09：语言范围调整为中英法日德韩
+
+- `npm run check:i18n` 通过：578 键 × 6 语言，包含旧 ru/ar 偏好迁移及精确语言集合校验；生产构建与 diff 检查通过。
+- ego-browser 确认菜单仅含简体中文、English、Français、日本語、Deutsch、한국어；日德韩分别访问五个功能页面，无裸露翻译键，页面 lang 正确且方向为 LTR。
+- 浏览器将旧 ar 偏好迁移至当前系统中文，重新加载后保存 zh 并恢复 LTR；日语设置页截图完成视觉检查。
+- Tauri 应用及 DMG 已重新生成，执行 `open -n` 启动最新应用；命令仅在更新器签名阶段因缺少 `TAURI_SIGNING_PRIVATE_KEY` 返回 1，尚未生成有效更新签名。
+
 ## 2026-09-09：五语国际化验证
 
 - 环境：macOS、Vite 5190、ego-browser；只上传 `/private/tmp/desens-i18n-sample.txt` 虚构文本，测试规则仅存于独立测试浏览器来源。

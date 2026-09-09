@@ -2,8 +2,17 @@ import assert from 'node:assert/strict'
 import { readdir, readFile } from 'node:fs/promises'
 import { baseCompile } from '@intlify/message-compiler'
 import { parse, compileTemplate } from '@vue/compiler-sfc'
+import { languages, resolveLocale } from '../src/i18n/locales.js'
 
-const locales = ['zh', 'en', 'fr', 'ru', 'ar']
+const locales = ['zh', 'en', 'fr', 'ja', 'de', 'ko']
+assert.deepEqual(languages.map(item => item.code), locales)
+assert.ok(languages.every(item => item.dir === 'ltr'))
+assert.equal(resolveLocale('ar', ['zh-CN']), 'zh')
+assert.equal(resolveLocale('ru', ['ru-RU']), 'en')
+assert.equal(resolveLocale('ar', ['ja-JP']), 'ja')
+assert.equal(resolveLocale('ko', ['en-US']), 'ko')
+assert.equal(resolveLocale(null, ['de-DE']), 'de')
+assert.equal(resolveLocale(null, ['ko-KR']), 'ko')
 const flattened = Object.fromEntries(locales.map(locale => [locale, {}]))
 function flatten(value, prefix = '', result = {}) {
   for (const [key, child] of Object.entries(value)) {
@@ -16,6 +25,7 @@ function flatten(value, prefix = '', result = {}) {
 for (const filename of await readdir(new URL('../src/i18n/modules/', import.meta.url))) {
   if (!filename.endsWith('.js')) continue
   const { default: module } = await import(new URL(`../src/i18n/modules/${filename}`, import.meta.url))
+  assert.deepEqual(Object.keys(module).sort(), [...locales].sort(), `${filename}: unexpected locale set`)
   for (const locale of locales) Object.assign(flattened[locale], flatten(module[locale]))
 }
 const keys = Object.keys(flattened.zh).sort()

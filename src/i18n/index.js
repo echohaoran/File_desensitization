@@ -1,12 +1,7 @@
 import { createI18n } from 'vue-i18n'
+import { languages, resolveLocale } from './locales'
 
-export const languages = [
-  { code: 'zh', name: '简体中文', tag: 'zh-CN', dir: 'ltr' },
-  { code: 'en', name: 'English', tag: 'en-US', dir: 'ltr' },
-  { code: 'fr', name: 'Français', tag: 'fr-FR', dir: 'ltr' },
-  { code: 'ru', name: 'Русский', tag: 'ru-RU', dir: 'ltr' },
-  { code: 'ar', name: 'العربية', tag: 'ar', dir: 'rtl' }
-]
+export { languages }
 const messages = Object.fromEntries(languages.map(({ code }) => [code, {}]))
 const modules = import.meta.glob('./modules/*.js', { eager: true, import: 'default' })
 for (const module of Object.values(modules)) {
@@ -15,9 +10,8 @@ for (const module of Object.values(modules)) {
 function initialLocale() {
   let saved
   try { saved = localStorage.getItem('desens_locale') } catch { /* restricted storage */ }
-  if (languages.some(({ code }) => code === saved)) return saved
   const preferred = typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language]
-  return preferred.map(value => value?.split('-')[0]).find(code => languages.some(item => item.code === code)) || 'en'
+  return resolveLocale(saved, preferred)
 }
 export const i18n = createI18n({ legacy: false, globalInjection: true, locale: initialLocale(), fallbackLocale: 'en', messages })
 export const t = (key, params) => i18n.global.t(key, params || {})
