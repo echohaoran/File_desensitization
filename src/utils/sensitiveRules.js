@@ -1,6 +1,8 @@
 const STORAGE_KEY = 'desens_sensitive_rules'
 const DELETED_BUILT_INS_KEY = 'desens_deleted_builtin_rules'
 export const SENSITIVE_RULES_EXPORT_SCHEMA_VERSION = 1
+const FIXED_RULE_IDS = new Set(['phone', 'id_card', 'bank_card'])
+export const isFixedRule = rule => FIXED_RULE_IDS.has(rule?.id)
 
 export const DEFAULT_RULES = [
   ['phone', '手机号', 'regex', '1[3-9]\\d{9}', '正则表达式'],
@@ -18,7 +20,7 @@ const RETIRED_BUILT_IN_RULE_IDS = new Set([
 
 export function isRetiredBuiltInRule(rule) { return Boolean(rule?.builtIn && RETIRED_BUILT_IN_RULE_IDS.has(rule.id)) }
 
-function deletedBuiltIns() { try { return new Set(JSON.parse(localStorage.getItem(DELETED_BUILT_INS_KEY) || '[]')) } catch (_) { return new Set() } }
+function deletedBuiltIns() { try { return new Set(JSON.parse(localStorage.getItem(DELETED_BUILT_INS_KEY) || '[]').filter(id => !FIXED_RULE_IDS.has(id))) } catch (_) { return new Set() } }
 
 export function getDeletedBuiltInRuleIds() { return [...deletedBuiltIns()] }
 
@@ -34,9 +36,15 @@ export function loadSensitiveRules() {
   } catch (_) { return DEFAULT_RULES.map(rule => ({ ...rule })) }
 }
 
-export function saveSensitiveRules(rules) { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)) }
+function retainFixedRules(rules) {
+  const existing = loadSensitiveRules()
+  const missing = DEFAULT_RULES.filter(rule => isFixedRule(rule) && !rules.some(item => item.id === rule.id))
+    .map(rule => ({ ...rule, ...existing.find(item => item.id === rule.id) }))
+  return [...rules, ...missing]
+}
+export function saveSensitiveRules(rules) { localStorage.setItem(STORAGE_KEY, JSON.stringify(retainFixedRules(rules))) }
 export function deleteSensitiveRules(ids) {
-  const selected = new Set(ids)
+  const selected = new Set(ids.filter(id => !FIXED_RULE_IDS.has(id)))
   const current = loadSensitiveRules()
   const removed = current.filter(rule => selected.has(rule.id))
   const remaining = current.filter(rule => !selected.has(rule.id))
@@ -53,10 +61,10 @@ export function deleteSensitiveRules(ids) {
   return { rules: remaining, removedCount: removed.length }
 }
 export function replaceSensitiveRules(rules, deletedBuiltinIds = []) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rules))
-  localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...new Set(deletedBuiltinIds)]))
+  saveSensitiveRules(rules)
+  localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...new Set(deletedBuiltinIds)].filter(id => !FIXED_RULE_IDS.has(id))))
 }
-export function deleteSensitiveRule(rule) { if (rule.builtIn) { const removed = deletedBuiltIns(); removed.add(rule.id); localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...removed])) } }
+export function deleteSensitiveRule(rule) { if (rule.builtIn && !isFixedRule(rule)) { const removed = deletedBuiltIns(); removed.add(rule.id); localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...removed])) } }
 export function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
 
 const ALGORITHMS = {

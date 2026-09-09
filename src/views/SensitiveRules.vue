@@ -16,7 +16,8 @@
         <span>{{ $t('batch.selected', { count: formatCount(selectedBatchRules.length) }) }}</span>
         <button class="rules-action-btn" type="button" :disabled="!selectedBatchRules.length" @click="setBatchEnabled(false)">{{ $t('batch.disable') }}</button>
         <button class="rules-action-btn" type="button" :disabled="!selectedBatchRules.length" @click="setBatchEnabled(true)">{{ $t('batch.enable') }}</button>
-        <button class="rules-action-btn batch-delete" type="button" :disabled="!selectedBatchRules.length || batchDeleting" @click="requestBatchDelete">{{ $t('batch.delete') }}</button>
+        <button class="rules-action-btn batch-delete" type="button" :disabled="!selectedDeletableRules.length || batchDeleting" @click="requestBatchDelete">{{ $t('batch.delete') }}</button>
+        <small>{{ $t('batch.fixedHint') }}</small>
         <p v-if="batchError" class="rules-error" role="alert">{{ batchError }}</p>
       </div>
       <section class="rules-list" :aria-label="$t('management.rulesListAria')">
@@ -26,7 +27,7 @@
           <input v-if="batchEditing" class="batch-select" type="checkbox" v-model="batchSelection" :value="rule.id" :aria-label="$t('batch.selectRule', { name: ruleDisplayName(rule) })" />
           <span class="rule-status" role="img" :aria-label="rule.enabled ? $t('management.enabled') : $t('management.disabled')" :title="rule.enabled ? $t('management.enabled') : $t('management.disabled')">{{ rule.enabled ? '🟢' : '🔴' }}</span>
           <div class="rule-item__content"><strong dir="auto">{{ ruleDisplayName(rule) }}</strong><span class="badge">{{ methodName(rule) }}</span><code :dir="rule.kind === 'regex' ? 'ltr' : 'auto'">{{ ruleDisplayValue(rule) }}</code></div>
-          <div class="rule-item__actions"><button class="text-btn" @click="editRule(rule)">{{ $t('management.edit') }}</button><button class="icon-btn" @click="requestRemoveRule(rule)" :aria-label="$t('management.deleteAria', { name: ruleDisplayName(rule) })" :title="$t('management.delete')">×</button></div>
+          <div class="rule-item__actions"><button class="text-btn" @click="editRule(rule)">{{ $t('management.edit') }}</button><span v-if="isFixedRule(rule)" class="badge" :title="$t('batch.fixedHint')">{{ $t('batch.fixed') }}</span><button v-else class="icon-btn" @click="requestRemoveRule(rule)" :aria-label="$t('management.deleteAria', { name: ruleDisplayName(rule) })" :title="$t('management.delete')">×</button></div>
         </article>
       </section>
     </div>
@@ -40,7 +41,7 @@
 
 <script>
 import { t, getLocale } from '@/i18n'
-import { deleteSensitiveRules } from '@/utils/sensitiveRules'
+import { deleteSensitiveRules, isFixedRule } from '@/utils/sensitiveRules'
 import { localizeManagementError } from '@/i18n/modules/management'
 import { aiConvertRulesToRegex, isTauriRuntime } from '@/api/tauriBridge'
 import { DEFAULT_RULES, SENSITIVE_RULES_EXPORT_SCHEMA_VERSION, deleteSensitiveRule, escapeRegExp, getDeletedBuiltInRuleIds, isRetiredBuiltInRule, loadSensitiveRules, replaceSensitiveRules, saveSensitiveRules } from '@/utils/sensitiveRules'
@@ -68,6 +69,7 @@ export default {
   components: { AiFeatureButton },
   data: () => ({ batchDeleting: false, batchEditing: false, batchSelection: [], batchError: '', rules: loadSensitiveRules(), draft: emptyDraft(), editingId: '', error: '', deleteCandidate: null, showRegexConverter: false, converterSelection: {}, conversionCandidates: [], conversionError: '', conversionNotice: '', converting: false, aiEnabled: false, activeModelPath: '' }),
   computed: {
+    selectedDeletableRules() { return this.selectedBatchRules.filter(rule => !isFixedRule(rule)) },
     selectedBatchRules() { return this.rules.filter(rule => this.batchSelection.includes(rule.id)) },
     allBatchSelected() { return this.rules.length > 0 && this.selectedBatchRules.length === this.rules.length },
     valueLabel() { return this.draft.kind === 'regex' ? t('management.regex') : this.draft.kind === 'name' ? t('management.name') : this.draft.kind === 'keyword' ? t('management.keyword') : t('management.matchingDescription') },
@@ -82,9 +84,10 @@ export default {
   mounted() { this.aiAvailabilityListener = () => this.syncAiAvailability(); window.addEventListener(AI_AVAILABILITY_EVENT, this.aiAvailabilityListener); window.addEventListener('storage', this.aiAvailabilityListener); this.syncAiAvailability() },
   beforeUnmount() { window.removeEventListener(AI_AVAILABILITY_EVENT, this.aiAvailabilityListener); window.removeEventListener('storage', this.aiAvailabilityListener) },
   methods: {
+    isFixedRule,
     async requestBatchDelete() {
-      if (!this.batchEditing || !this.selectedBatchRules.length || this.batchDeleting) return
-      const ids = this.selectedBatchRules.map(rule => rule.id)
+      if (!this.batchEditing || !this.selectedDeletableRules.length || this.batchDeleting) return
+      const ids = this.selectedDeletableRules.map(rule => rule.id)
       this.batchDeleting = true
       this.batchError = ''
       try {
@@ -146,7 +149,7 @@ export default {
     editRule(rule) { this.error = ''; this.editingId = rule.id; this.draft = { name: rule.name, kind: rule.kind, value: rule.value } },
     cancelEdit() { this.editingId = ''; this.error = ''; this.draft = emptyDraft() },
     saveRule() { this.error = ''; if (!this.draft.name || !this.draft.value) { this.error = t('management.requiredFields'); return } if (this.draft.kind === 'regex') { try { new RegExp(this.draft.value) } catch (_) { this.error = t('management.invalidRegex'); return } } if (this.editingId) Object.assign(this.rules.find(item => item.id === this.editingId), this.draft, { method: undefined }); else this.rules.push({ id: `custom_${Date.now().toString(36)}`, ...this.draft, enabled: true, builtIn: false }); const message = this.editingId ? t('management.ruleSaved') : t('management.ruleAdded'); saveSensitiveRules(this.rules); this.cancelEdit(); this.notify(message) },
-    requestRemoveRule(rule) { this.deleteCandidate = rule },
+    requestRemoveRule(rule) { if (!isFixedRule(rule)) this.deleteCandidate = rule },
     cancelRemoveRule() { this.deleteCandidate = null },
     confirmRemoveRule() { const rule = this.deleteCandidate; if (!rule) return; deleteSensitiveRule(rule); saveSensitiveRules(this.rules.filter(item => item !== rule)); this.rules = loadSensitiveRules(); this.deleteCandidate = null; if (this.editingId === rule.id) this.cancelEdit(); this.notify(t('management.ruleDeleted', { name: this.ruleDisplayName(rule) })) },
     syncAiAvailability() { const availability = readAiAvailability({ requireDesktop: false }); this.aiEnabled = availability.enabled; this.activeModelPath = availability.modelPath },
