@@ -2,7 +2,7 @@ import { t } from '@/i18n'
 
 let requestSequence = 0
 
-export function requestAppConfirm({ title, message, confirmText = t('shared.confirmContinue'), tone = 'default' }) {
+export function requestAppConfirm({ title, message, confirmText = t('shared.confirmContinue'), cancelText, tone = 'default' }) {
   return new Promise(resolve => {
     const id = `confirm_${Date.now()}_${++requestSequence}`
     const handleResult = event => {
@@ -12,7 +12,7 @@ export function requestAppConfirm({ title, message, confirmText = t('shared.conf
     }
     window.addEventListener('desens:confirm-result', handleResult)
     window.dispatchEvent(new CustomEvent('desens:confirm-request', {
-      detail: { id, title, message, confirmText, tone }
+      detail: { id, title, message, confirmText, cancelText, tone }
     }))
   })
 }

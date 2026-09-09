@@ -73,7 +73,7 @@
         <h2 id="action-confirm-title">{{ actionConfirm.title }}</h2>
         <p>{{ actionConfirm.message }}</p>
         <div class="action-confirm-modal__actions">
-          <button class="btn btn--secondary" data-no-feedback="true" @click="resolveActionConfirm(false)">{{ $t('shell.cancel') }}</button>
+          <button class="btn btn--secondary" data-no-feedback="true" @click="resolveActionConfirm(false)">{{ actionConfirm.cancelText || $t('shell.cancel') }}</button>
           <button class="btn btn--primary" data-no-feedback="true" @click="resolveActionConfirm(true)">{{ actionConfirm.confirmText }}</button>
         </div>
       </section>

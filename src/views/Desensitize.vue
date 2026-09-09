@@ -156,7 +156,7 @@
           <span aria-live="polite">{{ $t('review.position', { current: formatNumber(reviewIndex + 1), total: formatNumber(reviewItems.length) }) }}</span>
           <button class="btn btn--secondary btn--sm" :disabled="!reviewItems.length || reviewIndex === reviewItems.length - 1" @click="navigateReview(1)">{{ $t('review.next') }}</button>
         </nav>
-        <div class="preview__body" ref="previewBody">
+        <div class="preview__body" ref="previewBody" @click="onPreviewDetectionClick" @keydown.enter="onPreviewDetectionClick">
           <div v-if="!file" class="comparison-preview comparison-preview--empty">
             <article class="comparison-pane comparison-pane--original">
               <header class="comparison-pane__head"><span>{{ $t('desensitize.originalFile') }}</span><small>{{ $t('desensitize.waitingUpload') }}</small></header>
@@ -172,7 +172,7 @@
               <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
                   <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="requestPreviewCancel(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
               <table v-else class="document-preview__table">
@@ -181,7 +181,7 @@
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
                         <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="requestPreviewCancel(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
                   </tr>
@@ -192,11 +192,11 @@
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
             <article class="comparison-pane comparison-pane--original">
               <header class="comparison-pane__head"><span>{{ $t('desensitize.originalFile') }}</span><small>{{ $t('desensitize.readOnly') }}</small></header>
-              <pre class="comparison-pane__body" :dir="documentDirection" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" :dir="documentDirection" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" role="button" tabindex="0" :aria-label="$t('review.cancelTitle')" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
             </article>
             <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
               <header class="comparison-pane__head"><span>{{ $t('desensitize.redactedFile') }}</span><small>{{ $t('desensitize.selectionOnly') }}</small></header>
-              <pre class="comparison-pane__body" :dir="documentDirection" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" :dir="documentDirection" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" role="button" tabindex="0" :aria-label="$t('review.cancelTitle')" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
             </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
@@ -376,6 +376,7 @@ export default {
       uploadCollapsed: false,
       hoverDetectionId: null,
       reviewDetectionId: null,
+      previewCancelPending: false,
       hoverLockUntil: 0,
       hoverLockTimer: null,
       aiDetecting: false,
@@ -478,6 +479,25 @@ export default {
     }
   },
   methods: {
+    onPreviewDetectionClick(event) {
+      const target = event.target.closest?.('[data-detection-id]')
+      if (!target || !this.$refs.previewBody?.contains(target)) return
+      const item = this.detections.find(item => String(item.id) === target.dataset.detectionId)
+      if (item) this.requestPreviewCancel(item)
+    },
+    async requestPreviewCancel(part) {
+      if (this.previewCancelPending || window.getSelection()?.toString()) return
+      const item = this.detections.find(item => item.id === part.id)
+      if (!item) return
+      this.previewCancelPending = true
+      this.selectionPopup = null
+      this.lockHoverDetection(item.id)
+      const file = this.file
+      try {
+        const accepted = await requestAppConfirm({ title: t('review.cancelTitle'), message: t('review.cancelMessage', { value: item.value }), confirmText: t('desensitize.cancelRedaction'), cancelText: t('review.keep'), tone: 'warning' })
+        if (accepted && this.file === file && this.detections.includes(item)) this.toggleDetection(item)
+      } finally { this.previewCancelPending = false }
+    },
     navigateReview(direction) {
       if (!this.reviewItems.length) return
       const index = this.reviewIndex < 0 ? (direction > 0 ? 0 : this.reviewItems.length - 1) : this.reviewIndex + direction
@@ -1151,6 +1171,7 @@ export default {
     finally { window.clearInterval(timer); this.aiProgress = 100; window.setTimeout(() => { this.aiDetecting = false; this.aiProgress = 0 }, 650) }
     },
     toggleDetection(item) {
+      if (this.confirmed) { this.confirmed = false; this.mapping = null; this.showCompletionModal = false }
       const previousIndex = this.reviewIndex
       const wasReviewing = this.reviewDetectionId === item.id
       if (this.hoverDetectionId === item.id) {
