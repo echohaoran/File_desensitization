@@ -35,6 +35,23 @@ export function loadSensitiveRules() {
 }
 
 export function saveSensitiveRules(rules) { localStorage.setItem(STORAGE_KEY, JSON.stringify(rules)) }
+export function deleteSensitiveRules(ids) {
+  const selected = new Set(ids)
+  const current = loadSensitiveRules()
+  const removed = current.filter(rule => selected.has(rule.id))
+  const remaining = current.filter(rule => !selected.has(rule.id))
+  const previous = localStorage.getItem(STORAGE_KEY)
+  const deleted = new Set([...deletedBuiltIns(), ...removed.filter(rule => rule.builtIn).map(rule => rule.id)])
+  // Each localStorage write is atomic; restore the first if the second fails.
+  saveSensitiveRules(remaining)
+  try { localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...deleted])) }
+  catch (error) {
+    if (previous === null) localStorage.removeItem(STORAGE_KEY)
+    else localStorage.setItem(STORAGE_KEY, previous)
+    throw error
+  }
+  return { rules: remaining, removedCount: removed.length }
+}
 export function replaceSensitiveRules(rules, deletedBuiltinIds = []) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rules))
   localStorage.setItem(DELETED_BUILT_INS_KEY, JSON.stringify([...new Set(deletedBuiltinIds)]))

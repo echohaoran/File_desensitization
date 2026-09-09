@@ -16,6 +16,7 @@
         <span>{{ $t('batch.selected', { count: formatCount(selectedBatchRules.length) }) }}</span>
         <button class="rules-action-btn" type="button" :disabled="!selectedBatchRules.length" @click="setBatchEnabled(false)">{{ $t('batch.disable') }}</button>
         <button class="rules-action-btn" type="button" :disabled="!selectedBatchRules.length" @click="setBatchEnabled(true)">{{ $t('batch.enable') }}</button>
+        <button class="rules-action-btn batch-delete" type="button" :disabled="!selectedBatchRules.length || batchDeleting" @click="requestBatchDelete">{{ $t('batch.delete') }}</button>
         <p v-if="batchError" class="rules-error" role="alert">{{ batchError }}</p>
       </div>
       <section class="rules-list" :aria-label="$t('management.rulesListAria')">
@@ -39,6 +40,7 @@
 
 <script>
 import { t, getLocale } from '@/i18n'
+import { deleteSensitiveRules } from '@/utils/sensitiveRules'
 import { localizeManagementError } from '@/i18n/modules/management'
 import { aiConvertRulesToRegex, isTauriRuntime } from '@/api/tauriBridge'
 import { DEFAULT_RULES, SENSITIVE_RULES_EXPORT_SCHEMA_VERSION, deleteSensitiveRule, escapeRegExp, getDeletedBuiltInRuleIds, isRetiredBuiltInRule, loadSensitiveRules, replaceSensitiveRules, saveSensitiveRules } from '@/utils/sensitiveRules'
@@ -64,7 +66,7 @@ const localRegexCandidates = (rules) => rules.filter(rule => ['name', 'keyword']
 export default {
   name: 'SensitiveRules',
   components: { AiFeatureButton },
-  data: () => ({ batchEditing: false, batchSelection: [], batchError: '', rules: loadSensitiveRules(), draft: emptyDraft(), editingId: '', error: '', deleteCandidate: null, showRegexConverter: false, converterSelection: {}, conversionCandidates: [], conversionError: '', conversionNotice: '', converting: false, aiEnabled: false, activeModelPath: '' }),
+  data: () => ({ batchDeleting: false, batchEditing: false, batchSelection: [], batchError: '', rules: loadSensitiveRules(), draft: emptyDraft(), editingId: '', error: '', deleteCandidate: null, showRegexConverter: false, converterSelection: {}, conversionCandidates: [], conversionError: '', conversionNotice: '', converting: false, aiEnabled: false, activeModelPath: '' }),
   computed: {
     selectedBatchRules() { return this.rules.filter(rule => this.batchSelection.includes(rule.id)) },
     allBatchSelected() { return this.rules.length > 0 && this.selectedBatchRules.length === this.rules.length },
@@ -80,6 +82,22 @@ export default {
   mounted() { this.aiAvailabilityListener = () => this.syncAiAvailability(); window.addEventListener(AI_AVAILABILITY_EVENT, this.aiAvailabilityListener); window.addEventListener('storage', this.aiAvailabilityListener); this.syncAiAvailability() },
   beforeUnmount() { window.removeEventListener(AI_AVAILABILITY_EVENT, this.aiAvailabilityListener); window.removeEventListener('storage', this.aiAvailabilityListener) },
   methods: {
+    async requestBatchDelete() {
+      if (!this.batchEditing || !this.selectedBatchRules.length || this.batchDeleting) return
+      const ids = this.selectedBatchRules.map(rule => rule.id)
+      this.batchDeleting = true
+      this.batchError = ''
+      try {
+        const accepted = await requestAppConfirm({ title: t('batch.deleteTitle'), message: t('batch.deleteMessage', { count: this.formatCount(ids.length) }), confirmText: t('batch.deleteConfirm'), tone: 'warning' })
+        if (!accepted) return
+        const result = deleteSensitiveRules(ids)
+        this.rules = result.rules
+        this.batchSelection = []
+        if (ids.includes(this.editingId)) this.cancelEdit()
+        this.notify(t('batch.deleted', { count: this.formatCount(result.removedCount) }))
+      } catch { this.batchError = t('batch.deleteFailed') }
+      finally { this.batchDeleting = false }
+    },
     toggleBatchEditing() { this.batchEditing = !this.batchEditing; this.batchSelection = []; this.batchError = '' },
     selectAllBatch(checked) { this.batchSelection = checked ? this.rules.map(rule => rule.id) : [] },
     setBatchEnabled(enabled) {
@@ -147,6 +165,7 @@ export default {
 </script>
 
 <style scoped>
+.batch-toolbar .batch-delete { color: #b42318; border-color: #f3b4ae; }
 .rules-list-actions { gap: 10px; align-items: center; }
 .batch-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; font-size: 13px; }
 .batch-toolbar label { display: flex; align-items: center; gap: 8px; }
