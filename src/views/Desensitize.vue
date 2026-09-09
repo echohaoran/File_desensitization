@@ -181,7 +181,7 @@
             <template v-for="(block, blockIndex) in documentPreview" :key="blockIndex">
               <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)" :data-source-start="block.start" :data-source-end="block.end">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
-                  <span v-if="part.type === 'normal'">{{ part.text }}</span>
+                  <span v-if="part.type === 'normal'" :data-original-start="part.start" :data-original-end="part.end">{{ part.text }}</span>
                   <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="selectPreviewDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
@@ -190,7 +190,7 @@
                   <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex">
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex" :data-source-start="cell.start" :data-source-end="cell.end">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
-                        <span v-if="part.type === 'normal'">{{ part.text }}</span>
+                        <span v-if="part.type === 'normal'" :data-original-start="part.start" :data-original-end="part.end">{{ part.text }}</span>
                         <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="selectPreviewDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
@@ -202,11 +202,11 @@
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
             <article class="comparison-pane comparison-pane--original">
               <header class="comparison-pane__head"><span>{{ $t('desensitize.originalFile') }}</span><small>{{ $t('desensitize.readOnly') }}</small></header>
-              <pre class="comparison-pane__body" :dir="documentDirection" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" role="button" tabindex="0" :aria-label="$t('review.cancelTitle')" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" :dir="documentDirection" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'" :data-original-start="part.start" :data-original-end="part.end">{{ part.text }}</span><span v-else :data-original-start="part.start" :data-original-end="part.end" :data-detection-id="part.id" role="button" tabindex="0" :aria-label="$t('review.cancelTitle')" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
             </article>
             <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
               <header class="comparison-pane__head"><span>{{ $t('desensitize.redactedFile') }}</span><small>{{ $t('desensitize.selectionOnly') }}</small></header>
-              <pre class="comparison-pane__body" :dir="documentDirection" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" role="button" tabindex="0" :aria-label="$t('review.cancelTitle')" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
+              <pre class="comparison-pane__body" :dir="documentDirection" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'" :data-original-start="part.start" :data-original-end="part.end">{{ part.text }}</span><span v-else :data-original-start="part.start" :data-original-end="part.end" :data-masked="part.active" :data-detection-id="part.id" role="button" tabindex="0" :aria-label="$t('review.cancelTitle')" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
             </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
@@ -286,6 +286,7 @@ import { saveHistoryFile } from '@/utils/historyFiles'
 import { isTauriRuntime, redactApprovedText, aiDetectCandidates } from '@/api/tauriBridge'
 import { requestAppConfirm } from '@/utils/appConfirm'
 import { saveSensitiveRules } from '@/utils/sensitiveRules'
+import { capturePreviewPosition, restorePreviewPosition } from '@/utils/previewPosition'
 import AiFeatureButton from '@/components/AiFeatureButton.vue'
 import { AI_AVAILABILITY_EVENT, readAiAvailability } from '@/utils/aiAvailability'
 
@@ -387,6 +388,7 @@ export default {
       pendingSelections: [],
       applyingSelections: false,
       selectionClickUntil: 0,
+      restoringPreviewPosition: false,
       hoverLockUntil: 0,
       hoverLockTimer: null,
       aiDetecting: false,
@@ -488,6 +490,26 @@ export default {
       return counts
     }
   },
+  watch: {
+    detections: {
+      deep: true,
+      handler() {
+        if (!this.rawOriginalText || this.restoringPreviewPosition) return
+        const anchors = [this.$refs.originalScroll, this.$refs.redactedScroll].map(capturePreviewPosition)
+        const list = this.$refs.detectionScroll
+        const listTop = list?.scrollTop
+        this.restoringPreviewPosition = true
+        this.hoverLockUntil = Date.now() + 2000
+        window.clearTimeout(this.hoverLockTimer)
+        this.hoverLockTimer = window.setTimeout(() => { this.hoverLockUntil = 0 }, 2000)
+        this.$nextTick(() => {
+          anchors.forEach(restorePreviewPosition)
+          if (list && listTop !== undefined) list.scrollTop = listTop
+          this.restoringPreviewPosition = false
+        })
+      }
+    }
+  },
   methods: {
     onPreviewDetectionClick(event) {
       const target = event.target.closest?.('[data-detection-id]')
@@ -528,10 +550,12 @@ export default {
       })
     },
     setHoverDetection(id) {
+      if (this.restoringPreviewPosition) return
       if (this.pendingSelections.length || window.getSelection()?.toString()) return
       if (this.hoverLockUntil > Date.now()) return
       this.hoverDetectionId = id
       this.$nextTick(() => {
+        if (this.restoringPreviewPosition || this.hoverDetectionId !== id || this.hoverLockUntil > Date.now()) return
         const targets = this.$el.querySelectorAll(`[data-detection-id="${id}"]`)
         targets.forEach(target => { if (!this.isElementVisible(target)) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) })
         const card = this.$el.querySelector(`.detect-item[data-detection-id="${id}"]`)
@@ -778,10 +802,12 @@ export default {
         const detectionStart = Math.max(det.start, start)
         const detectionEnd = Math.min(det.end, end)
         if (detectionStart > cursor) {
-          parts.push({ type: 'normal', text: this.rawOriginalText.slice(cursor, detectionStart) })
+          parts.push({ type: 'normal', start: cursor, end: detectionStart, text: this.rawOriginalText.slice(cursor, detectionStart) })
         }
         parts.push({
           type: 'detection',
+          start: detectionStart,
+          end: detectionEnd,
           text: this.rawOriginalText.slice(detectionStart, detectionEnd),
           placeholder: det.placeholder,
           active: det.active,
@@ -790,7 +816,7 @@ export default {
         })
         cursor = detectionEnd
       })
-      if (cursor < end) parts.push({ type: 'normal', text: this.rawOriginalText.slice(cursor, end) })
+      if (cursor < end) parts.push({ type: 'normal', start: cursor, end, text: this.rawOriginalText.slice(cursor, end) })
       return parts
     },
     previewBlockStyle(block) {
@@ -1147,7 +1173,6 @@ export default {
         if (this.reviewItems.length) {
           const next = this.reviewItems[Math.min(previousIndex, this.reviewItems.length - 1)]
           this.lockHoverDetection(next.id)
-          this.navigateReview(0)
         }
       }
       
@@ -1512,6 +1537,7 @@ export default {
 </script>
 
 <style scoped>
+.comparison-pane__body, .panel__body { overflow-anchor: none; scroll-behavior: auto; }
 .review-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .pending-selections { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-height: 88px; overflow: auto; padding: 4px 24px 10px; flex-shrink: 0; font-size: 12px; }
 .pending-chip { border: 1px solid #eab308; border-radius: 6px; background: #fef9c3; padding: 5px 9px; cursor: pointer; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
