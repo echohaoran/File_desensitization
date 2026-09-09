@@ -1,34 +1,34 @@
 <template>
-  <div class="container workflow">
-    <div class="steps" aria-label="脱敏流程步骤">
+  <div class="container workflow" :dir="uiDirection">
+    <div class="steps" :aria-label="$t('desensitize.steps')">
       <div class="step" :class="{ 'is-active': step === 1, 'is-done': step > 1 }">
-        <span class="step__num">1</span> 上传
+        <span class="step__num">{{ formatNumber(1) }}</span> {{ $t('desensitize.upload') }}
       </div>
       <span class="step__sep" aria-hidden="true"></span>
       <div class="step" :class="{ 'is-active': step === 2, 'is-done': step > 2 }">
-        <span class="step__num">2</span> 检测
+        <span class="step__num">{{ formatNumber(2) }}</span> {{ $t('desensitize.detect') }}
       </div>
       <span class="step__sep" aria-hidden="true"></span>
       <div class="step" :class="{ 'is-active': step === 3, 'is-done': step > 3 }">
-        <span class="step__num">3</span> 复核
+        <span class="step__num">{{ formatNumber(3) }}</span> {{ $t('desensitize.review') }}
       </div>
       <span class="step__sep" aria-hidden="true"></span>
       <div class="step" :class="{ 'is-active': step === 4, 'is-done': step > 4 }">
-        <span class="step__num">4</span> 下载
+        <span class="step__num">{{ formatNumber(4) }}</span> {{ $t('desensitize.download') }}
       </div>
     </div>
 
     <div class="split">
-      <aside class="aside" aria-label="脱敏控制面板">
+      <aside class="aside" :aria-label="$t('desensitize.controls')">
         <section class="panel upload-panel" :class="{ 'upload-panel--collapsed': uploadCollapsed }">
-          <div class="panel__head"><h3>上传文件</h3><button v-if="file" class="panel-toggle" type="button" @click="uploadCollapsed = !uploadCollapsed">{{ uploadCollapsed ? '展开' : '折叠' }}</button></div>
+          <div class="panel__head"><h3>{{ $t('desensitize.uploadFile') }}</h3><button v-if="file" class="panel-toggle" type="button" @click="uploadCollapsed = !uploadCollapsed">{{ uploadCollapsed ? $t('desensitize.expand') : $t('desensitize.collapse') }}</button></div>
           <div v-if="!uploadCollapsed" class="panel__body">
             <label class="upload-zone" :class="{ 'is-dragover': isDragging }" tabindex="0" role="button" 
-              aria-label="选择或拖入文件" @dragenter.prevent="isDragging = true" @dragover.prevent="isDragging = true" @dragleave="isDragging = false" 
+              :aria-label="$t('desensitize.chooseFile')" @dragenter.prevent="isDragging = true" @dragover.prevent="isDragging = true" @dragleave="isDragging = false"
               @drop.prevent="handleDrop" @keydown.enter="$refs.fileInput.click()" @keydown.space.prevent="$refs.fileInput.click()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span class="upload-zone__title">点击选择或拖入文件</span>
-              <span class="upload-zone__hint">支持 TXT / CSV / JSON / PDF / DOCX / XLSX / PNG / JPG</span>
+              <span class="upload-zone__title">{{ $t('desensitize.dropFile') }}</span>
+              <span class="upload-zone__hint">{{ $t('desensitize.formats') }}</span>
               <input type="file" ref="fileInput" accept=".txt,.csv,.json,.md,.markdown,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,text/*,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
                 @change="handleFileSelect" style="display: none" />
             </label>
@@ -41,10 +41,10 @@
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </span>
               <div class="file-meta__info">
-                <div class="file-meta__name">{{ file.name }}</div>
-                <div class="file-meta__detail">{{ fileType === 'image' ? '图片' : fileType === 'pdf' ? 'PDF' : fileType === 'docx' ? 'Word' : fileType === 'excel' ? 'Excel' : '文本' }} · {{ formatSize(file.size) }}</div>
+                <div class="file-meta__name" dir="auto">{{ file.name }}</div>
+                <div class="file-meta__detail">{{ fileType === 'image' ? $t('desensitize.image') : fileType === 'pdf' ? 'PDF' : fileType === 'docx' ? 'Word' : fileType === 'excel' ? 'Excel' : $t('desensitize.text') }} · {{ formatSize(file.size) }}</div>
               </div>
-              <button class="icon-btn" @click="requestReset" aria-label="移除当前文件" title="移除文件">
+              <button class="icon-btn" @click="requestReset" :aria-label="$t('desensitize.removeCurrent')" :title="$t('desensitize.removeFile')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -54,16 +54,16 @@
                 <svg style="width: 20px; height: 20px; animation: spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83"/>
                 </svg>
-                <span style="font-size: 14px; color: #0369a1;">正在调用后端进行初步脱敏...</span>
+                <span style="font-size: 14px; color: #0369a1;">{{ $t('desensitize.backendLoading') }}</span>
               </div>
               <p style="font-size: 12px; color: #64748b; margin-top: 8px; margin-bottom: 0;">
-                正在使用当前服务可用的规则与识别能力进行检测
+                {{ $t('desensitize.backendHint') }}
               </p>
             </div>
             <!-- 后端错误提示 -->
             <div v-if="backendError" class="backend-error" style="margin-top: 16px; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
               <p style="font-size: 12px; color: #dc2626; margin: 0;">
-                后端服务不可用，已切换到前端处理模式。错误：{{ backendError || '后端服务连接失败（请检查后端是否启动）' }}
+                {{ $t('desensitize.backendUnavailable', { error: backendError || $t('desensitize.backendConnection') }) }}
               </p>
             </div>
             <div v-if="formatWarning" class="format-info" style="margin-top: 16px; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
@@ -76,10 +76,10 @@
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                   <polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
-                <span style="font-size: 14px; color: #16a34a;">PDF 已自动转换为 Word 格式</span>
+                <span style="font-size: 14px; color: #16a34a;">{{ $t('desensitize.pdfConverted') }}</span>
               </div>
               <p style="font-size: 12px; color: #64748b; margin-top: 8px; margin-bottom: 0;">
-                已生成 Word 文档；复杂 PDF 的版式可能需要人工检查
+                {{ $t('desensitize.pdfConvertedHint') }}
               </p>
             </div>
           </div>
@@ -87,39 +87,39 @@
 
         <section class="panel panel--grow">
           <div class="panel__head">
-            <h3>检测结果</h3>
-            <span class="panel__count">{{ detections.length }} 项</span>
+            <h3>{{ $t('desensitize.results') }}</h3>
+            <span class="panel__count">{{ $t('desensitize.itemCount', { count: formatNumber(detections.length) }) }}</span>
           </div>
           <div class="ai-action">
-            <AiFeatureButton block button-class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !rawOriginalText" @click="requestAiDetection">{{ aiDetecting ? 'AI 脱敏检测中…' : 'AI 智能脱敏全文' }}</AiFeatureButton>
-            <div v-if="aiDetecting" class="ai-progress"><span :style="{ width: `${aiProgress}%` }"></span></div>
+            <AiFeatureButton block button-class="btn btn--secondary btn--sm btn--block" :disabled="aiDetecting || !rawOriginalText" @click="requestAiDetection">{{ aiDetecting ? $t('desensitize.aiDetecting') : $t('desensitize.aiFull') }}</AiFeatureButton>
+            <div v-if="aiDetecting" class="ai-progress" role="progressbar" :aria-label="$t('desensitize.aiDetecting')" :aria-valuenow="aiProgress" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: `${aiProgress}%` }"></span></div>
           </div>
           <div class="panel__stats" v-if="detections.length > 0">
             <div class="stat-item" v-for="(count, type) in detectionsByType" :key="type">
-              <span class="badge badge--sm" :class="'badge--' + type">{{ getTypeLabel(type) }}</span>
-              <span class="stat-count">{{ count }}</span>
+              <span class="badge badge--sm" :class="'badge--' + type">{{ getGroupLabel(type) }}</span>
+              <span class="stat-count">{{ formatNumber(count) }}</span>
             </div>
           </div>
           <div class="panel__body" ref="detectionScroll">
-            <div class="detect-list">
+            <div class="detect-list" :data-empty-text="$t('desensitize.noDetections')">
               <div v-for="item in detections" :key="item.id" class="detect-item" :data-detection-id="item.id" :class="{ 'is-linked-hover': hoverDetectionId === item.id }" @mouseenter="setHoverDetection(item.id)" @mouseleave="clearHoverDetection" @click="lockHoverDetection(item.id)">
                 <div class="detect-item__main">
                   <div class="detect-item__info">
                     <div class="detect-item__header">
-                      <span class="badge" :class="'badge--' + (item.type || 'manual')">{{ item.label || '区域' }}</span>
-                      <span class="detect-item__sub">{{ item.manual ? '手动框选' : '自动检测' }}</span>
+                      <span class="badge" :class="'badge--' + (item.type || 'manual')">{{ getDetectionLabel(item) }}</span>
+                      <span class="detect-item__sub">{{ item.manual ? $t('desensitize.manualSelection') : $t('desensitize.automatic') }}</span>
                     </div>
-                    <div class="detect-item__value">{{ item.placeholder }}</div>
+                    <div class="detect-item__value" dir="ltr">{{ item.placeholder }}</div>
                   </div>
-                  <button class="detect-item__delete" @click.stop="toggleDetection(item)" title="取消脱敏" aria-label="取消脱敏">
+                  <button class="detect-item__delete" @click.stop="toggleDetection(item)" :title="$t('desensitize.cancelRedaction')" :aria-label="$t('desensitize.cancelRedaction')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                   </button>
                 </div>
                 <div class="detect-item__original">
-                  <span class="detect-item__original-label">原文内容：</span>
-                  <span class="detect-item__original-text">{{ item.value }}</span>
+                  <span class="detect-item__original-label">{{ $t('desensitize.originalContent') }}</span>
+                  <span class="detect-item__original-text" dir="auto">{{ item.value }}</span>
                 </div>
               </div>
             </div>
@@ -130,7 +130,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              下载 Word 文档
+              {{ $t('desensitize.downloadWord') }}
             </button>
           </div>
         </section>
@@ -138,11 +138,11 @@
         <section class="action-bar">
           <button class="btn btn--primary btn--lg btn--block" @click="requestConfirmRedaction" :disabled="!file || confirmed">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            确认脱敏
+            {{ $t('desensitize.confirmRedaction') }}
           </button>
           <button class="btn btn--ghost btn--block" @click="requestReset" :disabled="!file">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            重新开始
+            {{ $t('desensitize.restart') }}
           </button>
         </section>
       </aside>
@@ -154,20 +154,20 @@
         <div class="preview__body" ref="previewBody">
           <div v-if="!file" class="comparison-preview comparison-preview--empty">
             <article class="comparison-pane comparison-pane--original">
-              <header class="comparison-pane__head"><span>原始文件</span><small>等待上传</small></header>
-              <div class="empty-state"><p>上传文件后显示原始内容</p></div>
+              <header class="comparison-pane__head"><span>{{ $t('desensitize.originalFile') }}</span><small>{{ $t('desensitize.waitingUpload') }}</small></header>
+              <div class="empty-state"><p>{{ $t('desensitize.emptyOriginal') }}</p></div>
             </article>
             <article class="comparison-pane comparison-pane--redacted">
-              <header class="comparison-pane__head"><span>脱敏文件</span><small>等待人工确认</small></header>
-              <div class="empty-state"><p>确认脱敏后显示结果</p></div>
+              <header class="comparison-pane__head"><span>{{ $t('desensitize.redactedFile') }}</span><small>{{ $t('desensitize.waitingConfirmation') }}</small></header>
+              <div class="empty-state"><p>{{ $t('desensitize.emptyRedacted') }}</p></div>
             </article>
           </div>
-          <div v-else-if="fileType === 'docx' && documentPreview.length" class="document-preview" @mouseup="handleTextSelect">
+          <div v-else-if="fileType === 'docx' && documentPreview.length" class="document-preview" dir="auto" @mouseup="handleTextSelect">
             <template v-for="(block, blockIndex) in documentPreview" :key="blockIndex">
               <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
                   <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
               <table v-else class="document-preview__table">
@@ -176,7 +176,7 @@
                     <td v-for="(cell, cellIndex) in row" :key="cellIndex">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
                         <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="(part.active ? '已脱敏：' : '未脱敏：') + part.label" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click="toggleDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
                   </tr>
@@ -186,26 +186,26 @@
           </div>
           <div v-else-if="fileType === 'text' || fileType === 'pdf' || fileType === 'docx' || fileType === 'excel'" class="comparison-preview">
             <article class="comparison-pane comparison-pane--original">
-              <header class="comparison-pane__head"><span>原始文件</span><small>只读对照</small></header>
-              <pre class="comparison-pane__body" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
+              <header class="comparison-pane__head"><span>{{ $t('desensitize.originalFile') }}</span><small>{{ $t('desensitize.readOnly') }}</small></header>
+              <pre class="comparison-pane__body" :dir="documentDirection" ref="originalScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.text }}</span></template></pre>
             </article>
             <article class="comparison-pane comparison-pane--redacted" @mouseup="handleTextSelect">
-              <header class="comparison-pane__head"><span>脱敏文件</span><small>仅可选区操作</small></header>
-              <pre class="comparison-pane__body" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
+              <header class="comparison-pane__head"><span>{{ $t('desensitize.redactedFile') }}</span><small>{{ $t('desensitize.selectionOnly') }}</small></header>
+              <pre class="comparison-pane__body" :dir="documentDirection" ref="redactedScroll"><template v-for="(part, i) in partsForRange(0, rawOriginalText.length)" :key="i"><span v-if="part.type === 'normal'">{{ part.text }}</span><span v-else :data-detection-id="part.id" :class="['detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection">{{ part.active ? part.placeholder : part.text }}</span></template></pre>
             </article>
           </div>
           <div v-else-if="fileType === 'image'" class="canvas-wrap">
             <canvas ref="canvas" :width="imageWidth" :height="imageHeight" @mousedown="startCanvasDraw" 
               @mousemove="drawCanvas" @mouseup="endCanvasDraw" @mouseleave="cancelCanvasDraw"></canvas>
             <div class="canvas-legend">
-              <span><i class="box"></i>已脱敏区域</span>
-              <span><i></i>候选区域</span>
-              <span><i class="off"></i>已跳过区域</span>
+              <span><i class="box"></i>{{ $t('desensitize.redactedRegions') }}</span>
+              <span><i></i>{{ $t('desensitize.candidateRegions') }}</span>
+              <span><i class="off"></i>{{ $t('desensitize.skippedRegions') }}</span>
             </div>
           </div>
           <div v-if="selectionPopup" class="selection-popup is-visible" :style="{ left: selectionPopup.left + 'px', top: selectionPopup.top + 'px' }" @mousedown.prevent.stop>
-            <button class="btn btn--primary btn--sm" @click="applySelection('mask')">脱敏</button>
-            <button class="btn btn--secondary btn--sm" @click="applySelection('rule')">添加到敏感字段</button>
+            <button class="btn btn--primary btn--sm" @click="applySelection('mask')">{{ $t('desensitize.redact') }}</button>
+            <button class="btn btn--secondary btn--sm" @click="applySelection('rule')">{{ $t('desensitize.addRule') }}</button>
           </div>
         </div>
       </section>
@@ -214,50 +214,50 @@
     <div class="mapping-pre" v-if="false && mapping" :class="{ 'is-open': showMapping }">
       <div class="mapping-pre__head" @click="showMapping = !showMapping" role="button" tabindex="0" 
         :aria-expanded="showMapping" @keydown.enter.space="showMapping = !showMapping">
-        <h3>映射表 JSON</h3>
+        <h3>{{ $t('desensitize.mappingJson') }}</h3>
         <svg class="chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="mapping-pre__body" v-show="showMapping">
-        <pre>{{ JSON.stringify(mapping, null, 2) }}</pre>
+        <pre dir="ltr">{{ JSON.stringify(mapping, null, 2) }}</pre>
       </div>
     </div>
 
     <div class="download-bar" v-if="false && confirmed">
-      <span class="download-bar__label">脱敏完成</span>
+      <span class="download-bar__label">{{ $t('desensitize.completed') }}</span>
       <button class="btn btn--primary" @click="downloadRedactedFile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        下载脱敏文件
+        {{ $t('desensitize.downloadRedacted') }}
       </button>
       <button class="btn btn--secondary" @click="downloadMapping">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        下载映射表
+        {{ $t('desensitize.downloadMapping') }}
       </button>
     </div>
     <div v-if="showCompletionModal" class="completion-modal" role="dialog" aria-modal="true" aria-labelledby="completion-title">
       <div class="completion-modal__backdrop" @click="showCompletionModal = false"></div>
       <section class="completion-modal__card">
-        <p class="mono-label">DESENSITIZATION COMPLETE</p>
-        <h2 id="completion-title">脱敏已完成</h2>
-        <p>脱敏记录已保存在本机历史中。需要还原时，请选择该记录并上传经 AI 或其他流程处理后的脱敏文件。</p>
+        <p class="mono-label">{{ $t('desensitize.completed') }}</p>
+        <h2 id="completion-title">{{ $t('desensitize.completionTitle') }}</h2>
+        <p>{{ $t('desensitize.completionHint') }}</p>
         <div class="completion-modal__actions">
-          <button class="btn btn--secondary" @click="showCompletionModal = false">暂不下载</button>
-          <button class="btn btn--primary" @click="downloadFromCompletion">下载文件</button>
+          <button class="btn btn--secondary" @click="showCompletionModal = false">{{ $t('desensitize.later') }}</button>
+          <button class="btn btn--primary" @click="downloadFromCompletion">{{ $t('desensitize.downloadFile') }}</button>
         </div>
       </section>
     </div>
     <div v-if="aiResultModal" class="completion-modal" role="dialog" aria-modal="true" aria-labelledby="ai-result-title">
       <div class="completion-modal__backdrop" @click="aiResultModal = null"></div>
       <section class="completion-modal__card">
-        <p class="mono-label">AI DESENSITIZATION</p>
-        <h2 id="ai-result-title">{{ aiResultModal.success ? 'AI 脱敏检测完成' : 'AI 脱敏检测结束' }}</h2>
+        <p class="mono-label">{{ $t('desensitize.aiCaption') }}</p>
+        <h2 id="ai-result-title">{{ aiResultModal.success ? $t('desensitize.aiCompleted') : $t('desensitize.aiEnded') }}</h2>
         <p>{{ aiResultModal.message }}</p>
         <div v-if="aiResultModal.success" class="ai-result-summary">
-          <span>新增敏感项 <strong>{{ aiResultModal.added }}</strong></span>
-          <span>取消错误项 <strong>{{ aiResultModal.rejected }}</strong></span>
-          <span>当前总计 <strong>{{ aiResultModal.total }}</strong></span>
+          <span>{{ $t('desensitize.added') }} <strong>{{ formatNumber(aiResultModal.added) }}</strong></span>
+          <span>{{ $t('desensitize.rejected') }} <strong>{{ formatNumber(aiResultModal.rejected) }}</strong></span>
+          <span>{{ $t('desensitize.total') }} <strong>{{ formatNumber(aiResultModal.total) }}</strong></span>
         </div>
         <div class="completion-modal__actions">
-          <button class="btn btn--primary" @click="aiResultModal = null">知道了</button>
+          <button class="btn btn--primary" @click="aiResultModal = null">{{ $t('desensitize.ok') }}</button>
         </div>
       </section>
     </div>
@@ -268,6 +268,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import 'pdfjs-dist/build/pdf.worker.entry'
 import JSZip from 'jszip'
+import { t, getLocale } from '@/i18n'
 import DesensitizationAPI from '@/api/desensitization'
 import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
 import { saveHistoryFile } from '@/utils/historyFiles'
@@ -289,6 +290,76 @@ const TYPE_NAMES = {
   phone: '手机号', idcard: '身份证', email: '邮箱', bankcard: '银行卡',
   amount: '金额', name: '姓名', ip_address: 'IP地址', ipv6_address: 'IPv6地址', mac_address: 'MAC地址',
   landline: '固定电话', license_plate: '车牌号', jdbc_connection: 'JDBC连接串', date: '日期', manual: '区域'
+}
+
+// UI-only lookup tables: stored labels and replacement markers remain unchanged.
+const TYPE_LABEL_KEYS = {
+  "phone": "type_phone",
+  "idcard": "type_idcard",
+  "email": "type_email",
+  "bankcard": "type_bankcard",
+  "amount": "type_amount",
+  "name": "type_name",
+  "chinese_name": "type_chinese_name",
+  "landline": "type_landline",
+  "ip_address": "type_ip_address",
+  "license_plate": "type_license_plate",
+  "passport": "type_passport",
+  "unified_social_credit_code": "type_unified_social_credit_code",
+  "ssn": "type_ssn",
+  "credit_card": "type_credit_card",
+  "address": "type_address",
+  "date": "type_date",
+  "ipv6_address": "type_ipv6_address",
+  "mac_address": "type_mac_address",
+  "gender": "type_gender",
+  "ethnicity": "type_ethnicity",
+  "province": "type_province",
+  "hong_kong_macao_permit": "type_hong_kong_macao_permit",
+  "jdbc_connection": "type_jdbc_connection",
+  "vehicle_identification_number": "type_vehicle_identification_number",
+  "organization_code": "type_organization_code",
+  "business_license": "type_business_license",
+  "manual": "type_manual",
+  "sensitive": "type_sensitive",
+  "custom": "type_custom",
+  "ai": "type_ai",
+  "dateOnly": "type_dateOnly",
+  "id_card": "type_idcard",
+  "bank_card": "type_bankcard"
+}
+const ORIGINAL_LABEL_KEYS = {
+  "手机号": "type_phone",
+  "身份证": "type_idcard",
+  "邮箱": "type_email",
+  "银行卡": "type_bankcard",
+  "金额": "type_amount",
+  "姓名": "type_name",
+  "中文姓名": "type_chinese_name",
+  "固定电话": "type_landline",
+  "IP地址": "type_ip_address",
+  "车牌号": "type_license_plate",
+  "护照号": "type_passport",
+  "统一社会信用代码": "type_unified_social_credit_code",
+  "社会安全号": "type_ssn",
+  "信用卡": "type_credit_card",
+  "地址": "type_address",
+  "日期时间": "type_date",
+  "IPv6地址": "type_ipv6_address",
+  "MAC地址": "type_mac_address",
+  "性别": "type_gender",
+  "民族": "type_ethnicity",
+  "省份": "type_province",
+  "港澳通行证": "type_hong_kong_macao_permit",
+  "JDBC连接串": "type_jdbc_connection",
+  "车辆识别代码": "type_vehicle_identification_number",
+  "组织机构代码": "type_organization_code",
+  "营业执照号码": "type_business_license",
+  "区域": "type_manual",
+  "敏感项": "type_sensitive",
+  "敏感字段": "type_custom",
+  "AI候选": "type_ai",
+  "日期": "type_dateOnly"
 }
 
 export default {
@@ -341,12 +412,18 @@ export default {
     }
   },
   computed: {
+    uiDirection() {
+      return getLocale() === 'ar' ? 'rtl' : 'ltr'
+    },
+    documentDirection() {
+      return /\.(json|csv)$/i.test(this.file?.name || '') ? 'ltr' : 'auto'
+    },
     previewTitle() {
-      if (!this.file) return '预览'
-      if (this.fileType === 'pdf') return 'PDF 预览'
-      if (this.fileType === 'docx') return 'Word 预览'
-      if (this.fileType === 'excel') return 'Excel 预览'
-      return this.fileType === 'text' ? '文本预览' : '图片预览'
+      if (!this.file) return t('desensitize.preview')
+      if (this.fileType === 'pdf') return t('desensitize.pdfPreview')
+      if (this.fileType === 'docx') return t('desensitize.wordPreview')
+      if (this.fileType === 'excel') return t('desensitize.excelPreview')
+      return this.fileType === 'text' ? t('desensitize.textPreview') : t('desensitize.imagePreview')
     },
     textParts() {
       if ((this.fileType !== 'text' && this.fileType !== 'pdf' && this.fileType !== 'docx' && this.fileType !== 'excel') || !this.rawOriginalText) return []
@@ -451,21 +528,21 @@ export default {
       }
     },
     confirmUpload(file) {
-      return requestAppConfirm({ title: '确认上传文件', message: `即将读取并检测以下文件：\n${file.name} · ${this.formatSize(file.size)}\n确认后才会开始本地解析。`, confirmText: '确认上传' })
+      return requestAppConfirm({ title: t('desensitize.confirmUploadTitle'), message: t('desensitize.confirmUploadMessage', { name: file.name, size: this.formatSize(file.size) }), confirmText: t('desensitize.confirmUpload') })
     },
     async requestAiDetection() {
       this.syncAiAvailability()
       if (!this.aiEnabled || !this.activeModelPath) return
-      const accepted = await requestAppConfirm({ title: '开始 AI 全文检测', message: `模型将基于敏感库检测“${this.file?.name || '当前文档'}”，结果仍需人工确认。`, confirmText: '开始检测' })
+      const accepted = await requestAppConfirm({ title: t('desensitize.startAiTitle'), message: t('desensitize.startAiMessage', { name: this.file?.name || t('desensitize.currentDocument') }), confirmText: t('desensitize.startDetection') })
       if (accepted) await this.runAiDetection()
     },
     async requestConfirmRedaction() {
       const count = this.detections.filter(item => item.active).length
-      const accepted = await requestAppConfirm({ title: '开始生成脱敏文件', message: `将按当前人工确认的 ${count} 项检测结果处理“${this.file?.name || '当前文件'}”。`, confirmText: '开始脱敏' })
+      const accepted = await requestAppConfirm({ title: t('desensitize.startRedactionTitle'), message: t('desensitize.startRedactionMessage', { count: this.formatNumber(count), name: this.file?.name || t('desensitize.currentFile') }), confirmText: t('desensitize.startRedaction') })
       if (accepted) await this.confirmRedaction()
     },
     async requestReset() {
-      const accepted = await requestAppConfirm({ title: '重新开始当前流程', message: '当前文件、检测结果和未下载的处理状态将被清除。确认重新开始吗？', confirmText: '确认重新开始', tone: 'warning' })
+      const accepted = await requestAppConfirm({ title: t('desensitize.restartTitle'), message: t('desensitize.restartMessage'), confirmText: t('desensitize.confirmRestart'), tone: 'warning' })
       if (accepted) this.reset()
     },
     handleFile(file) {
@@ -506,7 +583,8 @@ export default {
         this.detections = result.mappings.map((m, i) => ({
           id: this.nextId++,
           type: m.type,
-          label: this.getTypeLabel(m.type),
+          label: rules.find(rule => rule.id === m.type && !rule.builtIn)?.name || m.type,
+          preserveLabel: rules.some(rule => rule.id === m.type && !rule.builtIn),
           value: m.original,
           start: m.start,
           end: m.end,
@@ -575,20 +653,20 @@ export default {
       try {
         const zip = await JSZip.loadAsync(await file.arrayBuffer())
         const entry = zip.file('word/document.xml')
-        if (!entry) throw new Error('DOCX 缺少 word/document.xml')
+        if (!entry) throw new Error(t('desensitize.docxMissing'))
         const xml = await entry.async('text')
         const doc = new DOMParser().parseFromString(xml, 'application/xml')
-        if (doc.querySelector('parsererror')) throw new Error('DOCX XML 解析失败')
+        if (doc.querySelector('parsererror')) throw new Error(t('desensitize.docxXml'))
         const paragraphs = [...doc.querySelectorAll('w\\:p, p')].map(node => [...node.querySelectorAll('w\\:t, t')].map(text => text.textContent || '').join('')).filter(Boolean)
         const extracted = paragraphs.join('\n').trim()
-        if (!extracted) throw new Error('DOCX 未提取到正文')
+        if (!extracted) throw new Error(t('desensitize.docxEmpty'))
         this.rawOriginalText = extracted
         this.originalText = extracted
-        this.formatWarning = 'Word 已在本地读取正文，检测结果仍需人工确认；复杂对象和版式将在结构化适配器中继续保留。'
+        this.formatWarning = t('desensitize.wordWarning')
         this.runTextDetection()
         this.step = 2
       } catch (error) {
-        this.formatWarning = `Word 文件已加入，但读取正文失败：${error.message || '未知错误'}`
+        this.formatWarning = t('desensitize.wordReadFailed', { error: error.message || t('desensitize.unknownError') })
         this.rawOriginalText = this.file.name
         this.originalText = this.rawOriginalText
         this.step = 2
@@ -598,7 +676,7 @@ export default {
       try {
         const zip = await JSZip.loadAsync(await file.arrayBuffer())
         const entries = Object.keys(zip.files).filter(name => /^(xl\/sharedStrings\.xml|xl\/worksheets\/sheet\d+\.xml)$/.test(name))
-        if (!entries.length) throw new Error('XLSX 缺少可读取的工作表结构')
+        if (!entries.length) throw new Error(t('desensitize.xlsxMissing'))
         const values = []
         for (const name of entries) {
           const xml = await zip.file(name).async('text')
@@ -611,48 +689,31 @@ export default {
           textNodes.forEach(node => { const value = (node.textContent || '').trim(); if (value) values.push(value) })
         }
         const extracted = values.join('\n').trim()
-        if (!extracted) throw new Error('XLSX 未提取到文本单元格')
+        if (!extracted) throw new Error(t('desensitize.xlsxEmpty'))
         this.rawOriginalText = extracted; this.originalText = extracted
-        this.formatWarning = 'Excel 已在本地读取文本单元格；公式、样式和工作表结构将在输出中保留。'
+        this.formatWarning = t('desensitize.excelWarning')
         this.runTextDetection(); this.step = 2
       } catch (error) {
-        this.formatWarning = `Excel 文件已加入，但读取失败：${error.message || '未知错误'}`
+        this.formatWarning = t('desensitize.excelReadFailed', { error: error.message || t('desensitize.unknownError') })
         this.rawOriginalText = ''; this.originalText = ''; this.step = 2
       }
     },
     getTypeLabel(type) {
-      const labels = {
-        phone: '手机号',
-        idcard: '身份证',
-        id_card: '身份证',
-        email: '邮箱',
-        bankcard: '银行卡',
-        bank_card: '银行卡',
-        amount: '金额',
-        name: '姓名',
-        chinese_name: '中文姓名',
-        landline: '固定电话',
-        ip_address: 'IP地址',
-        license_plate: '车牌号',
-        passport: '护照号',
-        unified_social_credit_code: '统一社会信用代码',
-        ssn: '社会安全号',
-        credit_card: '信用卡',
-        address: '地址',
-        date: '日期时间',
-        ipv6_address: 'IPv6地址',
-        mac_address: 'MAC地址',
-        gender: '性别',
-        ethnicity: '民族',
-        province: '省份',
-        hong_kong_macao_permit: '港澳通行证',
-        jdbc_connection: 'JDBC连接串',
-        vehicle_identification_number: '车辆识别代码',
-        organization_code: '组织机构代码',
-        business_license: '营业执照号码',
-        manual: '区域'
-      }
-      return labels[type] || '敏感项'
+      const key = Object.hasOwn(TYPE_LABEL_KEYS, type) ? TYPE_LABEL_KEYS[type] : null
+      return t('desensitize.' + (key || 'type_sensitive'))
+    },
+    getGroupLabel(type) {
+      const detection = this.detections.find(item => (item.type || 'manual') === type)
+      return detection?.preserveLabel ? detection.label : this.getTypeLabel(type)
+    },
+    getDetectionLabel(item) {
+      const detection = this.detections.find(entry => entry.id === item.id) || item
+      // Provenance is captured when detecting, never inferred by reading storage during render.
+      if (detection.preserveLabel) return detection.label
+      const typeKey = Object.hasOwn(TYPE_LABEL_KEYS, detection.type) ? TYPE_LABEL_KEYS[detection.type] : null
+      const originalKey = Object.hasOwn(ORIGINAL_LABEL_KEYS, detection.label) ? ORIGINAL_LABEL_KEYS[detection.label] : null
+      const key = typeKey && (detection.label === detection.type || originalKey === typeKey) ? typeKey : null
+      return key ? t('desensitize.' + key) : (detection.label || this.getTypeLabel(detection.type || 'manual'))
     },
     partsForRange(start, end) {
       const parts = []
@@ -723,8 +784,8 @@ export default {
         this.step = 2
       } catch (error) {
         console.error('PDF parsing error:', error)
-        this.formatWarning = 'PDF 解析失败，请确认文件未加密；文件已保留，可重新选择或换用其他格式。'
-        this.backendError = error?.message || 'PDF 解析失败'
+        this.formatWarning = t('desensitize.pdfWarning')
+        this.backendError = error?.message || t('desensitize.pdfFailed')
         this.step = 2
         window.dispatchEvent(new CustomEvent('desens:status', { detail: { message: this.formatWarning } }))
       }
@@ -740,7 +801,11 @@ export default {
           raw.push({ type: p.id, label: p.label, value: m[0], start: m.index, end: m.index + m[0].length })
         }
       })
-      raw.push(...detectWithRules(text, loadSensitiveRules()))
+      const rules = loadSensitiveRules()
+      raw.push(...detectWithRules(text, rules).map(item => ({
+        ...item,
+        preserveLabel: !rules.find(rule => rule.id === item.type)?.builtIn
+      })))
       
       raw.sort((a, b) => a.start - b.start || b.end - a.end)
       const merged = []
@@ -755,6 +820,8 @@ export default {
         id: this.nextId++,
         type: r.type,
         label: r.label,
+        source: r.source,
+        preserveLabel: r.preserveLabel,
         value: r.value,
         start: r.start,
         end: r.end,
@@ -1031,7 +1098,7 @@ export default {
     },
     async runAiDetection() {
       if (!this.activeModelPath || !this.aiEnabled || !isTauriRuntime() || !this.rawOriginalText || this.aiDetecting) {
-        this.backendError = !this.activeModelPath ? '请先在设置中登记并应用一个可用的 GGUF 模型。' : 'AI 当前不可用，请检查开关、桌面运行环境和文档内容。'
+        this.backendError = !this.activeModelPath ? t('desensitize.modelRequired') : t('desensitize.aiUnavailable')
         this.aiResultModal = { success: false, message: this.backendError }
         return
       }
@@ -1053,7 +1120,7 @@ export default {
         const arrayEnd = cleanedOutput.lastIndexOf(']')
         if (arrayStart >= 0 && arrayEnd >= arrayStart) candidates.push(`{"items":${cleanedOutput.slice(arrayStart, arrayEnd + 1)}}`)
         for (const candidate of candidates) { try { const value = JSON.parse(candidate); if (Array.isArray(value)) parsed = { items: value }; else if (value && Array.isArray(value.items)) parsed = value; if (parsed) break } catch (_) {} }
-        if (!parsed) throw new Error('模型未返回有效 JSON 候选结果，请重试或使用规则检测')
+        if (!parsed) throw new Error(t('desensitize.invalidAiJson'))
       const items = Array.isArray(parsed.items) ? parsed.items : []
       let acceptedCount = 0
       let rejectedCount = 0
@@ -1072,19 +1139,23 @@ export default {
       })
       this.detections.sort((a, b) => a.start - b.start)
       this.aiProgress = 100
-      this.backendError = acceptedCount ? `AI 已生成 ${acceptedCount} 条候选，请人工复核。` : 'AI 已完成实际推理，未发现新的候选片段。'
-      this.aiResultModal = { success: true, message: 'AI 已完成全文检测，候选结果仍需人工确认。', added: this.detections.length - beforeCount, rejected: rejectedCount, total: this.detections.length }
+      this.backendError = acceptedCount ? t('desensitize.aiGenerated', { count: this.formatNumber(acceptedCount) }) : t('desensitize.aiNoNew')
+      this.aiResultModal = { success: true, message: t('desensitize.aiReview'), added: this.detections.length - beforeCount, rejected: rejectedCount, total: this.detections.length }
     } catch (error) {
-      this.backendError = error.message || 'AI 检测失败，请检查模型和输出格式'
+      this.backendError = error.message || t('desensitize.aiFailed')
       // 小模型偶尔会输出非 JSON 文本；保留 AI 失败事实，同时用同一套本地规则生成可审核候选，避免按钮无实际作用。
       const fallbackBefore = this.detections.length
-      const fallback = detectWithRules(this.rawOriginalText, loadSensitiveRules().filter(rule => rule.enabled))
+      const fallbackRules = loadSensitiveRules().filter(rule => rule.enabled)
+      const fallback = detectWithRules(this.rawOriginalText, fallbackRules).map(item => ({
+        ...item,
+        preserveLabel: !fallbackRules.find(rule => rule.id === item.type)?.builtIn
+      }))
       fallback.forEach(item => {
         if (!this.detections.some(d => d.start === item.start && d.end === item.end)) this.detections.push({ ...item, id: this.nextId++, source: 'rule-fallback', manual: false, active: true, placeholder: '{AI_' + String(this.nextId).padStart(3, '0') + '}' })
       })
       this.detections.sort((a, b) => a.start - b.start)
       if (this.detections.length > fallbackBefore) {
-        this.backendError = 'AI 输出格式不规范，已使用本地规则生成候选，请人工复核。'
+        this.backendError = t('desensitize.aiFallback')
         this.aiResultModal = { success: true, message: this.backendError, added: this.detections.length - beforeCount, rejected: 0, total: this.detections.length }
       } else {
         this.aiResultModal = { success: false, message: this.backendError }
@@ -1140,7 +1211,7 @@ export default {
           this.showCompletionModal = true
           return
         } catch (error) {
-          this.backendError = error?.message || 'Rust 脱敏处理失败'
+          this.backendError = error?.message || t('desensitize.rustFailed')
         }
       }
       if (this.fileType === 'text' || this.fileType === 'pdf' || this.fileType === 'docx' || this.fileType === 'excel') {
@@ -1245,7 +1316,7 @@ export default {
         const item = list.find(entry => entry.id === historyId)
         if (item) { item.redacted_file_key = historyId; item.redacted_file_name = filename; item.redacted_file_size = blob.size; localStorage.setItem(key, JSON.stringify(list)) }
       } catch (error) {
-        window.dispatchEvent(new CustomEvent('desens:status', { detail: { message: `历史文件保存失败：${error.message}` } }))
+        window.dispatchEvent(new CustomEvent('desens:status', { detail: { message: t('desensitize.historyFailed', { error: error.message || t('desensitize.unknownError') }) } }))
       }
     },
     goToRestore() {
@@ -1275,10 +1346,10 @@ export default {
             const matched = result.filename?.match(/filename=\"?([^\";]+)\"?/i)
             filename = matched?.[1] || `redacted_${this.file.name.replace(/\.(pdf|docx|xlsx|xls)$/i, this.fileType === 'excel' ? '.xlsx' : '.docx')}`
           }
-          if (!(blob instanceof Blob) || blob.size < 1024) throw new Error('输出文件为空或不是有效文档，已阻止下载')
+          if (!(blob instanceof Blob) || blob.size < 1024) throw new Error(t('desensitize.invalidOutput'))
         } catch (error) {
-          const stage = this.fileType === 'docx' ? '本地 DOCX 生成失败' : this.fileType === 'excel' ? '本地 XLSX 生成失败' : '格式化输出失败'
-          window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: `${stage}：${error.message}`, filename: this.file?.name } }))
+          const stage = this.fileType === 'docx' ? t('desensitize.docxGenerationFailed') : this.fileType === 'excel' ? t('desensitize.xlsxGenerationFailed') : t('desensitize.formatOutputFailed')
+          window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: t('desensitize.stageError', { stage, error: error.message || t('desensitize.unknownError') }), filename: this.file?.name } }))
           return false
         }
       } else if (this.fileType === 'text') {
@@ -1306,14 +1377,14 @@ export default {
           created_at: this.mapping?.created_at || new Date().toISOString()
         }, null, 2)], { type: 'application/json' })
         this.triggerDownload(companion, companionName, false)
-        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: '脱敏文件及伴随标记已提交到系统下载目录。', filename: `${filename} + ${companionName}`, size: blob.size + companion.size } }))
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: t('desensitize.downloadCompanionSuccess'), filename: `${filename} + ${companionName}`, size: blob.size + companion.size } }))
       } else this.triggerDownload(blob, filename)
       return true
     },
     async buildLocalDocxBlob() {
       const zip = await JSZip.loadAsync(await this.file.arrayBuffer())
       const documentEntries = Object.keys(zip.files).filter(name => /^word\/(document|header\d+|footer\d+)\.xml$/.test(name))
-      if (!documentEntries.length) throw new Error('DOCX 缺少可写入的正文结构')
+      if (!documentEntries.length) throw new Error(t('desensitize.docxNotWritable'))
       const replacements = [...(this.mapping?.mappings || [])].filter(item => item.placeholder && item.original).map(item => ({ value: item.original, placeholder: item.placeholder })).sort((a, b) => b.value.length - a.value.length)
       let changed = 0
       for (const name of documentEntries) {
@@ -1326,7 +1397,7 @@ export default {
         }
         if (xml !== before) { zip.file(name, xml); changed += 1 }
       }
-      if (!changed) throw new Error('未能在 DOCX 文档结构中写入脱敏结果，已阻止下载')
+      if (!changed) throw new Error(t('desensitize.docxNotChanged'))
       const marker = `\n脱敏文档 ID：${this.mapping?.document_id || 'local'}\n映射项数量：${this.mapping?.mappings?.length || 0}\n`
       const settings = zip.file('word/document.xml')
       if (settings) {
@@ -1339,7 +1410,7 @@ export default {
     async buildLocalXlsxBlob() {
       const zip = await JSZip.loadAsync(await this.file.arrayBuffer())
       const entries = Object.keys(zip.files).filter(name => /^(xl\/sharedStrings\.xml|xl\/worksheets\/sheet\d+\.xml)$/.test(name))
-      if (!entries.length) throw new Error('XLSX 缺少可写入的工作表结构')
+      if (!entries.length) throw new Error(t('desensitize.xlsxNotWritable'))
       const replacements = [...(this.mapping?.mappings || [])].filter(item => item.placeholder && item.original).map(item => ({ value: item.original, placeholder: item.placeholder })).sort((a, b) => b.value.length - a.value.length)
       let changed = 0
       for (const name of entries) {
@@ -1347,7 +1418,7 @@ export default {
         for (const item of replacements) xml = xml.split(item.value).join(item.placeholder)
         if (xml !== before) { zip.file(name, xml); changed += 1 }
       }
-      if (!changed) throw new Error('未能在 XLSX 工作表中写入脱敏结果，已阻止下载')
+      if (!changed) throw new Error(t('desensitize.xlsxNotChanged'))
       return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     },
     downloadMapping() {
@@ -1378,8 +1449,8 @@ export default {
     },
     triggerDownload(blob, filename, notify = true) {
       if (!(blob instanceof Blob) || blob.size === 0) {
-        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: '下载内容为空，未生成文件', filename } }))
-        throw new Error('下载内容为空')
+        window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: false, message: t('desensitize.emptyDownloadMessage'), filename } }))
+        throw new Error(t('desensitize.emptyDownload'))
       }
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -1387,13 +1458,16 @@ export default {
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      if (notify) window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: '文件已生成并提交到系统下载目录。', filename, size: blob.size } }))
+      if (notify) window.dispatchEvent(new CustomEvent('desens:download-result', { detail: { success: true, message: t('desensitize.downloadSuccess'), filename, size: blob.size } }))
       setTimeout(() => { URL.revokeObjectURL(url); a.remove() }, 30_000)
     },
+    formatNumber(value) {
+      return new Intl.NumberFormat(getLocale()).format(value)
+    },
     formatSize(bytes) {
-      if (bytes < 1024) return bytes + ' B'
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+      const unit = bytes < 1024 ? 'byte' : bytes < 1024 * 1024 ? 'kilobyte' : 'megabyte'
+      const value = unit === 'byte' ? bytes : unit === 'kilobyte' ? bytes / 1024 : bytes / (1024 * 1024)
+      return new Intl.NumberFormat(getLocale(), { style: 'unit', unit, unitDisplay: 'short', minimumFractionDigits: unit === 'byte' ? 0 : 1, maximumFractionDigits: unit === 'byte' ? 0 : 1 }).format(value)
     },
     reset() {
       this.file = null
@@ -1453,6 +1527,15 @@ export default {
 </script>
 
 <style scoped>
+.workflow { text-align: start; }
+.steps, .completion-modal__actions, .detect-item__header { flex-wrap: wrap; }
+.comparison-pane__head { gap: 8px; }
+.comparison-pane__head small { text-align: end; }
+.comparison-pane__body, .document-preview, .detect-item__original-text { text-align: start; }
+.comparison-pane__body[dir="auto"], .document-preview { unicode-bidi: plaintext; }
+.detect-item__original-text, .file-meta__name { unicode-bidi: isolate; }
+.workflow[dir="rtl"] .ai-progress span { margin-inline-start: 0; margin-inline-end: auto; }
+
 .panel-toggle { border: 0; background: transparent; color: #64748b; font-size: 12px; cursor: pointer; }
 .upload-panel--collapsed .panel__head { padding-bottom: 12px; }
 .is-linked-hover { background: #fef08a !important; color: #111827 !important; border-radius: 3px; box-shadow: 0 0 0 2px #facc15; transition: background .12s ease, box-shadow .12s ease; }

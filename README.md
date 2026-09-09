@@ -6,6 +6,14 @@
 
 ## 下载与发布
 
+### 界面语言
+
+顶部语言选择器支持简体中文、English、Français、Русский 和 العربية，覆盖联合国安理会五个常任理事国使用的主要官方语言，并额外提供阿拉伯文。首次启动跟随系统支持的语言，手动选择后保存在本机；阿拉伯文自动采用从右向左布局。语言包随应用提供，切换无需联网。
+
+翻译范围包括导航、各功能页、确认与结果弹窗、错误提示、AI 可用性提示及内置规则显示名称。用户文档、自定义规则、文件名、映射与第三方原始诊断内容不会被自动翻译。界面语言不改变当前规则引擎支持的证件类型或模型识别能力。
+
+开发时在 `src/i18n/modules/` 维护五种语言的同名键，执行 `npm run check:i18n` 校验完整性、占位符和消息语法。
+
 版本 tag 使用 `v*` 格式时，仅由 **GitHub Actions** 自动打包并发布 macOS Apple Silicon DMG、Windows x64 MSI 和 Linux x64 DEB/AppImage，同时生成应用内更新清单。源码仓库：[echohaoran/File_desensitization](https://github.com/echohaoran/File_desensitization)。
 
 ---

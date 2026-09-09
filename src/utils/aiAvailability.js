@@ -1,4 +1,5 @@
 import { isTauriRuntime } from '@/api/tauriBridge'
+import { t } from '@/i18n'
 
 export const AI_AVAILABILITY_EVENT = 'desens:ai-availability-change'
 
@@ -12,7 +13,7 @@ export function readAiAvailability({ requireDesktop = true } = {}) {
       enabled,
       modelPath,
       state: 'ai-disabled',
-      message: 'AI 功能未开启，请前往设置开启。'
+      message: t('shared.aiDisabled')
     }
   }
 
@@ -22,7 +23,7 @@ export function readAiAvailability({ requireDesktop = true } = {}) {
       enabled,
       modelPath,
       state: 'model-missing',
-      message: '尚未应用本地模型，请前往设置下载并应用。'
+      message: t('shared.modelMissing')
     }
   }
 
@@ -32,7 +33,7 @@ export function readAiAvailability({ requireDesktop = true } = {}) {
       enabled,
       modelPath,
       state: 'desktop-required',
-      message: 'AI 功能仅可在桌面应用中使用。'
+      message: t('shared.aiDesktopRequired')
     }
   }
 

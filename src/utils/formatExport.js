@@ -4,6 +4,7 @@
  * 每个输出必须通过文件签名、非空与内容抽样校验后才返回。
  */
 import JSZip from 'jszip'
+import { t } from '@/i18n'
 
 const XML_ILLEGAL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g
 
@@ -15,7 +16,7 @@ function escapeXml(value) {
 }
 
 function requireText(text) {
-  if (typeof text !== 'string' || !text.trim()) throw new Error('没有可导出的正文内容')
+  if (typeof text !== 'string' || !text.trim()) throw new Error(t('shared.noExportText'))
   return text
 }
 
@@ -70,14 +71,14 @@ export function buildCsvBlob(text, { csv = false } = {}) {
 }
 
 async function assertZipBlob(blob, entryName, sample) {
-  if (!(blob instanceof Blob) || blob.size === 0) throw new Error('生成的文件为空')
+  if (!(blob instanceof Blob) || blob.size === 0) throw new Error(t('shared.emptyGeneratedFile'))
   const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer())
-  if (head[0] !== 0x50 || head[1] !== 0x4B) throw new Error('文件签名校验失败：不是有效的 ZIP 文档包')
+  if (head[0] !== 0x50 || head[1] !== 0x4B) throw new Error(t('shared.invalidZipSignature'))
   const zip = await JSZip.loadAsync(await blob.arrayBuffer())
   const file = zip.file(entryName)
-  if (!file) throw new Error(`文档包缺少 ${entryName}`)
+  if (!file) throw new Error(t('shared.missingZipEntry', { entryName }))
   const xml = (await file.async('text')).replace(/<[^>]+>/g, '')
-  if (sample && !xml.includes(sample)) throw new Error('内容抽样校验失败：正文未写入文档包')
+  if (sample && !xml.includes(sample)) throw new Error(t('shared.contentCheckFailed'))
   return blob
 }
 

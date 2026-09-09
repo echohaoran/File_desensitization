@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "preview": "vite preview",
     "setup:local": "node scripts/setup-local.mjs",
     "start:local": "node scripts/start-local.mjs",
@@ -26,6 +27,7 @@
     "jszip": "^3.10.1",
     "pdfjs-dist": "^3.11.174",
     "vue": "^3.4.0",
+    "vue-i18n": "11.3.0",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {

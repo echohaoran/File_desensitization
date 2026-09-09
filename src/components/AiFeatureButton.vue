@@ -36,6 +36,9 @@ export default {
   computed: {
     isDisabled() { return this.disabled || !this.availability.available }
   },
+  watch: {
+    '$i18n.locale'() { this.refreshAvailability() }
+  },
   mounted() {
     this.availabilityListener = () => this.refreshAvailability()
     window.addEventListener(AI_AVAILABILITY_EVENT, this.availabilityListener)

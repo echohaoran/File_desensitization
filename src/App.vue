@@ -3,48 +3,51 @@
     <!-- Shared Header -->
     <header class="site-header">
       <div class="container site-header__inner">
-        <router-link class="brand" to="/" aria-label="脱敏系统首页">
+        <router-link class="brand" to="/" :aria-label="$t('shell.homeLabel')">
           <img class="brand__mark" src="/assets/desens-shield.png" alt="" aria-hidden="true" />
           <span class="brand__content">
-            <span class="brand__name">脱敏系统<span> / DESENS</span></span>
-            <button class="brand__version" :class="{ 'has-update': updateAvailable }" type="button" @click.stop.prevent="openVersionDialog" :title="checkingUpdate ? '正在检查更新' : '检查更新'">
-              {{ currentVersion }}<i v-if="updateAvailable" aria-label="有新版本"></i>
+            <span class="brand__name">{{ $t('shell.brand') }}<span v-if="$i18n.locale === 'zh'"> / DESENS</span></span>
+            <button class="brand__version" :class="{ 'has-update': updateAvailable }" type="button" @click.stop.prevent="openVersionDialog" :title="checkingUpdate ? t('shell.checking') : t('shell.check')">
+              {{ currentVersion }}<i v-if="updateAvailable" :aria-label="$t('shell.newVersion')"></i>
             </button>
           </span>
         </router-link>
-        <nav class="site-nav" aria-label="主导航">
-          <router-link to="/">概览</router-link>
-          <router-link to="/desensitize">脱敏</router-link>
-          <router-link to="/restore">还原</router-link>
-          <router-link to="/sensitive-rules">敏感字段</router-link>
-          <router-link to="/settings">设置</router-link>
+        <nav class="site-nav" :aria-label="$t('shell.nav')">
+          <router-link to="/">{{ $t('shell.home') }}</router-link>
+          <router-link to="/desensitize">{{ $t('shell.redact') }}</router-link>
+          <router-link to="/restore">{{ $t('shell.restore') }}</router-link>
+          <router-link to="/sensitive-rules">{{ $t('shell.rules') }}</router-link>
+          <router-link to="/settings">{{ $t('shell.settings') }}</router-link>
         </nav>
         <div class="header-spacer"></div>
+        <select class="language-select" :value="$i18n.locale" :aria-label="$t('shell.language')" @change="setLocale($event.target.value)">
+          <option v-for="language in languages" :key="language.code" :value="language.code" :lang="language.tag">{{ language.name }}</option>
+        </select>
       </div>
     </header>
 
-    <div v-if="showVersionDialog" class="version-modal" role="dialog" aria-modal="true" aria-label="版本更新" @click.self="showVersionDialog = false">
+    <div v-if="showVersionDialog" class="version-modal" role="dialog" aria-modal="true" :aria-label="$t('shell.updateTitle')" @click.self="showVersionDialog = false">
       <section class="version-modal__card">
-        <header class="version-modal__head"><div><span class="mono-label">GITHUB RELEASE UPDATE</span><h2>版本更新</h2></div><button class="icon-btn" :disabled="updating" @click="showVersionDialog = false" aria-label="关闭版本更新窗口">×</button></header>
+        <header class="version-modal__head"><div><span class="mono-label">GITHUB RELEASE UPDATE</span><h2>{{ $t('shell.updateTitle') }}</h2></div><button class="icon-btn" :disabled="updating" @click="showVersionDialog = false" :aria-label="$t('shell.closeUpdate')">×</button></header>
         <p class="version-modal__status" :class="{ 'is-update': updateAvailable }">{{ versionStatus }}</p>
-        <dl class="version-modal__meta"><div><dt>当前版本</dt><dd>{{ currentVersion }}</dd></div><div><dt>更新来源</dt><dd>GitHub Release · 签名验证</dd></div></dl>
-        <section class="version-modal__commits"><h3>发布说明</h3><p v-if="checkingUpdate">正在检查 GitHub Release…</p><p v-else-if="!versionInfo?.notes">{{ updateAvailable ? '该版本未提供更新说明。' : '当前已是最新版本。' }}</p><p v-else class="version-modal__notes">{{ versionInfo.notes }}</p></section>
+        <dl class="version-modal__meta"><div><dt>{{ $t('shell.current') }}</dt><dd>{{ currentVersion }}</dd></div><div><dt>{{ $t('shell.source') }}</dt><dd>{{ $t('shell.signedSource') }}</dd></div></dl>
+        <section class="version-modal__commits"><h3>{{ $t('shell.notes') }}</h3><p v-if="checkingUpdate">{{ $t('shell.checkingRelease') }}</p><p v-else-if="!versionInfo?.notes">{{ updateAvailable ? t('shell.noNotes') : t('shell.latest') }}</p><p v-else class="version-modal__notes">{{ versionInfo.notes }}</p></section>
         <div v-if="updateProgress.active" class="version-modal__progress" role="progressbar" :aria-valuenow="updateProgress.percent" aria-valuemin="0" aria-valuemax="100">
           <div class="version-modal__progress-head"><span>{{ updateProgress.label }}</span><strong>{{ updateProgress.percent }}%</strong></div>
           <div class="version-modal__progress-track"><i :style="{ width: `${updateProgress.percent}%` }"></i></div>
           <small>{{ formatBytes(updateProgress.downloaded) }}<template v-if="updateProgress.total"> / {{ formatBytes(updateProgress.total) }}</template></small>
         </div>
-        <p class="version-modal__hint">更新包来自 GitHub Release，并在安装前由应用验证签名；不会覆盖本机脱敏历史。</p>
-        <footer class="version-modal__actions"><button class="btn btn--secondary" @click="checkForUpdates" :disabled="checkingUpdate || updating">{{ checkingUpdate ? '检查中…' : '检查更新' }}</button><button class="btn btn--primary" @click="requestUpdate" :disabled="!updateAvailable || updating">{{ updating ? '正在下载…' : '更新版本' }}</button><a class="btn btn--ghost" :href="repositoryUrl" target="_blank" rel="noopener" @click="showToast('正在打开代码仓库')">前往仓库</a></footer>
+        <p class="version-modal__hint">{{ $t('shell.updateHint') }}</p>
+        <footer class="version-modal__actions"><button class="btn btn--secondary" @click="checkForUpdates" :disabled="checkingUpdate || updating">{{ checkingUpdate ? t('shell.checkingShort') : t('shell.check') }}</button><button class="btn btn--primary" @click="requestUpdate" :disabled="!updateAvailable || updating">{{ updating ? t('shell.downloading') : t('shell.update') }}</button><a class="btn btn--ghost" :href="repositoryUrl" target="_blank" rel="noopener" @click="showToast(t('shell.openRepo'))">{{ $t('shell.repository') }}</a></footer>
       </section>
     </div>
 
     <div v-if="showRestartDialog" class="action-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="restart-update-title">
       <section class="action-confirm-modal__card">
         <div class="action-confirm-modal__icon">✓</div>
-        <h2 id="restart-update-title">更新已下载</h2>
-        <p>版本 {{ versionInfo?.version }} 已通过签名校验并准备安装。重启应用后将完成更新。</p>
-        <div class="action-confirm-modal__actions"><button class="btn btn--secondary" :disabled="installingUpdate" @click="showRestartDialog = false">稍后重启</button><button class="btn btn--primary" :disabled="installingUpdate" @click="installAndRestart">{{ installingUpdate ? '正在重启…' : '立即重启' }}</button></div>
+        <h2 id="restart-update-title">{{ $t('shell.downloaded') }}</h2>
+        <p>{{ $t('shell.restartMessage', { version: versionInfo?.version }) }}</p>
+        <div class="action-confirm-modal__actions"><button class="btn btn--secondary" :disabled="installingUpdate" @click="showRestartDialog = false">{{ $t('shell.later') }}</button><button class="btn btn--primary" :disabled="installingUpdate" @click="installAndRestart">{{ installingUpdate ? t('shell.restarting') : t('shell.restart') }}</button></div>
       </section>
     </div>
 
@@ -58,10 +61,10 @@
     <div v-if="downloadDialog" class="download-result-modal" role="dialog" aria-modal="true" aria-labelledby="download-result-title" @click.self="downloadDialog = null">
       <section class="download-result-modal__card">
         <div class="download-result-modal__icon" :class="downloadDialog.success ? 'is-success' : 'is-error'">{{ downloadDialog.success ? '✓' : '!' }}</div>
-        <h2 id="download-result-title">{{ downloadDialog.success ? '下载已完成' : '下载失败' }}</h2>
+        <h2 id="download-result-title">{{ downloadDialog.success ? t('shell.downloadDone') : t('shell.downloadFailed') }}</h2>
         <p>{{ downloadDialog.message }}</p>
         <small v-if="downloadDialog.filename">{{ downloadDialog.filename }}<template v-if="downloadDialog.size"> · {{ formatBytes(downloadDialog.size) }}</template></small>
-        <button class="btn btn--primary" @click="downloadDialog = null">知道了</button>
+        <button class="btn btn--primary" @click="downloadDialog = null">{{ $t('shell.ok') }}</button>
       </section>
     </div>
     <div v-if="actionConfirm" class="action-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="action-confirm-title" @click.self="resolveActionConfirm(false)">
@@ -70,7 +73,7 @@
         <h2 id="action-confirm-title">{{ actionConfirm.title }}</h2>
         <p>{{ actionConfirm.message }}</p>
         <div class="action-confirm-modal__actions">
-          <button class="btn btn--secondary" data-no-feedback="true" @click="resolveActionConfirm(false)">取消</button>
+          <button class="btn btn--secondary" data-no-feedback="true" @click="resolveActionConfirm(false)">{{ $t('shell.cancel') }}</button>
           <button class="btn btn--primary" data-no-feedback="true" @click="resolveActionConfirm(true)">{{ actionConfirm.confirmText }}</button>
         </div>
       </section>
@@ -80,6 +83,7 @@
 
 <script>
 import { markRaw } from 'vue'
+import { t, languages, setLocale, getLocale } from '@/i18n'
 import { isTauriRuntime } from '@/api/tauriBridge'
 import packageInfo from '../package.json'
 
@@ -87,6 +91,7 @@ export default {
   name: 'App',
   data() {
     return {
+      languages,
       statusMessage: '',
       currentVersion: `v${packageInfo.version} Beta`,
       updateAvailable: false,
@@ -96,7 +101,7 @@ export default {
       versionError: '',
       updateRequestId: 0,
       updateResource: null,
-      updateProgress: { active: false, downloaded: 0, total: 0, percent: 0, label: '正在下载更新包' },
+      updateProgress: { active: false, downloaded: 0, total: 0, percent: 0, label: t('shell.downloadPackage') },
       updating: false,
       installingUpdate: false,
       showRestartDialog: false,
@@ -112,13 +117,15 @@ export default {
       return 'https://github.com/echohaoran/File_desensitization'
     },
     versionStatus() {
-      if (this.checkingUpdate) return '正在检查 GitHub Release…'
+      if (this.checkingUpdate) return t('shell.checkingRelease')
       if (this.updating) return this.updateProgress.label
       if (this.versionError) return this.versionError
-      return this.updateAvailable ? `发现可用更新：v${this.versionInfo?.version}。` : '当前已是最新版本。'
+      return this.updateAvailable ? t('shell.available', { version: this.versionInfo?.version }) : t('shell.latest')
     }
   },
   methods: {
+    t,
+    setLocale,
     showToast(message) {
       this.toastMessage = message
       clearTimeout(this.toastTimer)
@@ -126,9 +133,9 @@ export default {
     },
     formatBytes(bytes) {
       if (!bytes) return ''
-      if (bytes < 1024) return `${bytes} B`
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-      return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+      const unit = bytes < 1024 ? 'byte' : bytes < 1024 * 1024 ? 'kilobyte' : 'megabyte'
+      const divisor = unit === 'byte' ? 1 : unit === 'kilobyte' ? 1024 : 1024 * 1024
+      return new Intl.NumberFormat(getLocale(), { style: 'unit', unit, maximumFractionDigits: 1 }).format(bytes / divisor)
     },
     announce(message) {
       this.statusMessage = ''
@@ -141,7 +148,7 @@ export default {
       window.dispatchEvent(new CustomEvent('desens:confirm-result', { detail: { id, confirmed } }))
     },
     openVersionDialog() {
-      this.showToast('正在打开版本信息')
+      this.showToast(t('shell.openVersion'))
       this.showVersionDialog = true
       this.checkForUpdates()
     },
@@ -153,37 +160,37 @@ export default {
     },
     async fetchLatestRelease() {
       const response = await fetch('https://api.github.com/repos/echohaoran/File_desensitization/releases/latest', { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' })
-      if (!response.ok) throw new Error(`GitHub Release 返回 ${response.status}`)
+      if (!response.ok) throw new Error(t('shell.httpError', { status: response.status }))
       const release = await response.json()
       return { version: String(release.tag_name || '').replace(/^v/, ''), notes: release.body || '', date: release.published_at || '' }
     },
     async requestUpdate() {
       if (!this.updateAvailable || this.updating) return
       if (!this.desktopRuntime || !this.updateResource) {
-        this.versionError = '自动更新仅在已签名的桌面安装包中可用。'
+        this.versionError = t('shell.desktopOnly')
         return
       }
       this.updating = true
-      this.updateProgress = { active: true, downloaded: 0, total: 0, percent: 0, label: '正在下载更新包' }
+      this.updateProgress = { active: true, downloaded: 0, total: 0, percent: 0, label: t('shell.downloadPackage') }
       try {
         await this.updateResource.download((event) => {
           if (event.event === 'Started') {
             this.updateProgress.total = event.data.contentLength || 0
-            this.updateProgress.label = '正在下载并验证更新包'
+            this.updateProgress.label = t('shell.downloadVerify')
           } else if (event.event === 'Progress') {
             this.updateProgress.downloaded += event.data.chunkLength
             this.updateProgress.percent = this.updateProgress.total ? Math.min(99, Math.round(this.updateProgress.downloaded / this.updateProgress.total * 100)) : 0
           } else if (event.event === 'Finished') {
             this.updateProgress.percent = 100
-            this.updateProgress.label = '更新包已下载，正在完成签名校验'
+            this.updateProgress.label = t('shell.finishingVerify')
           }
         })
         this.updateProgress.percent = 100
-        this.updateProgress.label = '更新已准备就绪'
+        this.updateProgress.label = t('shell.ready')
         this.showRestartDialog = true
-        this.announce(`更新 v${this.versionInfo?.version} 下载完成，等待确认重启`)
+        this.announce(t('shell.restartPending', { version: this.versionInfo?.version }))
       } catch (error) {
-        this.versionError = `更新下载或签名校验失败：${error?.message || '未知错误'}`
+        this.versionError = t('shell.verifyFailed', { error: error?.message || t('shell.unknown') })
         this.updateProgress.active = false
       } finally {
         this.updating = false
@@ -201,7 +208,7 @@ export default {
       } catch (error) {
         this.installingUpdate = false
         this.showRestartDialog = false
-        this.versionError = `更新安装失败：${error?.message || '未知错误'}`
+        this.versionError = t('shell.installFailed', { error: error?.message || t('shell.unknown') })
       }
     },
     async checkForUpdates() {
@@ -222,17 +229,17 @@ export default {
             this.updateResource = update ? markRaw(update) : null
             this.versionInfo = update ? { version: update.version, notes: update.body || '', date: update.date || '' } : null
             this.updateAvailable = Boolean(update)
-            this.announce(update ? `发现更新 v${update.version}` : '当前已是最新版本')
+            this.announce(update ? t('shell.found', { version: update.version }) : t('shell.latestShort'))
           } catch (updaterError) {
             const release = await this.fetchLatestRelease()
             if (requestId !== this.updateRequestId) return
             this.versionInfo = release
             if (this.isNewerVersion(release.version)) {
-              this.versionError = `发现 v${release.version}，但签名更新清单尚未发布，请稍后重试。`
-              this.announce('更新清单尚未发布')
+              this.versionError = t('shell.manifestPending', { version: release.version })
+              this.announce(t('shell.manifestMissing'))
             } else {
               this.versionError = ''
-              this.announce('当前已是最新版本；签名更新清单将在下次发布后启用')
+              this.announce(t('shell.latestManifest'))
             }
           }
           return
@@ -241,12 +248,12 @@ export default {
         if (requestId !== this.updateRequestId) return
         this.versionInfo = release
         this.updateAvailable = this.isNewerVersion(this.versionInfo.version)
-        this.announce(this.updateAvailable ? `发现 GitHub Release 更新 v${this.versionInfo.version}` : '当前已是最新版本')
+        this.announce(this.updateAvailable ? t('shell.foundRelease', { version: this.versionInfo.version }) : t('shell.latestShort'))
       } catch (error) {
         if (requestId !== this.updateRequestId) return
         this.versionInfo = null
-        this.versionError = `暂时无法检查 GitHub Release：${error?.message || '网络错误'}`
-        this.announce('暂时无法检查 GitHub Release')
+        this.versionError = t('shell.checkFailed', { error: error?.message || t('shell.network') })
+        this.announce(t('shell.unavailable'))
       } finally {
         if (requestId === this.updateRequestId) this.checkingUpdate = false
       }
@@ -266,9 +273,8 @@ export default {
       const button = event.target.closest?.('button')
       if (!button || button.disabled || button.dataset.noFeedback === 'true' || button.classList.contains('panel-toggle')) return
       const label = (button.getAttribute('aria-label') || button.title || button.textContent).trim().replace(/…$/, '')
-      if (!label || label === '×' || /知道了|关闭/.test(label)) return
-      if (/下载|转换|脱敏|还原|检查|登记|应用|保存|添加|刷新/.test(label)) this.showToast(`正在处理：${label}`)
-      else this.showToast(`已执行：${label}`)
+      if (!label || label === '×' || label === t('shell.ok')) return
+      this.showToast(t('shell.processing', { label }))
     }
     document.addEventListener('click', this._buttonFeedback, true)
   },

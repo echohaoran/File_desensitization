@@ -1,6 +1,8 @@
+import { t } from '@/i18n'
+
 let requestSequence = 0
 
-export function requestAppConfirm({ title, message, confirmText = '确认继续', tone = 'default' }) {
+export function requestAppConfirm({ title, message, confirmText = t('shared.confirmContinue'), tone = 'default' }) {
   return new Promise(resolve => {
     const id = `confirm_${Date.now()}_${++requestSequence}`
     const handleResult = event => {

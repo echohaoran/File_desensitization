@@ -1,0 +1,31 @@
+/* Language overrides load last so the shared viewport rules remain authoritative. */
+.site-nav { margin-left: 0; margin-inline-start: var(--space-4); }
+.language-select { flex-shrink: 0; max-width: 140px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; }
+html[dir="rtl"] .site-nav a,
+html[dir="rtl"] .mono-label,
+html[dir="rtl"] .mono-label *,
+html[dir="rtl"] .site-nav { letter-spacing: normal !important; font-family: var(--font-body); }
+html[dir="rtl"] .site-nav a[aria-current="page"]::before { margin-right: 0; margin-inline-end: var(--space-2); }
+html[dir="rtl"] .brand__version,
+html[dir="rtl"] code { direction: ltr; unicode-bidi: isolate; }
+html[dir="rtl"] .dialog-close { right: auto; left: 16px; }
+.ai-feature-gate > .rules-action-btn { min-height: 36px; padding: 8px 16px; border: 1px solid #111827; border-radius: 9px; background: #111827; color: white; font: inherit; font-size: 13px; cursor: pointer; }
+.ai-feature-gate.is-blocked > .rules-action-btn { background: #e5e7eb; border-color: #d1d5db; color: #6b7280; opacity: 1; }
+.ai-feature-gate__tooltip { max-width: min(260px, 80vw); }
+.rules-list-actions .ai-feature-gate__tooltip { left: auto; inset-inline-end: 0; transform: none !important; }
+.rules-list-actions .ai-feature-gate__tooltip::after { left: auto; inset-inline-end: 25px; transform: none; }
+#app > main > .container { width: 100%; min-width: 0; }
+html[dir="rtl"] .badge, html[dir="rtl"] .panel__head, html[dir="rtl"] .step, html[dir="rtl"] .detect-item__sub { letter-spacing: normal; font-family: var(--font-body); }
+@media (max-width: 899px) {
+  #app > main > .rules-page { overflow-y: auto; }
+  .rules-page .rules-list-wrap { margin-top: 16px; }
+  .rules-page .rule-item__content { flex-wrap: wrap; }
+  .rules-page .rule-item__content code { flex-basis: 100%; }
+  .rules-page .rule-item__actions { flex-shrink: 0; }
+}
+@media (max-width: 1100px) {
+  .site-header { flex-basis: auto; }
+  .site-header__inner { height: auto; min-height: 64px; flex-wrap: wrap; gap: 10px; padding-block: 10px; }
+  .site-nav { order: 3; display: flex; width: 100%; overflow-x: auto; margin-inline-start: 0; }
+  .site-nav a { flex-shrink: 0; white-space: nowrap; }
+}

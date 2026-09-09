@@ -3,6 +3,8 @@
  * 用于与 Python 后端通信
  */
 
+import { t } from '@/i18n'
+
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL
 const desktopApiBaseUrl = typeof window !== 'undefined' ? window.desensDesktop?.apiBaseUrl : undefined
 const API_BASE_URL = configuredApiBaseUrl !== undefined
@@ -14,7 +16,7 @@ export const apiUrl = (path) => `${API_BASE_URL}${path}`
 class DesensitizationAPI {
   static async getRuntimeCapabilities() {
     const response = await fetch(apiUrl('/api/runtime/capabilities'))
-    if (!response.ok) throw new Error('无法读取本机运行环境能力')
+    if (!response.ok) throw new Error(t('shared.runtimeCapabilitiesFailed'))
     return response.json()
   }
 
@@ -35,7 +37,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || 'PDF 转换失败')
+      throw new Error(detail || t('shared.pdfConversionFailed'))
     }
 
     return response.blob()
@@ -49,7 +51,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || 'Word 转 PDF 失败')
+      throw new Error(detail || t('shared.wordToPdfFailed'))
     }
     return response.blob()
   }
@@ -71,7 +73,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '检测失败')
+      throw new Error(detail || t('shared.detectionFailed'))
     }
 
     return response.json()
@@ -96,7 +98,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '脱敏失败')
+      throw new Error(detail || t('shared.redactionFailed'))
     }
 
     return response.json()
@@ -121,7 +123,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '脱敏失败')
+      throw new Error(detail || t('shared.redactionFailed'))
     }
 
     return response.json()
@@ -138,7 +140,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '保留格式脱敏失败')
+      throw new Error(detail || t('shared.formatRedactionFailed'))
     }
     return { blob: await response.blob(), filename: response.headers.get('content-disposition') }
   }
@@ -162,7 +164,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '还原失败')
+      throw new Error(detail || t('shared.restoreFailed'))
     }
 
     return response.json()
@@ -197,7 +199,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '转换失败')
+      throw new Error(detail || t('shared.conversionFailed'))
     }
 
     return response.blob()
@@ -223,7 +225,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '转换失败')
+      throw new Error(detail || t('shared.conversionFailed'))
     }
 
     return response.blob()
@@ -248,7 +250,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '转换失败')
+      throw new Error(detail || t('shared.conversionFailed'))
     }
 
     return response.blob()
@@ -273,7 +275,7 @@ class DesensitizationAPI {
     if (!response.ok) {
       const error = await response.json()
       const detail = typeof error.detail === "string" ? error.detail : JSON.stringify(error.detail)
-      throw new Error(detail || '转换失败')
+      throw new Error(detail || t('shared.conversionFailed'))
     }
 
     return response.blob()

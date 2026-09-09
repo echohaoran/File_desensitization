@@ -1,20 +1,20 @@
 <template>
   <main class="container desktop-smoke">
-    <div class="index-eyebrow"><span class="index-eyebrow__line"></span><span class="mono-label">TAURI / SMOKE</span></div>
-    <h1>桌面核心测试</h1>
-    <p class="desktop-smoke__hint">此页面仅用于验证新 Rust/Tauri 链路，浏览器模式下不会伪造桌面结果。</p>
+    <div class="index-eyebrow"><span class="index-eyebrow__line"></span><span class="mono-label">{{ $t('shared.smokeEyebrow') }}</span></div>
+    <h1>{{ $t('shared.smokeTitle') }}</h1>
+    <p class="desktop-smoke__hint">{{ $t('shared.smokeHint') }}</p>
     <div class="desktop-smoke__actions">
-      <button class="btn btn--primary" @click="checkHealth">检查健康状态</button>
-      <button class="btn btn--secondary" @click="checkCapabilities">查看格式能力</button>
+      <button class="btn btn--primary" @click="checkHealth">{{ $t('shared.checkHealth') }}</button>
+      <button class="btn btn--secondary" @click="checkCapabilities">{{ $t('shared.checkCapabilities') }}</button>
     </div>
-    <label class="desktop-smoke__label" for="smoke-text">虚构测试文本</label>
+    <label class="desktop-smoke__label" for="smoke-text">{{ $t('shared.sampleText') }}</label>
     <textarea id="smoke-text" v-model="text" rows="5" />
     <div class="desktop-smoke__row">
-      <label>起点 <input v-model.number="start" type="number" min="0" /></label>
-      <label>终点 <input v-model.number="end" type="number" min="0" /></label>
-      <input v-model="kind" aria-label="敏感字段类型" placeholder="字段类型" />
-      <button class="btn btn--primary" @click="redact">执行已确认脱敏</button>
-      <button class="btn btn--secondary" @click="restore">还原</button>
+      <label>{{ $t('shared.start') }} <input v-model.number="start" type="number" min="0" /></label>
+      <label>{{ $t('shared.end') }} <input v-model.number="end" type="number" min="0" /></label>
+      <input v-model="kind" :aria-label="$t('shared.sensitiveFieldType')" :placeholder="$t('shared.fieldType')" />
+      <button class="btn btn--primary" @click="redact">{{ $t('shared.redactApproved') }}</button>
+      <button class="btn btn--secondary" @click="restore">{{ $t('shared.restore') }}</button>
     </div>
     <pre v-if="output">{{ output }}</pre>
   </main>

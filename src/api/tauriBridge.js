@@ -1,9 +1,11 @@
+import { t } from '@/i18n'
+
 const desktopInvoke = () => window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke
 
 export function isTauriRuntime() { return typeof window !== 'undefined' && typeof desktopInvoke() === 'function' }
 export async function invokeDesktop(command, payload = {}) {
   const invoke = desktopInvoke()
-  if (typeof invoke !== 'function') throw new Error('当前不是 Tauri 桌面运行环境')
+  if (typeof invoke !== 'function') throw new Error(t('shared.tauriRequired'))
   return invoke(command, payload)
 }
 export const desktopHealth = () => invokeDesktop('health')
