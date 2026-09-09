@@ -151,6 +151,11 @@
         <div class="preview__head">
           <h3>{{ previewTitle }}</h3>
         </div>
+        <nav class="review-navigation" :aria-label="$t('review.navigation')">
+          <button class="btn btn--secondary btn--sm" :disabled="!reviewItems.length || reviewIndex === 0" @click="navigateReview(-1)">{{ $t('review.previous') }}</button>
+          <span aria-live="polite">{{ $t('review.position', { current: formatNumber(reviewIndex + 1), total: formatNumber(reviewItems.length) }) }}</span>
+          <button class="btn btn--secondary btn--sm" :disabled="!reviewItems.length || reviewIndex === reviewItems.length - 1" @click="navigateReview(1)">{{ $t('review.next') }}</button>
+        </nav>
         <div class="preview__body" ref="previewBody">
           <div v-if="!file" class="comparison-preview comparison-preview--empty">
             <article class="comparison-pane comparison-pane--original">
@@ -370,6 +375,7 @@ export default {
       isDragging: false,
       uploadCollapsed: false,
       hoverDetectionId: null,
+      reviewDetectionId: null,
       hoverLockUntil: 0,
       hoverLockTimer: null,
       aiDetecting: false,
@@ -405,6 +411,8 @@ export default {
     }
   },
   computed: {
+    reviewItems() { return this.detections.filter(item => Number.isFinite(item.start)).slice().sort((a, b) => a.start - b.start || a.end - b.end) },
+    reviewIndex() { return this.reviewItems.findIndex(item => item.id === this.reviewDetectionId) },
     uiDirection() {
       return getLocale() === 'ar' ? 'rtl' : 'ltr'
     },
@@ -470,6 +478,21 @@ export default {
     }
   },
   methods: {
+    navigateReview(direction) {
+      if (!this.reviewItems.length) return
+      const index = this.reviewIndex < 0 ? (direction > 0 ? 0 : this.reviewItems.length - 1) : this.reviewIndex + direction
+      const item = this.reviewItems[index]
+      if (!item) return
+      this.lockHoverDetection(item.id)
+      this.$nextTick(() => {
+        this.$el.querySelectorAll('[data-detection-id]').forEach(target => {
+          if (target.dataset.detectionId !== String(item.id)) return
+          const panel = target.closest('.comparison-pane__body, .panel__body')
+          if (panel) panel.scrollTop += target.getBoundingClientRect().top - panel.getBoundingClientRect().top - panel.clientHeight / 2 + target.clientHeight / 2
+          else target.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+        })
+      })
+    },
     setHoverDetection(id) {
       if (this.hoverLockUntil > Date.now()) return
       this.hoverDetectionId = id
@@ -481,16 +504,17 @@ export default {
       })
     },
     lockHoverDetection(id) {
+      this.reviewDetectionId = id
       this.hoverDetectionId = id
       this.hoverLockUntil = Date.now() + 2000
       window.clearTimeout(this.hoverLockTimer)
       this.hoverLockTimer = window.setTimeout(() => {
         this.hoverLockUntil = 0
-        this.hoverDetectionId = null
+        this.hoverDetectionId = this.reviewDetectionId
       }, 2000)
     },
     clearHoverDetection() {
-      if (Date.now() >= this.hoverLockUntil) this.hoverDetectionId = null
+      if (Date.now() >= this.hoverLockUntil) this.hoverDetectionId = this.reviewDetectionId
     },
     isElementVisible(element) {
       const rect = element.getBoundingClientRect(); const parent = element.closest('.panel__body, .comparison-pane__body')
@@ -1127,6 +1151,8 @@ export default {
     finally { window.clearInterval(timer); this.aiProgress = 100; window.setTimeout(() => { this.aiDetecting = false; this.aiProgress = 0 }, 650) }
     },
     toggleDetection(item) {
+      const previousIndex = this.reviewIndex
+      const wasReviewing = this.reviewDetectionId === item.id
       if (this.hoverDetectionId === item.id) {
         window.clearTimeout(this.hoverLockTimer)
         this.hoverLockUntil = 0
@@ -1134,6 +1160,14 @@ export default {
       }
       // 从检测列表中移除该项
       this.detections = this.detections.filter(d => d.id !== item.id)
+      if (wasReviewing) {
+        this.reviewDetectionId = null
+        if (this.reviewItems.length) {
+          const next = this.reviewItems[Math.min(previousIndex, this.reviewItems.length - 1)]
+          this.lockHoverDetection(next.id)
+          this.navigateReview(0)
+        }
+      }
       
       // 如果是图片类型，重新绘制画布
       if (this.fileType === 'image') {
@@ -1433,6 +1467,10 @@ export default {
       return new Intl.NumberFormat(getLocale(), { style: 'unit', unit, unitDisplay: 'short', minimumFractionDigits: unit === 'byte' ? 0 : 1, maximumFractionDigits: unit === 'byte' ? 0 : 1 }).format(value)
     },
     reset() {
+      this.reviewDetectionId = null
+      this.hoverDetectionId = null
+      this.hoverLockUntil = 0
+      window.clearTimeout(this.hoverLockTimer)
       this.file = null
       this.fileType = null
       this.originalText = ''
@@ -1490,6 +1528,8 @@ export default {
 </script>
 
 <style scoped>
+.review-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; flex-shrink: 0; }
+.review-navigation span { font-size: 12px; color: #64748b; }
 .workflow { text-align: start; }
 .steps, .completion-modal__actions, .detect-item__header { flex-wrap: wrap; }
 .comparison-pane__head { gap: 8px; }
