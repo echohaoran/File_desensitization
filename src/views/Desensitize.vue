@@ -153,9 +153,19 @@
         </div>
         <nav class="review-navigation" :aria-label="$t('review.navigation')">
           <button class="btn btn--secondary btn--sm" :disabled="!reviewItems.length || reviewIndex === 0" @click="navigateReview(-1)">{{ $t('review.previous') }}</button>
-          <span aria-live="polite">{{ $t('review.position', { current: formatNumber(reviewIndex + 1), total: formatNumber(reviewItems.length) }) }}</span>
+          <div class="review-actions" @mousedown.prevent>
+            <button class="btn btn--secondary btn--sm" :disabled="reviewIndex < 0 || previewCancelPending" @click="requestPreviewCancel(reviewItems[reviewIndex])">{{ $t('desensitize.cancelRedaction') }}</button>
+            <span aria-live="polite">{{ $t('review.position', { current: formatNumber(reviewIndex + 1), total: formatNumber(reviewItems.length) }) }}</span>
+            <button class="btn btn--primary btn--sm" :disabled="!pendingSelections.length || applyingSelections" @click="applyPendingSelections('mask')">{{ $t('desensitize.redact') }}</button>
+            <button class="btn btn--secondary btn--sm" :disabled="!pendingSelections.length || applyingSelections" @click="applyPendingSelections('rule')">{{ $t('selection.addFields') }}</button>
+          </div>
           <button class="btn btn--secondary btn--sm" :disabled="!reviewItems.length || reviewIndex === reviewItems.length - 1" @click="navigateReview(1)">{{ $t('review.next') }}</button>
         </nav>
+        <div v-if="pendingSelections.length" class="pending-selections">
+          <span>{{ $t('selection.pending', { count: pendingSelections.length }) }}</span>
+          <button v-for="(selection, index) in pendingSelections" :key="selection.start" class="pending-chip" @click="pendingSelections.splice(index, 1)" :title="$t('selection.remove')">{{ rawOriginalText.slice(selection.start, selection.end).slice(0, 28) }} ×</button>
+          <button class="btn btn--secondary btn--sm" @click="clearPendingSelections">{{ $t('selection.clear') }}</button>
+        </div>
         <div class="preview__body" ref="previewBody" @click="onPreviewDetectionClick" @keydown.enter="onPreviewDetectionClick">
           <div v-if="!file" class="comparison-preview comparison-preview--empty">
             <article class="comparison-pane comparison-pane--original">
@@ -169,19 +179,19 @@
           </div>
           <div v-else-if="fileType === 'docx' && documentPreview.length" class="document-preview" dir="auto" @mouseup="handleTextSelect">
             <template v-for="(block, blockIndex) in documentPreview" :key="blockIndex">
-              <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)">
+              <component v-if="block.type !== 'table'" :is="block.type === 'heading' ? 'h' + Math.min(Math.max(block.level || 2, 1), 4) : 'p'" :class="['document-preview__' + block.type, { 'document-preview__blank': !block.text, 'document-preview__list': block.format?.list }]" :style="previewBlockStyle(block)" :data-source-start="block.start" :data-source-end="block.end">
                 <template v-for="(part, i) in partsForRange(block.start, block.end)" :key="i">
                   <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="requestPreviewCancel(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                  <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="selectPreviewDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                 </template>
               </component>
               <table v-else class="document-preview__table">
                 <tbody>
                   <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex">
-                    <td v-for="(cell, cellIndex) in row" :key="cellIndex">
+                    <td v-for="(cell, cellIndex) in row" :key="cellIndex" :data-source-start="cell.start" :data-source-end="cell.end">
                       <template v-for="(part, i) in partsForRange(cell.start, cell.end)" :key="i">
                         <span v-if="part.type === 'normal'">{{ part.text }}</span>
-                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="requestPreviewCancel(part)">{{ part.active ? part.placeholder : part.text }}</span>
+                        <span v-else :class="[part.active ? 'tok' : 'det', 'detection-mark', { 'is-linked-hover': hoverDetectionId === part.id }]" :title="$t(part.active ? 'desensitize.redactedLabel' : 'desensitize.unredactedLabel', { label: getDetectionLabel(part) })" @mouseenter="setHoverDetection(part.id)" @mouseleave="clearHoverDetection" @click.stop="selectPreviewDetection(part)">{{ part.active ? part.placeholder : part.text }}</span>
                       </template>
                     </td>
                   </tr>
@@ -207,10 +217,6 @@
               <span><i></i>{{ $t('desensitize.candidateRegions') }}</span>
               <span><i class="off"></i>{{ $t('desensitize.skippedRegions') }}</span>
             </div>
-          </div>
-          <div v-if="selectionPopup" class="selection-popup is-visible" :style="{ left: selectionPopup.left + 'px', top: selectionPopup.top + 'px' }" @mousedown.prevent.stop>
-            <button class="btn btn--primary btn--sm" @click="applySelection('mask')">{{ $t('desensitize.redact') }}</button>
-            <button class="btn btn--secondary btn--sm" @click="applySelection('rule')">{{ $t('desensitize.addRule') }}</button>
           </div>
         </div>
       </section>
@@ -279,6 +285,7 @@ import { detectWithRules, loadSensitiveRules } from '@/utils/sensitiveRules'
 import { saveHistoryFile } from '@/utils/historyFiles'
 import { isTauriRuntime, redactApprovedText, aiDetectCandidates } from '@/api/tauriBridge'
 import { requestAppConfirm } from '@/utils/appConfirm'
+import { saveSensitiveRules } from '@/utils/sensitiveRules'
 import AiFeatureButton from '@/components/AiFeatureButton.vue'
 import { AI_AVAILABILITY_EVENT, readAiAvailability } from '@/utils/aiAvailability'
 
@@ -377,6 +384,9 @@ export default {
       hoverDetectionId: null,
       reviewDetectionId: null,
       previewCancelPending: false,
+      pendingSelections: [],
+      applyingSelections: false,
+      selectionClickUntil: 0,
       hoverLockUntil: 0,
       hoverLockTimer: null,
       aiDetecting: false,
@@ -483,9 +493,13 @@ export default {
       const target = event.target.closest?.('[data-detection-id]')
       if (!target || !this.$refs.previewBody?.contains(target)) return
       const item = this.detections.find(item => String(item.id) === target.dataset.detectionId)
-      if (item) this.requestPreviewCancel(item)
+      if (item) this.selectPreviewDetection(item)
+    },
+    selectPreviewDetection(item) {
+      if (Date.now() > this.selectionClickUntil && !window.getSelection()?.toString()) this.lockHoverDetection(item.id)
     },
     async requestPreviewCancel(part) {
+      if (!part) return
       if (this.previewCancelPending || window.getSelection()?.toString()) return
       const item = this.detections.find(item => item.id === part.id)
       if (!item) return
@@ -514,6 +528,7 @@ export default {
       })
     },
     setHoverDetection(id) {
+      if (this.pendingSelections.length || window.getSelection()?.toString()) return
       if (this.hoverLockUntil > Date.now()) return
       this.hoverDetectionId = id
       this.$nextTick(() => {
@@ -977,131 +992,77 @@ export default {
       this.drawImageCanvas()
     },
     handleTextSelect() {
-      const sel = window.getSelection()
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
-      
-      let text = sel.toString().replace(/\s+/g, ' ').trim()
-      if (!text || text.length < 2) return
-      // 选区可能包含已经脱敏的占位符；先还原为对应原值，再计算原文偏移。
-      const sourceText = text.replace(/\{[A-Z0-9]{4,}\}/g, (placeholder) => {
-        const detection = this.detections.find(d => d.placeholder === placeholder)
-        return detection?.value || placeholder
-      })
-      let selectionStart = this.rawOriginalText.indexOf(sourceText)
-      let selectionEnd = selectionStart === -1 ? -1 : selectionStart + sourceText.length
-      if (selectionStart === -1) {
-        const compact = sourceText.replace(/\s/g, '')
-        const rawCompact = this.rawOriginalText.replace(/\s/g, '')
-        const compactStart = rawCompact.indexOf(compact)
-        if (compactStart === -1) return
-        // 将去除换行/空白后的索引映射回原文，避免跨段落框选时误定位到 0。
-        const rawIndexForCompact = (compactIndex) => {
-          let index = 0
-          for (let i = 0; i < this.rawOriginalText.length; i += 1) {
-            if (/\s/.test(this.rawOriginalText[i])) continue
-            if (index === compactIndex) return i
-            index += 1
+      const selection = window.getSelection()
+      const body = this.$refs.redactedScroll || this.$refs.previewBody?.querySelector('.document-preview')
+      if (!body || !selection || !selection.rangeCount || selection.isCollapsed) return
+      const range = selection.getRangeAt(0)
+      if (!body.contains(range.startContainer) || !body.contains(range.endContainer)) return
+      const boundary = (node, nodeOffset, endBoundary) => {
+        const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+        const block = body === this.$refs.redactedScroll ? body : element?.closest('[data-source-start]')
+        if (!block || !body.contains(block)) return null
+        const sourceStart = Number(block.dataset.sourceStart || 0)
+        const sourceEnd = block.dataset.sourceEnd === undefined ? this.rawOriginalText.length : Number(block.dataset.sourceEnd)
+        const prefix = document.createRange()
+        prefix.selectNodeContents(block); prefix.setEnd(node, nodeOffset)
+        const offset = prefix.toString().length
+        let displayed = 0, original = sourceStart
+        for (const part of this.partsForRange(sourceStart, sourceEnd)) {
+          const masked = part.type !== 'normal' && part.active
+          const shown = masked ? part.placeholder : part.text
+          const limit = displayed + shown.length
+          if (offset < limit || (endBoundary && offset === limit)) {
+            return masked ? original + (endBoundary ? part.text.length : 0) : original + offset - displayed
           }
-          return this.rawOriginalText.length
+          displayed = limit; original += part.text.length
         }
-        selectionStart = rawIndexForCompact(compactStart)
-        selectionEnd = rawIndexForCompact(compactStart + compact.length)
+        return original
       }
-      const range = sel.getRangeAt(0)
-      const bodyRect = this.$refs.previewBody?.getBoundingClientRect()
-      const rangeRect = range.getBoundingClientRect()
-      const bodyLeft = bodyRect?.left || 0
-      const bodyTop = bodyRect?.top || 0
-      const bodyWidth = bodyRect?.width || window.innerWidth
-      const bodyScrollLeft = this.$refs.previewBody?.scrollLeft || 0
-      const bodyScrollTop = this.$refs.previewBody?.scrollTop || 0
-      const rangeCenter = rangeRect.left + (rangeRect.width / 2)
-      const popupHalfWidth = 112
-      this.selectionPopup = {
-        text,
-        sourceText,
-        start: selectionStart,
-        end: selectionEnd,
-        // Anchor the menu to the selection midpoint and place it above the selected text.
-        left: Math.min(Math.max(8 + popupHalfWidth, rangeCenter - bodyLeft + bodyScrollLeft), Math.max(8 + popupHalfWidth, bodyWidth - popupHalfWidth - 8 + bodyScrollLeft)),
-        top: Math.max(8, rangeRect.top - bodyTop + bodyScrollTop - 4)
+      const start = boundary(range.startContainer, range.startOffset, false)
+      const end = boundary(range.endContainer, range.endOffset, true)
+      if (start === null || end === null) return
+      if (end <= start || !this.rawOriginalText.slice(start, end).trim()) return
+      const ranges = [...this.pendingSelections, { start, end }].sort((a,b) => a.start - b.start)
+      const merged = []
+      for (const item of ranges) {
+        const previous = merged[merged.length - 1]
+        if (previous && item.start < previous.end) previous.end = Math.max(previous.end, item.end)
+        else merged.push({ ...item })
       }
-      return
-      
-      // 检查选中的文本是否包含占位符（如 [CHINESE_NAME_001]）
-      const placeholderPattern = /\[[A-Z_]+\d+\]/
-      if (placeholderPattern.test(text)) {
-        // 如果包含占位符，提示用户选择原始文本
-        sel.removeAllRanges()
-        return
-      }
-      
-      // 在原始文本中查找选中文本的位置
-      let startPos = this.rawOriginalText.indexOf(text)
-      
-      // 如果找不到完全匹配，尝试去除首尾空格后查找
-      if (startPos === -1) {
-        const trimmedText = text.replace(/^\s+|\s+$/g, '')
-        startPos = this.rawOriginalText.indexOf(trimmedText)
-        if (startPos !== -1) {
-          // 找到了，更新为修剪后的文本
-          text = trimmedText
-        }
-      }
-      
-      if (startPos === -1) return
-      
-      const endPos = startPos + text.length
-      
-      // 检查是否已存在相同位置的检测项
-      const existing = this.detections.find(d => d.start === startPos && d.end === endPos)
-      if (existing) return
-      
-      // 过滤掉与新选区重叠的旧检测项
-      this.detections = this.detections.filter(d => !(d.start < endPos && d.end > startPos))
-      
-      // 计算下一个编号（使用所有检测项的最大编号 + 1）
-      const maxNum = this.detections.reduce((max, d) => {
-        const match = d.placeholder.match(/\{[A-Z]+_(\d{3})\}/)
-        return match ? Math.max(max, parseInt(match[1])) : max
-      }, 0)
-      
-      // 直接添加到检测列表
-      const newItem = {
-        id: this.nextId++,
-        type: 'manual',
-        label: '区域',
-        value: text,
-        start: startPos,
-        end: endPos,
-        placeholder: '{MANUAL_' + String(maxNum + 1).padStart(3, '0') + '}',
-        active: true,
-        manual: true
-      }
-      
-      this.detections.push(newItem)
-      this.detections.sort((a, b) => a.start - b.start)
-      
-      // 清除选择
-      sel.removeAllRanges()
+      this.pendingSelections = merged
+      this.selectionClickUntil = Date.now() + 350
+      selection.removeAllRanges()
     },
-    applySelection(action) {
-      const selected = this.selectionPopup
-      this.selectionPopup = null
-      if (!selected) return
-      window.getSelection()?.removeAllRanges()
-      const sourceText = selected.sourceText || selected.text
-      if (action === 'rule') {
-        const rules = loadSensitiveRules()
-        const id = 'custom_' + Date.now().toString(36)
-        rules.push({ id, name: sourceText.slice(0, 24), kind: 'keyword', value: sourceText, method: '关键词', enabled: true, builtIn: false })
-        localStorage.setItem('desens_sensitive_rules', JSON.stringify(rules))
-      }
-      const existing = this.detections.find(d => d.start === selected.start && d.end === selected.end)
-      if (existing) { existing.active = true; return }
-      this.detections = this.detections.filter(d => !(d.start < selected.end && d.end > selected.start))
-      this.detections.push({ id: this.nextId++, type: action === 'rule' ? 'custom' : 'manual', label: action === 'rule' ? '敏感字段' : '区域', value: sourceText, start: selected.start, end: selected.end, placeholder: '{MANUAL_' + String(this.nextId).padStart(3, '0') + '}', active: true, manual: action !== 'rule' })
-      this.detections.sort((a, b) => a.start - b.start)
+    clearPendingSelections() { this.pendingSelections = []; window.getSelection()?.removeAllRanges() },
+    async applyPendingSelections(action) {
+      this.handleTextSelect()
+      if (!this.pendingSelections.length || this.applyingSelections) return
+      const file = this.file
+      const selected = this.pendingSelections.map(item => ({ ...item }))
+      this.applyingSelections = true
+      try {
+        const accepted = await requestAppConfirm({ title: t(action === 'rule' ? 'selection.addFields' : 'desensitize.redact'), message: t('selection.confirm', { count: selected.length }), confirmText: t('shared.confirmContinue') })
+        if (!accepted || this.file !== file) return
+        if (action === 'rule') {
+          const rules = loadSensitiveRules()
+          for (const item of selected) {
+            const value = this.rawOriginalText.slice(item.start, item.end)
+            if (!rules.some(rule => rule.kind === 'keyword' && rule.value === value)) rules.push({ id: 'custom_' + crypto.randomUUID().replace(/-/g, ''), name: value.slice(0, 24), value, kind: 'keyword', enabled: true, builtIn: false })
+          }
+          saveSensitiveRules(rules)
+        }
+        let next = [...this.detections]
+        for (const item of selected) {
+          next = next.filter(d => !(d.start < item.end && d.end > item.start))
+          next.push({ id: this.nextId++, type: 'manual', label: '区域', value: this.rawOriginalText.slice(item.start, item.end), start: item.start, end: item.end, placeholder: '{' + crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase() + '}', active: true, manual: true })
+        }
+        this.detections = next.sort((a,b) => a.start - b.start)
+        this.confirmed = false; this.mapping = null; this.showCompletionModal = false
+        this.reviewDetectionId = null; this.hoverDetectionId = null
+        this.clearPendingSelections()
+      } catch (error) {
+        window.dispatchEvent(new CustomEvent('desens:status', { detail: { message: t('selection.failed') } }))
+      } finally { this.applyingSelections = false }
     },
     async runAiDetection() {
       if (!this.activeModelPath || !this.aiEnabled || !isTauriRuntime() || !this.rawOriginalText || this.aiDetecting) {
@@ -1488,6 +1449,8 @@ export default {
       return new Intl.NumberFormat(getLocale(), { style: 'unit', unit, unitDisplay: 'short', minimumFractionDigits: unit === 'byte' ? 0 : 1, maximumFractionDigits: unit === 'byte' ? 0 : 1 }).format(value)
     },
     reset() {
+      this.pendingSelections = []
+      this.selectionClickUntil = 0
       this.reviewDetectionId = null
       this.hoverDetectionId = null
       this.hoverLockUntil = 0
@@ -1549,6 +1512,9 @@ export default {
 </script>
 
 <style scoped>
+.review-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.pending-selections { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-height: 88px; overflow: auto; padding: 4px 24px 10px; flex-shrink: 0; font-size: 12px; }
+.pending-chip { border: 1px solid #eab308; border-radius: 6px; background: #fef9c3; padding: 5px 9px; cursor: pointer; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .review-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; flex-shrink: 0; }
 .review-navigation span { font-size: 12px; color: #64748b; }
 .workflow { text-align: start; }
